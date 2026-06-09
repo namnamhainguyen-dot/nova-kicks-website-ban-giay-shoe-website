@@ -23,11 +23,6 @@ if (process.env.NODE_ENV === 'development') {
   clientPromise = client.connect();
 }
 
-export function getBaseUrl() {
-  if (typeof window !== "undefined") return "";
-  if (process.env.NEXT_PUBLIC_BASE_URL) return process.env.NEXT_PUBLIC_BASE_URL;
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
-  return "http://localhost:3000";
-}
+
 // Xuất khẩu một MongoClient promise đã được share (singleton)
 export default clientPromise;
