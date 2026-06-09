@@ -58,16 +58,16 @@ export default function Order() {
 
   return (
     <main className="container-fluid mt-5 pt-5">
-      <h3 className="text-center mb-4">Danh sách đơn hàng tại quầy</h3>
+      <h3 className="text-center mb-4">Danh sách đơn hàng giày</h3>
 
       <div className="table-responsive">
         <table className="table table-bordered align-middle">
           <thead className="table-dark">
             <tr>
               <th>Mã đơn</th>
-              <th>Bàn/Khách</th>
+              <th>Cửa hàng/Khách</th>
               <th>Sản phẩm</th>
-              <th>Thời gian gọi</th>
+              <th>Thời gian đặt</th>
               <th>Trạng thái</th>
               <th>Hành động</th>
             </tr>
@@ -77,7 +77,7 @@ export default function Order() {
             {orderList.map((order) => (
               <tr key={order._id}>
                 <td>{order._id}</td>
-                <td>{order.table_info?.name || "Không xác định"}</td>
+                <td>{order.location_info?.name || "Không xác định"}</td>
 
                 <td>
                   {order.order_items?.map((item) => (

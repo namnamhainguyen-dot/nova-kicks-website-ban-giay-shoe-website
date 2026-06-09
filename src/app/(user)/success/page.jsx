@@ -4,7 +4,7 @@ export default function Success() {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Susan Coffee - Đặt hàng thành công</title>
+    <title>Nova-kicks - Đặt hàng thành công</title>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -14,7 +14,7 @@ export default function Success() {
   <body>
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
       <div className="container">
-        <a className="navbar-brand fw-bold" href="/">Susan Coffee</a>
+        <a className="navbar-brand fw-bold" href="/">Nova-kicks</a>
         <button
           className="navbar-toggler"
           type="button"
@@ -50,10 +50,9 @@ export default function Success() {
       <div className="col-md-8 col-lg-6">
         <div className="alert alert-success text-center shadow-lg p-4">
           <h2 className="mb-3">🎉 Đặt hàng thành công!</h2>
-          <p>Cảm ơn bạn đã đặt hàng tại <strong>Susan Coffee</strong>.</p>
+          <p>Cảm ơn bạn đã đặt hàng tại <strong>Nova-kicks</strong>.</p>
           <p>
-            Đơn hàng của bạn đang được xử lý và sẽ được phục vụ tại bàn bạn đã
-            chọn.
+            Đơn hàng giày của bạn đang được xử lý và sẽ được giao tới địa chỉ/ cửa hàng bạn đã chọn.
           </p>
           <a href="/" className="btn btn-dark mt-3">Quay lại Menu</a>
         </div>
@@ -62,9 +61,9 @@ export default function Success() {
 
 
     <footer className="bg-dark text-white text-center py-3 mt-auto">
-      <p>Susan Coffee - 123 Đường ABC, TP.HCM</p>
-      <p>Hotline: 0123 456 789 | Email: susancoffee@gmail.com</p>
-      <p>&copy; 2026 Susan Coffee. All rights reserved.</p>
+      <p>Nova-kicks - 123 Đường ABC, TP.HCM</p>
+      <p>Hotline: 0123 456 789 | Email: support@nova-kicks.com</p>
+      <p>&copy; 2026 Nova-kicks. All rights reserved.</p>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -4,7 +4,7 @@ import { Code, ObjectId } from "mongodb";
 export async function PATCH(request, { params }) {
   try {
     const client = await clientPromise;
-    const db = client.db();
+    const db = client.db("Nova-kicks");
     const { id } = await params;
     const body = await request.json();
     const { status } = body;

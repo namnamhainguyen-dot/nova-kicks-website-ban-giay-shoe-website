@@ -29,7 +29,7 @@ export default function Dashboard() {
         <div className="col-md-3">
           <div className="card text-center shadow">
             <div className="card-body">
-              <h5 className="card-title">Bàn đang sử dụng</h5>
+              <h5 className="card-title">Cửa hàng đang hoạt động</h5>
               <h3 className="text-warning">15/20</h3>
             </div>
           </div>
@@ -64,14 +64,14 @@ export default function Dashboard() {
               <tr>
                 <td>#DH101</td>
                 <td>Nguyễn Văn B</td>
-                <td>Cà phê sữa x2</td>
+                <td>Nova Runner x2</td>
                 <td>24/03/2026 - 15:30</td>
                 <td><span className="badge bg-success">Hoàn thành</span></td>
               </tr>
               <tr>
                 <td>#DH102</td>
                 <td>Trần Thị C</td>
-                <td>Latte x1</td>
+                <td>Air Glide x1</td>
                 <td>24/03/2026 - 15:45</td>
                 <td>
                   <span className="badge bg-warning text-dark">Đang xử lý</span>

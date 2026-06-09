@@ -1,30 +1,30 @@
   "use client";
   import { useEffect, useState } from "react";
   export default function Table() {
-    const [tables, setTablesList] = useState([]);
-      async function fetchedTables() {
+    const [locations, setLocationsList] = useState([]);
+      async function fetchLocations() {
         const res = await fetch('http://localhost:3000/api/tables');
         const data = await res.json();
-        setTablesList(data);
+        setLocationsList(data);
       }
-      const [tableName, setTableName] = useState("");
-      const [tableLocation, setTableLocation] = useState("");
-      const [tableId, setTableId] = useState(null);
+      const [locationName, setLocationName] = useState("");
+      const [locationAddress, setLocationAddress] = useState("");
+      const [locationId, setLocationId] = useState(null);
 
 
 
       useEffect(() => {
-        fetchedTables();
+        fetchLocations();
       }, [])
 
 
       const handleSubmit = async (e) => {
             e.preventDefault();
 
-            if (!tableId) {
-              const newTable = {
-                name: tableName,
-                location: tableLocation
+            if (!locationId) {
+              const newLocation = {
+                name: locationName,
+                location: locationAddress
               };
 
               const res = await fetch('http://localhost:3000/api/tables', {
@@ -32,20 +32,20 @@
                 headers: {
                   "content-type": "application/json"
                 },
-                body: JSON.stringify(newTable)
+                body: JSON.stringify(newLocation)
               });
 
               const result = await res.json();
 
               if (result.status === "success") {
-                fetchedTables();
+                fetchLocations();
               }
             } else {
-              const updatedTable = {
-                name: tableName,
-                location: tableLocation
+              const updatedLocation = {
+                name: locationName,
+                location: locationAddress
               };
-              const res = await fetch(`http://localhost:3000/api/tables/${tableId}`, {
+              const res = await fetch(`http://localhost:3000/api/tables/${locationId}`, {
                 method: 'PATCH',
                 headers: {
                   "Content-Type": "application/json"
@@ -54,23 +54,23 @@
               });
               const result = await res.json();
               if (result.status === "success") {
-                await fetchedTables()
+                await fetchLocations()
                 handleReset();
 
               }
 
             }
           };
-      const handleUpdate = (table) => {
-        setTableId(table._id);
-        setTableName(table.name);
-        setTableLocation(table.location);
+const handleUpdate = (location) => {
+        setLocationId(location._id);
+        setLocationName(location.name);
+        setLocationAddress(location.location);
       }
 
       const handleReset = () => {
-        setTableId(null);
-        setTableName("");
-        setTableLocation("");
+        setLocationId(null);
+        setLocationName("");
+        setLocationAddress("");
       }
 
 
@@ -81,25 +81,25 @@
           <div className="col-md-8">
             <div className="card shadow mb-4">
               <div className="card-body">
-                <h4 className="card-title mb-3">Danh sách bàn</h4>
+                <h4 className="card-title mb-3">Danh sách cửa hàng</h4>
                 <div className="table-responsive">
                   <table className="table table-bordered align-middle">
                     <thead className="table-dark">
                           <tr>
                             <th>STT</th>
                             <th>ID</th>
-                            <th>Tên bàn</th>
+                            <th>Tên cửa hàng</th>
                             <th>Hành động</th>
                           </tr>
                         </thead>  
                     <tbody>
-                      {tables.map((table, index) => (
-                        <tr key={table._id}>
+                      {locations.map((location, index) => (
+                        <tr key={location._id}>
                           <td>{index + 1}</td>
-                          <td>{table._id}</td>
-                          <td>{table.name}</td>
+                          <td>{location._id}</td>
+                          <td>{location.name}</td>
                           <td>
-                            <button className="btn btn-warning btn-sm" onClick={(e) => handleUpdate(table)}>Sửa</button>
+                            <button className="btn btn-warning btn-sm" onClick={(e) => handleUpdate(location)}>Sửa</button>
                             <button className="btn btn-danger btn-sm">Xóa</button>
                           </td>
                         </tr>
@@ -114,36 +114,36 @@
           <div className="col-md-4">
             <div className="card shadow">
               <div className="card-body">
-                <h4 className="card-title mb-3">{tableId ? "Sửa" : "Thêm"} bàn</h4>
+                <h4 className="card-title mb-3">{locationId ? "Sửa" : "Thêm"} cửa hàng</h4>
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
                     {/* 🔥 FIX ở đây */}
-                    <label htmlFor="tableName" className="form-label">
-                      Tên bàn
+                    <label htmlFor="locationName" className="form-label">
+                      Tên cửa hàng
                     </label>
                     <input
                       type="text"
                       className="form-control"
-                      id="tableName"
-                      placeholder="Ví dụ: Bàn số 1"
+                      id="locationName"
+                      placeholder="Ví dụ: Nova Store - Quận 1"
                       required
-                      onChange={(e)=>setTableName(e.target.value)}
-                      value={tableName}
+                      onChange={(e)=>setLocationName(e.target.value)}
+                      value={locationName}
                     />
                   </div>
                   <div className="mb-3">
                     {/* 🔥 FIX ở đây */}
-                    <label htmlFor="tableLocation" className="form-label">
-                      ID Bàn
+                    <label htmlFor="locationAddress" className="form-label">
+                      Địa chỉ cửa hàng
                     </label>
                     <input
                       type="text"
                       className="form-control"
-                      id="tableLocation"
-                      placeholder="Ví dụ: Tầng 1 - Bàn số 1"
+                      id="locationAddress"
+                      placeholder="Ví dụ: 123 Nguyễn Huệ, Q.1"
                       required
-                      onChange={(e)=>setTableLocation(e.target.value)}
-                      value={tableLocation}
+                      onChange={(e)=>setLocationAddress(e.target.value)}
+                      value={locationAddress}
                     />
                   </div>
 

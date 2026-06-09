@@ -6,7 +6,7 @@ export default function Layout({ children }) {
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Susan Coffee - Tổng quan</title>
+        <title>Nova-kicks - Tổng quan</title>
 
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
@@ -18,7 +18,7 @@ export default function Layout({ children }) {
       <body>
         <div className="sidebar d-flex flex-column p-3">
           <h3 className="text-center mb-4">
-            Susan Coffee<br />ADMIN
+            Nova-kicks<br />ADMIN
           </h3>
 
           <ul className="nav flex-column">
@@ -42,7 +42,7 @@ export default function Layout({ children }) {
 
             <li className="nav-item mb-2">
               <Link href="/admin/tables" className="nav-link">
-                Quản lý Bàn
+                Quản lý Cửa hàng
               </Link>
             </li>
 

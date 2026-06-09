@@ -6,22 +6,22 @@ import { useContext, useEffect, useState } from "react";
 
 export default function Cart() {
   const { cart, setCart } = useContext(CartContext);
-  const [tableList, setTableList] = useState([]);
-  const [inputTable, setInputTable] = useState(null);
+  const [locationList, setLocationList] = useState([]);
+  const [inputLocation, setInputLocation] = useState(null);
   const router = useRouter();
 
-  // Lấy danh sách bàn từ API khi mount
+  // Lấy danh sách cửa hàng / điểm nhận hàng từ API khi mount
   useEffect(() => {
-    async function fetchTable() {
+    async function fetchLocations() {
       try {
         const res = await fetch("http://localhost:3000/api/tables");
-        const tables = await res.json();
-        setTableList(tables);
+        const locations = await res.json();
+        setLocationList(locations);
       } catch (err) {
-        console.error("Lỗi lấy danh sách bàn:", err);
+        console.error("Lỗi lấy danh sách cửa hàng:", err);
       }
     }
-    fetchTable();
+    fetchLocations();
   }, []);
 
   // Cập nhật số lượng sản phẩm
@@ -52,7 +52,7 @@ export default function Cart() {
   const handleOrder = async () => {
     const order = {
       name: "Tên Khách", // sau này lấy từ thông tin đăng nhập
-      table_id: inputTable,
+      location_id: inputLocation,
       order_items: cart,
       total,
     };
@@ -133,19 +133,19 @@ export default function Cart() {
 
       <div className="row mt-4">
         <div className="col-md-6 offset-md-6">
-          <label htmlFor="tableSelect" className="form-label">
-            Chọn vị trí bàn:
+          <label htmlFor="locationSelect" className="form-label">
+            Chọn cửa hàng nhận hàng:
           </label>
           <select
             className="form-select"
-            id="tableSelect"
-            onChange={(e) => setInputTable(e.target.value)}
+            id="locationSelect"
+            onChange={(e) => setInputLocation(e.target.value)}
             defaultValue={-1}
           >
             <option value={-1} disabled>
-              -- Vui lòng chọn bàn --
+              -- Vui lòng chọn cửa hàng --
             </option>
-            {tableList.map((t) => (
+            {locationList.map((t) => (
               <option key={t._id} value={t._id}>
                 {t.name} ({t.location})
               </option>

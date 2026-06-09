@@ -7,7 +7,7 @@ export default function Profile() {
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
         <div className="container">
           <Link className="navbar-brand fw-bold" href="/">
-            Susan Coffee
+            Nova-kicks
           </Link>
 
           <div className="collapse navbar-collapse justify-content-end">
@@ -119,7 +119,7 @@ export default function Profile() {
                     <tbody>
                       <tr>
                         <td>#DH001</td>
-                        <td>Cà phê sữa x2</td>
+                        <td>Nova Runner x2</td>
                         <td>20/03/2026</td>
                         <td>
                           <span className="badge bg-success">
@@ -130,7 +130,7 @@ export default function Profile() {
 
                       <tr>
                         <td>#DH002</td>
-                        <td>Latte x1, Trà đào x1</td>
+                        <td>Air Glide x1, Street Classic x1</td>
                         <td>22/03/2026</td>
                         <td>
                           <span className="badge bg-warning text-dark">
@@ -141,7 +141,7 @@ export default function Profile() {
 
                       <tr>
                         <td>#DH003</td>
-                        <td>Cà phê dừa x1</td>
+                        <td>Urban Slip-on x1</td>
                         <td>23/03/2026</td>
                         <td>
                           <span className="badge bg-info text-dark">
@@ -163,9 +163,9 @@ export default function Profile() {
       </main>
 
       <footer className="bg-dark text-white text-center py-3 mt-auto">
-        <p>Susan Coffee - 123 Đường ABC, TP.HCM</p>
-        <p>Hotline: 0123 456 789 | Email: susancoffee@gmail.com</p>
-        <p>&copy; 2026 Susan Coffee</p>
+        <p>Nova-kicks - 123 Đường ABC, TP.HCM</p>
+        <p>Hotline: 0123 456 789 | Email: support@nova-kicks.com</p>
+        <p>&copy; 2026 Nova-kicks</p>
       </footer>
     </>
   );

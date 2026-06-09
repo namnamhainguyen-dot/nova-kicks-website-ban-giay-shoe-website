@@ -23,42 +23,42 @@ export default function Product() {
               <tbody>
                 <tr>
                   <td>P001</td>
-                  <td>Cà phê sữa</td>
-                  <td>30.000đ</td>
-                  <td><span class="badge bg-success">Đang bán</span></td>
+                  <td>Nova Runner</td>
+                  <td>1.200.000đ</td>
+                  <td><span className="badge bg-success">Còn hàng</span></td>
                   <td>
-                    <button class="btn btn-warning btn-sm">Sửa</button>
-                    <button class="btn btn-danger btn-sm">Xóa</button>
+                    <button className="btn btn-warning btn-sm">Sửa</button>
+                    <button className="btn btn-danger btn-sm">Xóa</button>
                   </td>
                 </tr>
                 <tr>
                   <td>P002</td>
-                  <td>Latte</td>
-                  <td>45.000đ</td>
-                  <td><span class="badge bg-success">Đang bán</span></td>
+                  <td>Air Glide</td>
+                  <td>1.450.000đ</td>
+                  <td><span className="badge bg-success">Còn hàng</span></td>
                   <td>
-                    <button class="btn btn-warning btn-sm">Sửa</button>
-                    <button class="btn btn-danger btn-sm">Xóa</button>
+                    <button className="btn btn-warning btn-sm">Sửa</button>
+                    <button className="btn btn-danger btn-sm">Xóa</button>
                   </td>
                 </tr>
                 <tr>
                   <td>P003</td>
-                  <td>Trà đào</td>
-                  <td>35.000đ</td>
-                  <td><span class="badge bg-secondary">Ngừng bán</span></td>
+                  <td>Street Classic</td>
+                  <td>990.000đ</td>
+                  <td><span className="badge bg-secondary">Hết hàng</span></td>
                   <td>
-                    <button class="btn btn-warning btn-sm">Sửa</button>
-                    <button class="btn btn-danger btn-sm">Xóa</button>
+                    <button className="btn btn-warning btn-sm">Sửa</button>
+                    <button className="btn btn-danger btn-sm">Xóa</button>
                   </td>
                 </tr>
                 <tr>
                   <td>P004</td>
-                  <td>Bánh ngọt</td>
-                  <td>25.000đ</td>
-                  <td><span class="badge bg-success">Đang bán</span></td>
+                  <td>Urban Slip-on</td>
+                  <td>850.000đ</td>
+                  <td><span className="badge bg-success">Còn hàng</span></td>
                   <td>
-                    <button class="btn btn-warning btn-sm">Sửa</button>
-                    <button class="btn btn-danger btn-sm">Xóa</button>
+                    <button className="btn btn-warning btn-sm">Sửa</button>
+                    <button className="btn btn-danger btn-sm">Xóa</button>
                   </td>
                 </tr>
               </tbody>
