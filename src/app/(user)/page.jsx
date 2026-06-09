@@ -2,7 +2,7 @@ import AddToCart from "@/components/AddToCart";
 
 export default async function Menu() {
   // Thêm cache: 'no-store' để đảm bảo lấy dữ liệu mới nhất từ Mongo khi F5 (Giữ nguyên logic)
-  const res = await fetch('http://localhost:3000/api/products', { cache: 'no-store' });
+  const res = await fetch('http:///api/products', { cache: 'no-store' });
   const productList = await res.json();
 
   // Kiểm tra xem productList có thực sự là mảng không để tránh lỗi .map (Giữ nguyên logic)

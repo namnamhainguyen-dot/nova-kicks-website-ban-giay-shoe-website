@@ -5,7 +5,7 @@ export default function Order() {
   const [orderList, setOrderList] = useState([]);
 
   async function fetchOrderList() {
-    const res = await fetch("http://localhost:3000/api/orders");
+    const res = await fetch("http:///api/orders");
     const data = await res.json();
     setOrderList(data);
   }
@@ -21,7 +21,7 @@ export default function Order() {
       "cho-giao": "hoan-thanh"
     };
 
-    const res = await fetch(`http://localhost:3000/api/orders/${order._id}`, {
+    const res = await fetch(`http:///api/orders/${order._id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"
@@ -39,7 +39,7 @@ export default function Order() {
   }; // ✅ ĐÃ ĐÓNG NGOẶC
 
   const handleCancel = async (order) => {
-    const res = await fetch(`http://localhost:3000/api/orders/${order._id}`, {
+    const res = await fetch(`http:///api/orders/${order._id}`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json"

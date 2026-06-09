@@ -3,7 +3,7 @@
   export default function Table() {
     const [locations, setLocationsList] = useState([]);
       async function fetchLocations() {
-        const res = await fetch('http://localhost:3000/api/tables');
+        const res = await fetch('http:///api/tables');
         const data = await res.json();
         setLocationsList(data);
       }
@@ -27,7 +27,7 @@
                 location: locationAddress
               };
 
-              const res = await fetch('http://localhost:3000/api/tables', {
+              const res = await fetch('http:///api/tables', {
                 method: 'POST',
                 headers: {
                   "content-type": "application/json"
@@ -45,7 +45,7 @@
                 name: locationName,
                 location: locationAddress
               };
-              const res = await fetch(`http://localhost:3000/api/tables/${locationId}`, {
+              const res = await fetch(`http:///api/tables/${locationId}`, {
                 method: 'PATCH',
                 headers: {
                   "Content-Type": "application/json"
