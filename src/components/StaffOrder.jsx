@@ -27,7 +27,7 @@ export default function StaffOrder() {
     };
 
     try {
-      const res = await fetch("/api/orders", {
+      const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL + "/api"/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),

@@ -5,7 +5,7 @@ export default function Order() {
   const [orderList, setOrderList] = useState([]);
 
   async function fetchOrderList() {
-    const res = await fetch("/api/orders");
+    const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL + "/api"/orders");
     const data = await res.json();
     setOrderList(data);
   }

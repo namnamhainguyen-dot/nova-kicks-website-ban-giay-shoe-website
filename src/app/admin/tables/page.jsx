@@ -3,7 +3,7 @@
   export default function Table() {
     const [locations, setLocationsList] = useState([]);
       async function fetchLocations() {
-        const res = await fetch('/api/tables');
+        const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL + "/api"/tables');
         const data = await res.json();
         setLocationsList(data);
       }
@@ -27,7 +27,7 @@
                 location: locationAddress
               };
 
-              const res = await fetch('/api/tables', {
+              const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL + "/api"/tables', {
                 method: 'POST',
                 headers: {
                   "content-type": "application/json"

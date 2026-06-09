@@ -27,7 +27,7 @@ export default function Pos() {
   // FETCH API (Giữ nguyên logic cũ)
   useEffect(() => {
     const fetchProductList = async () => {
-      const res = await fetch("/api/products");
+      const res = await fetch(process.env.NEXT_PUBLIC_BASE_URL + "/api"/products");
       const data = await res.json();
       setProductList(data);
     };
