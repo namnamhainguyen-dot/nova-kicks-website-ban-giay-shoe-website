@@ -14,7 +14,7 @@ export default function Cart() {
   useEffect(() => {
     async function fetchLocations() {
       try {
-        const res = await fetch("http:///api/tables");
+        const res = await fetch("/api/tables");
         const locations = await res.json();
         setLocationList(locations);
       } catch (err) {
@@ -58,7 +58,7 @@ export default function Cart() {
     };
 
     try {
-      const res = await fetch("http:///api/orders", {
+      const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(order),
