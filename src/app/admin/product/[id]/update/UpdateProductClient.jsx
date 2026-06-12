@@ -1,19 +1,53 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function Productcreate() {
+export default function UpdateProductClient({ id }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState("active");
-  const [showOnHome, setShowOnHome] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!id) {
+        setError("ID sản phẩm không hợp lệ.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/products/${id}`);
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}));
+          throw new Error(body?.error || "Không tìm thấy sản phẩm.");
+        }
+
+        const product = await res.json();
+        setName(product.name || "");
+        setPrice(product.price || 0);
+        setDescription(product.description || "");
+        setImage(product.image || "");
+        setQuantity(product.quantity || 0);
+        setStatus(product.status || "active");
+      } catch (err) {
+        setError(err?.message || "Lỗi khi tải dữ liệu sản phẩm.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
+  }, [id]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -21,22 +55,22 @@ export default function Productcreate() {
     setError("");
 
     try {
-      const response = await fetch("/api/products", {
-        method: "POST",
+      const response = await fetch(`/api/products/${id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           price: Number(price),
           description,
           image,
+          quantity: Number(quantity),
           status,
-          showOnHome,
         }),
       });
 
       if (!response.ok) {
-        const body = await response.json();
-        throw new Error(body?.error || "Lưu sản phẩm thất bại");
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || "Cập nhật sản phẩm thất bại");
       }
 
       router.push("/admin/product");
@@ -47,11 +81,45 @@ export default function Productcreate() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!confirm("Bạn có chắc muốn xóa sản phẩm này không?")) return;
+
+    setDeleting(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || "Xóa sản phẩm thất bại");
+      }
+
+      router.push("/admin/product");
+    } catch (err) {
+      setError(err?.message || "Đã có lỗi xảy ra.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="content">
+        <div className="card shadow">
+          <div className="card-body text-center">Đang tải thông tin sản phẩm...</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="content">
+    <div className="content admin-product-form">
       <div className="card shadow">
         <div className="card-body">
-          <h4 className="card-title mb-4">Thêm sản phẩm</h4>
+          <h4 className="card-title mb-4">Sửa sản phẩm</h4>
 
           {error && <div className="alert alert-danger">{error}</div>}
 
@@ -84,6 +152,21 @@ export default function Productcreate() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   required
+                />
+              </div>
+              <div className="col">
+                <label htmlFor="quantity" className="form-label">
+                  Số lượng
+                </label>
+                <input
+                  type="number"
+                  className="form-control"
+                  id="quantity"
+                  placeholder="Nhập số lượng"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
+                  min="0"
                 />
               </div>
               <div className="col">
@@ -131,28 +214,25 @@ export default function Productcreate() {
               />
             </div>
 
-            <div className="form-check mb-4">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="showOnHome"
-                checked={showOnHome}
-                onChange={(e) => setShowOnHome(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="showOnHome">
-                Hiển thị trên trang chủ
-              </label>
+            <div className="d-flex gap-2">
+              <button type="submit" className="btn btn-dark" disabled={saving || deleting}>
+                {saving ? "Đang lưu..." : "Lưu sản phẩm"}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={handleDelete}
+                disabled={saving || deleting}
+              >
+                {deleting ? "Đang xóa..." : "Xóa sản phẩm"}
+              </button>
+              <Link href="/admin/product" className="btn btn-outline-secondary">
+                Hủy
+              </Link>
             </div>
-
-            <button type="submit" className="btn btn-dark me-2" disabled={saving}>
-              {saving ? "Đang lưu..." : "Lưu sản phẩm"}
-            </button>
-            <Link href="/admin/product" className="btn btn-outline-secondary">
-              Hủy
-            </Link>
           </form>
         </div>
       </div>
     </div>
   );
-} 
+}

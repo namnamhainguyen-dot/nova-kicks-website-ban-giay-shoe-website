@@ -29,3 +29,360 @@ body {
   flex-grow: 1;
   padding: 20px;
 }
+
+.main-content {
+  width: calc(100% - 250px);
+  background: #f4f6fb;
+}
+  border-radius: 1rem;
+}
+
+.card .card-title {
+  letter-spacing: 0.3px;
+}
+
+.table-hover tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.text-secondary {
+  color: #6c757d !important;
+}
+
+.admin-users-dashboard .stats-card {
+  min-height: 120px;
+  border-radius: 1rem;
+}
+
+.admin-users-dashboard .search-input {
+  min-width: 320px;
+  border-radius: 999px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.admin-users-dashboard .user-avatar {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+}
+
+.table-borderless tbody tr {
+  border-bottom: 1px solid #e9ecef;
+}
+
+.table-borderless tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table-light th {
+  border-bottom: 0;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.admin-dashboard-page .card-value {
+  min-height: 150px;
+  border-radius: 1rem;
+}
+
+.admin-dashboard-page .card-value-dark {
+  background: #111111;
+  color: #ffffff;
+}
+
+.admin-dashboard-page .chart-bars {
+  display: grid;
+  gap: 1.5rem;
+  padding: 1rem 0;
+}
+
+.admin-dashboard-page .chart-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.admin-dashboard-page .chart-label {
+  min-width: 90px;
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.admin-dashboard-page .chart-bar-wrapper {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 140px;
+}
+
+.admin-dashboard-page .chart-bar {
+  width: 100%;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.admin-dashboard-page .chart-bar-dark {
+  background: #111111;
+}
+
+.admin-dashboard-page .chart-bar-light {
+  background: #e9ecef;
+}
+
+.admin-dashboard-page .activity-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-dashboard-page .activity-list li {
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.admin-dashboard-page .best-sellers {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-dashboard-page .best-seller-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.admin-dashboard-page .best-seller-item:last-child {
+  border-bottom: none;
+}
+
+.admin-dashboard-page .system-stats {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-dashboard-page .stat-row {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.admin-dashboard-page .stat-label {
+  font-size: 0.9rem;
+  color: #6c757d;
+}
+
+.admin-dashboard-page .stat-progress {
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.admin-dashboard-page .stat-value {
+  font-weight: 700;
+}
+
+.admin-product-dashboard .summary-card {
+  min-height: 120px;
+  border-radius: 1rem;
+}
+
+.admin-product-dashboard .product-table thead {
+  background: #111;
+  color: #fff;
+}
+
+.admin-product-dashboard .product-table thead th {
+  border: none;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+}
+
+.admin-product-dashboard .product-table tbody tr {
+  border-top: 1px solid #e9ecef;
+}
+
+.admin-product-dashboard .product-table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+
+.admin-product-dashboard .product-image-cell {
+  width: 130px;
+  padding: 0.75rem 0;
+}
+
+.admin-product-dashboard .product-image-wrapper {
+  width: 88px;
+  height: 88px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 1rem;
+  border: 1px solid #f1f3f5;
+  background: #fff;
+  margin: 0 auto;
+}
+
+.admin-product-dashboard .product-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.admin-product-dashboard .category-badge {
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  padding: 0.45rem 0.7rem;
+}
+
+.admin-product-dashboard .stock-meta {
+  font-size: 0.85rem;
+  color: #6c757d;
+}
+
+.admin-product-dashboard .stock-progress {
+  height: 6px;
+  border-radius: 999px;
+  background: #e9ecef;
+}
+
+.admin-product-dashboard .stock-progress .progress-bar {
+  background: #111;
+}
+
+.content {
+  padding: 2rem;
+  background: #f4f6fb;
+  min-height: 100vh;
+}
+
+.content .card {
+  border: 0;
+  border-radius: 1.3rem;
+  box-shadow: 0 24px 45px rgba(15, 23, 42, 0.08);
+}
+
+.content .card-body {
+  padding: 1.75rem 2rem;
+}
+
+.content .card-title {
+  font-size: 1.35rem;
+  letter-spacing: 0.02em;
+}
+
+.content.admin-product-form {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.admin-product-form .form-control,
+.admin-product-form .form-select {
+  border-radius: 0.85rem;
+  border: 1px solid #dde2ea;
+  background: #fff;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.admin-product-form .form-check-input {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 0.35rem;
+}
+
+.admin-product-form .form-check-label {
+  color: #3d4752;
+  font-weight: 500;
+}
+
+.admin-product-form .btn-dark,
+.admin-product-form .btn-outline-secondary {
+  border-radius: 0.9rem;
+  padding: 0.9rem 1.5rem;
+}
+
+.admin-product-form .btn-dark {
+  background: #111111;
+  border-color: #111111;
+}
+
+.admin-product-dashboard .summary-card {
+  background: linear-gradient(135deg, #111111, #343a40);
+  color: #fff;
+}
+
+.admin-product-dashboard .summary-card .text-secondary {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.admin-product-dashboard .product-table {
+  min-width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.admin-product-dashboard .product-table thead th {
+  background: linear-gradient(90deg, #111111, #343a40);
+  border-bottom: 0;
+  color: #fff;
+}
+
+.admin-product-dashboard .product-table tbody td {
+  vertical-align: middle;
+  padding: 1rem 1.15rem;
+}
+
+.admin-product-dashboard .product-table tbody tr {
+  background: #fff;
+}
+
+.admin-product-dashboard .product-table tbody tr:hover {
+  background: #f8f9fc;
+}
+
+.admin-product-dashboard .product-table .badge {
+  background: #f1f3f5;
+  color: #343a40;
+}
+
+.admin-product-dashboard .product-image-wrapper {
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.admin-product-dashboard .product-table .btn,
+.admin-product-dashboard .product-table .btn-sm {
+  border-radius: 0.9rem;
+}
+
+.admin-product-dashboard .product-table td:last-child {
+  min-width: 145px;
+}
+
+.admin-product-dashboard .product-table .badge {
+  font-weight: 600;
+}
+
+.admin-product-dashboard .card-body .border-top {
+  border-color: #e9ecef;
+}
+
+.admin-product-dashboard .table th,
+.admin-product-dashboard .table td {
+  vertical-align: middle;
+}
+
+.admin-product-dashboard .table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.admin-product-dashboard .btn-outline-secondary {
+  border-color: #dee2e6;
+}

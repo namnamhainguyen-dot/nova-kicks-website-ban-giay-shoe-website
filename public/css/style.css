@@ -12,3 +12,148 @@ main {
   flex: 1;
   /* chiếm khoảng trống để đẩy footer xuống */
 }
+
+.page-home {
+  background: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+}
+
+.hero-section {
+  position: relative;
+  min-height: 80vh;
+  background-image: url('https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg');
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.hero-title {
+  font-size: clamp(3rem, 5vw, 5rem);
+  line-height: 1.02;
+  letter-spacing: 0.18em;
+  max-width: 640px;
+}
+
+.hero-line-group {
+  margin-top: 1rem;
+}
+
+.hero-line {
+  display: inline-block;
+  height: 4px;
+  width: 42px;
+  border-radius: 999px;
+}
+
+.hero-line-white {
+  background: #fff;
+}
+
+.hero-line-secondary {
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(18px);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.glass-card:hover {
+  transform: translateY(-4px);
+}
+
+.product-card {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.22);
+}
+
+.product-img-wrap {
+  height: 240px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
+}
+
+.product-img {
+  object-fit: contain;
+  max-height: 100%;
+  transition: transform 0.35s ease;
+}
+
+.product-card:hover .product-img {
+  transform: scale(1.06);
+}
+
+.sale-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 1.5rem;
+}
+
+.sale-card-image {
+  height: 200px;
+}
+
+.sale-card-image img {
+  object-fit: contain;
+}
+
+.sale-timer {
+  align-items: center;
+}
+
+.timer-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 42px;
+  border-radius: 0.85rem;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.65rem 0.75rem;
+}
+
+.section-title {
+  letter-spacing: 0.18em;
+}
+
+.experience-section {
+  background: #0d0d0d;
+}
+
+.map-panel {
+  height: 250px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 1rem;
+}
+
+.gray-scale-logos > div {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.gray-scale-logos > div:hover {
+  filter: none;
+  opacity: 1;
+}
+
+@media (max-width: 767px) {
+  .hero-title {
+    font-size: 2.75rem;
+  }
+
+  .product-img-wrap {
+    height: 220px;
+  }
+}
