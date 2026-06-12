@@ -17,25 +17,25 @@ export default function Layout({ children }) {
           rel="stylesheet"
         />
         <style>{`
-          /* ── TOKENS & RESET (ĐỒNG BỘ TỪ STYLE.CSS) ──────── */
+          /* ── TOKENS & RESET CHUYỂN TOÀN BỘ SANG LIGHT THEME (GIAO DIỆN SÁNG CAO CẤP) ──────── */
           html,
           body {
             height: 100%;
           }
 
           :root {
-            --background:     #ffffff; 
-            --surface:        #fafafa; 
-            --surface-card:   #ffffff;
-            --surface-hover:  #f5f5f5;
-            --border-light:   rgba(0,0,0,0.08);
-            --border-medium:  rgba(0,0,0,0.12);
-            --text-primary:   #111111; 
-            --text-secondary: #4a4a4a;
-            --text-muted:     #8a8a8a;
+            --background:     #ffffff; /* Đổi sang nền trắng chuẩn */
+            --surface:        #f8f9fa; /* Màu nền phụ xám siêu nhẹ để phân tầng nội dung */
+            --surface-card:   #ffffff; /* Nền thẻ sản phẩm màu trắng nổi bật trên nền phụ */
+            --surface-hover:  #f1f3f5;
+            --border-light:   rgba(0, 0, 0, 0.06); /* Border mờ tối trên nền sáng */
+            --border-medium:  rgba(0, 0, 0, 0.12);
+            --text-primary:   #111111; /* Màu chữ chính: Đen sẫm sắc nét */
+            --text-secondary: #555555; /* Chữ phụ: Xám đậm dễ đọc */
+            --text-muted:     #8e969f; /* Chữ ẩn / chú thích */
             --accent:         #d87c3c;    
-            --accent-light:   rgba(216,124,60,0.12);
-            --accent-glow:    rgba(216,124,60,0.2);
+            --accent-light:   rgba(216,124,60,0.08);
+            --accent-glow:    rgba(216,124,60,0.15);
             --accent-hover:   #bd622c;
             --danger:         #c73a2b;
             --gold:           #cc9c5f;
@@ -44,9 +44,9 @@ export default function Layout({ children }) {
             --radius-sm:     4px;
             --radius-md:     10px;
             --radius-lg:     20px;
-            --shadow-sm:     0 2px 8px rgba(0,0,0,0.02), 0 4px 12px rgba(0,0,0,0.03);
-            --shadow-md:     0 8px 20px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.02);
-            --shadow-hover:  0 14px 28px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+            --shadow-sm:     0 2px 12px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
+            --shadow-md:     0 8px 24px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.02);
+            --shadow-hover:  0 16px 36px rgba(0,0,0,0.1), 0 4px 14px rgba(0,0,0,0.04);
             
             --font-display:  'Barlow Condensed', sans-serif;
             --font-body:     'Space Grotesk', system-ui, sans-serif;
@@ -70,17 +70,17 @@ export default function Layout({ children }) {
           main {
             padding-top: 68px;
             background-color: var(--background);
-            flex: 1; /* chiếm khoảng trống để đẩy footer xuống */
+            flex: 1;
           }
 
-          /* ── CLASS ÉP CHỮ SANG MÀU TRẮNG THEO YÊU CẦU ── */
+          /* Giữ nguyên class bắt buộc hiển thị chữ trắng (cho nội dung trên ảnh nền Hero banner) */
           .nk-text-white-forced {
             color: #ffffff !important;
           }
 
           /* ── STYLE CHO TRANG HOME & HERO SECTIONS ──────── */
           .page-home {
-            background: linear-gradient(180deg, #ffffff 0%, #ffffff 100%);
+            background: var(--background);
           }
 
           .hero-section {
@@ -92,10 +92,11 @@ export default function Layout({ children }) {
             overflow: hidden;
           }
 
+          /* Lớp phủ đen mờ trên ảnh banner để giữ tương phản cho chữ trắng phía trên */
           .hero-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(255, 255, 255, 0.62);
+            background: rgba(0, 0, 0, 0.45);
           }
 
           .hero-title {
@@ -103,6 +104,7 @@ export default function Layout({ children }) {
             line-height: 1.02;
             letter-spacing: 0.18em;
             max-width: 640px;
+            color: #ffffff;
           }
 
           .hero-line-group {
@@ -121,19 +123,23 @@ export default function Layout({ children }) {
           }
 
           .hero-line-secondary {
-            background: rgba(255, 255, 255, 0.55);
+            background: rgba(255, 255, 255, 0.3);
           }
 
+          /* Kính mờ phong cách Light Mode (Frosted Glass trắng nhẹ) */
           .glass-card {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.18);
-            backdrop-filter: blur(18px);
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            background: rgba(255, 255, 255, 0.7);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            transition: transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
           }
 
           .glass-card:hover {
             transform: translateY(-4px);
+            background: rgba(255, 255, 255, 0.85);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
           }
 
           /* ── TYPOGRAPHY & HEADERS ───────────────────────── */
@@ -166,16 +172,12 @@ export default function Layout({ children }) {
             color: var(--text-muted);
           }
 
-          .section-title {
-            letter-spacing: 0.18em;
-          }
-
-          /* ── NAVBAR ─────────────────────────────────────── */
+          /* ── NAVBAR ĐÃ CHUYỂN SANG LIGHT MODE (SÁNG SỦA, CAO CẤP) ───────────────── */
           .nk-nav {
             position: fixed;
             top: 0; left: 0; right: 0;
             z-index: 1000;
-            background: rgba(255,255,255,0.92) !important;
+            background: rgba(255, 255, 255, 0.85) !important; /* Nền trắng mờ đổ hiệu ứng kính gương */
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
             border-bottom: 1px solid var(--border-light);
@@ -196,7 +198,7 @@ export default function Layout({ children }) {
             font-weight: 800;
             letter-spacing: 0.08em;
             text-transform: uppercase;
-            color: var(--text-primary) !important;
+            color: #111111 !important; /* Chữ thương hiệu màu đen */
             text-decoration: none;
             display: flex;
             align-items: center;
@@ -261,15 +263,15 @@ export default function Layout({ children }) {
             transition: color 0.2s;
           }
 
-          .nk-actions a:hover { color: var(--accent); }
+          .nk-actions a:hover { color: var(--text-primary); }
 
           .btn-nk-outline {
             font-size: 0.7rem !important;
             font-weight: 600 !important;
             letter-spacing: 0.12em !important;
             text-transform: uppercase !important;
-            color: var(--accent) !important;
-            border: 1px solid var(--accent) !important;
+            color: #111111 !important;
+            border: 1px solid #111111 !important;
             background: transparent !important;
             padding: 0.4rem 1rem !important;
             border-radius: 30px !important;
@@ -278,76 +280,17 @@ export default function Layout({ children }) {
           }
 
           .btn-nk-outline:hover {
-            background: var(--accent) !important;
-            color: white !important;
-            border-color: var(--accent) !important;
-          }
-
-          .btn-nk-gold {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: white !important;
-            background: var(--accent);
-            border: none;
-            padding: 0.5rem 1.25rem;
-            border-radius: 30px;
-            text-decoration: none;
-            transition: all 0.2s;
-            display: inline-block;
-          }
-
-          .btn-nk-gold:hover {
-            background: var(--accent-hover);
-            transform: translateY(-1px);
-            box-shadow: 0 6px 14px rgba(216,124,60,0.25);
+            background: #111111 !important;
+            color: #ffffff !important;
+            border-color: #111111 !important;
           }
 
           .nk-cart-link { position: relative; }
 
-          .nk-cart-badge {
-            position: absolute;
-            top: -6px; right: -10px;
-            width: 16px; height: 16px;
-            background: var(--accent);
-            color: white;
-            font-size: 9px;
-            font-weight: 700;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          /* ── CARDS & PRODUCTS ───────────────────────────── */
-          .product-card {
-            transition: transform 0.25s ease, box-shadow 0.25s ease;
-          }
-
-          .product-card:hover {
-            transform: translateY(-8px);
-            box-shadow: 0 32px 90px rgba(0, 0, 0, 0.22);
-          }
-
-          .product-img-wrap {
-            height: 240px;
-            background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-          }
-
-          .product-img {
-            object-fit: contain;
-            max-height: 100%;
-            transition: transform 0.35s ease;
-          }
-
-          .product-card:hover .product-img {
-            transform: scale(1.06);
-          }
-
+          /* ── CARDS & PRODUCTS LIGHT THEME ────────────────── */
           .nk-card {
             background: var(--surface-card);
-            border-radius: var(--radius-lg);
+            border-radius: 0px; /* Làm phẳng góc nhọn tăng tính góc cạnh streetwear */
             overflow: hidden;
             transition: transform 0.25s ease, box-shadow 0.3s ease;
             box-shadow: var(--shadow-sm);
@@ -356,14 +299,14 @@ export default function Layout({ children }) {
 
           .nk-card:hover {
             transform: translateY(-4px);
-            box-shadow: var(--shadow-hover);
-            border-color: transparent;
+            box-shadow: var(--shadow-md);
+            border-color: var(--border-medium);
           }
 
           .nk-card-img {
             aspect-ratio: 1 / 1;
             overflow: hidden;
-            background: linear-gradient(145deg, #f6f6f6 0%, #fff 100%);
+            background: #f9f9f9;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -374,310 +317,102 @@ export default function Layout({ children }) {
             height: 100%;
             object-fit: contain;
             padding: 1.2rem;
-            transition: transform 0.5s cubic-bezier(0.2,0.9,0.4,1.1);
+            transition: transform 0.4s ease;
           }
 
           .nk-card:hover .nk-card-img img {
-            transform: scale(1.05);
+            transform: scale(1.06);
           }
 
           .nk-card-body {
             padding: 1rem 1.1rem 1.2rem;
             border-top: 1px solid var(--border-light);
-            background: white;
+            background: var(--surface-card);
           }
 
           .nk-card-title {
-            font-family: var(--font-display);
-            font-size: 1rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
             color: var(--text-primary);
-            margin-bottom: 0.2rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-          }
-
-          .nk-card-desc {
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            margin-bottom: 0.6rem;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
           }
 
           .nk-price {
-            font-family: var(--font-display);
-            font-size: 1.25rem;
-            font-weight: 700;
-            color: var(--accent);
-            letter-spacing: 0.02em;
-          }
-
-          /* ── FLASH SALE & TIMERS ───────────────────────── */
-          .sale-card {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 1.5rem;
-          }
-
-          .sale-card-image {
-            height: 200px;
-          }
-
-          .sale-card-image img {
-            object-fit: contain;
-          }
-
-          .sale-timer {
-            align-items: center;
-          }
-
-          .timer-box {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-width: 42px;
-            border-radius: 0.85rem;
-            background: rgba(255, 255, 255, 0.08);
-            padding: 0.65rem 0.75rem;
-          }
-
-          .nk-timer-block {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-          }
-
-          .nk-timer-digit {
-            background: white;
-            border: 1px solid var(--border-medium);
-            font-family: var(--font-display);
-            font-size: 1rem;
-            font-weight: 700;
-            padding: 0.2rem 0.5rem;
-            border-radius: var(--radius-sm);
             color: var(--text-primary);
-            letter-spacing: 0.04em;
-            min-width: 2.2rem;
-            text-align: center;
           }
 
-          .nk-timer-sep {
-            color: var(--text-muted);
-            font-weight: 700;
-            margin: 0 2px;
-          }
-
-          /* ── SECTION HEADERS & UTILS ────────────────────── */
+          /* ── UTILS & SECTION HEADERS ────────────────────── */
           .nk-section-head {
-            display: flex;
-            align-items: baseline;
-            justify-content: space-between;
-            padding-bottom: 0.75rem;
-            margin-bottom: 2rem;
             border-bottom: 2px solid var(--border-light);
           }
 
           .nk-section-title {
-            font-family: var(--font-display);
-            font-size: 1.7rem;
-            font-weight: 800;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
             color: var(--text-primary);
           }
 
-          .nk-section-link {
-            font-size: 0.7rem;
-            font-weight: 600;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            text-decoration: none;
-            transition: color 0.2s;
-          }
-
-          .nk-section-link:hover { color: var(--accent); }
-
-          .nk-stripe {
-            display: inline-flex;
-            gap: 6px;
-            margin-bottom: 1.25rem;
-          }
-
-          .nk-stripe span {
-            display: block;
-            height: 3px;
-            border-radius: 3px;
-          }
-
-          .nk-stripe .s1 { width: 32px; background: var(--accent); }
-          .nk-stripe .s2 { width: 16px; background: var(--accent-light); }
-          .nk-stripe .s3 { width: 8px;  background: rgba(216,124,60,0.2); }
-
-          .nk-banner-glass {
-            background: rgba(245,245,245,0.7);
-            border: 1px solid var(--border-light);
-            backdrop-filter: blur(8px);
-            border-radius: var(--radius-md);
-            overflow: hidden;
-          }
-
-          .nk-badge {
-            display: inline-block;
-            font-size: 0.6rem;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            padding: 0.2rem 0.65rem;
-            border-radius: 40px;
-          }
-
-          .nk-badge-sale { background: var(--danger); color: white; }
-          .nk-badge-new {
-            background: var(--accent-light);
-            color: var(--accent);
-            border: 1px solid rgba(216,124,60,0.25);
-          }
-
-          .experience-section { background: #0d0d0d; }
+          .experience-section { background: var(--surface); }
 
           .map-panel {
-            height: 250px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            background: rgba(255, 255, 255, 0.04);
-            border-radius: 1rem;
+            background: var(--surface-card);
+            border: 1px solid var(--border-light);
           }
 
-          .gray-scale-logos > div { filter: grayscale(1); opacity: 0.45; }
-          .gray-scale-logos > div:hover { filter: none; opacity: 1; }
-
-          .nk-divider { border: none; border-top: 1px solid var(--border-light); margin: 0; }
-
-          /* ── FOOTER ─────────────────────────────────────── */
+          /* ── FOOTER LIGHT THEME ────────────────────────── */
           .nk-footer {
-            background: var(--surface) !important;
+            background: #f8f9fa !important; /* Chân trang xám trắng nhẹ sang trọng */
             border-top: 1px solid var(--border-light);
             padding: 3rem 0 2rem;
             margin-top: auto;
           }
 
           .nk-footer-brand {
+            color: var(--text-primary);
             font-family: var(--font-display);
-            font-size: 1.5rem;
             font-weight: 800;
             letter-spacing: 0.08em;
-            color: var(--text-primary);
           }
 
           .nk-footer p {
-            font-size: 0.82rem;
             color: var(--text-secondary);
-            line-height: 1.6;
-          }
-
-          .nk-footer-label {
-            font-size: 0.68rem;
-            font-weight: 700;
-            letter-spacing: 0.14em;
-            text-transform: uppercase;
-            color: var(--accent);
-            margin-bottom: 0.75rem;
           }
 
           .nk-footer-links {
             list-style: none;
             padding: 0; margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
+          }
+
+          .nk-footer-links li {
+            margin-bottom: 0.5rem;
           }
 
           .nk-footer-links a {
-            font-size: 0.82rem;
             color: var(--text-secondary);
             text-decoration: none;
+            font-size: 0.88rem;
             transition: color 0.2s;
           }
 
           .nk-footer-links a:hover { color: var(--accent); }
 
-          .nk-footer-copy {
-            font-size: 0.73rem;
-            color: var(--text-muted);
-            margin-top: 2rem;
-            padding-top: 1.25rem;
-            border-top: 1px solid var(--border-light);
-          }
-
-          .btn-add-cart {
-            width: 100%;
-            background: white;
-            border: 1px solid var(--border-medium);
-            color: var(--text-primary);
+          .nk-footer-label {
             font-family: var(--font-display);
-            font-size: 0.75rem;
-            font-weight: 600;
-            letter-spacing: 0.1em;
+            font-weight: 700;
             text-transform: uppercase;
-            padding: 0.55rem 0;
-            border-radius: 40px;
-            cursor: pointer;
-            transition: all 0.2s;
-          }
-
-          .btn-add-cart:hover {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: white;
-            box-shadow: 0 4px 10px rgba(216,124,60,0.2);
-          }
-
-          .nk-input {
-            background: white;
-            border: 1px solid var(--border-medium);
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
             color: var(--text-primary);
-            border-radius: 50px;
-            padding: 0.6rem 1rem;
-            font-size: 0.85rem;
-            font-family: var(--font-body);
-            outline: none;
-            transition: all 0.2s;
           }
 
-          .nk-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
-          .nk-input::placeholder { color: var(--text-muted); }
+          .nk-footer-copy {
+            margin-top: 2.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-light);
+            color: var(--text-muted);
+            font-size: 0.82rem;
+          }
 
-          .text-gold { color: var(--accent) !important; }
-          .text-muted-nk { color: var(--text-muted) !important; }
           .bg-soft { background-color: var(--surface) !important; }
-          .bg-card-white { background-color: white !important; }
-          .border-nk { border-color: var(--border-light) !important; }
-          .fw-800 { font-weight: 800; }
-          .ls-wide { letter-spacing: 0.1em; }
-          .ls-wider { letter-spacing: 0.14em; }
-
-          /* ── RESPONSIVE RESPONSIVE (STYLE.CSS + NAV) ────── */
-          @media (max-width: 767px) {
-            .hero-title {
-              font-size: 2.75rem;
-            }
-            .product-img-wrap {
-              height: 220px;
-            }
-            .nk-links { display: none; }
-            .nk-actions { gap: 0.8rem; }
-            .btn-nk-outline { display: none; }
-            .nk-section-title { font-size: 1.3rem; }
-          }
+          .bg-card-white { background-color: var(--surface-card) !important; }
         `}</style>
       </head>
-      <body className="d-flex flex-column min-vh-100 bg-white">
+      <body className="d-flex flex-column min-vh-100">
 
         {/* ── NAVBAR ── */}
         <nav className="nk-nav">
@@ -728,10 +463,9 @@ export default function Layout({ children }) {
                 <p className="nk-footer-label">Khám phá</p>
                 <ul className="nk-footer-links">
                   <li><Link href="/products">Bộ sưu tập</Link></li>
-                  {/* Ép chữ sang màu trắng theo yêu cầu */}
-                  <li><Link href="/" className="nk-text-white-forced">Hàng mới về</Link></li>
-                  <li><Link href="/" className="nk-text-white-forced">Flash Sale</Link></li>
-                  <li><Link href="/" className="nk-text-white-forced">Tin tức & biên tập</Link></li>
+                  <li><Link href="/">Hàng mới về</Link></li>
+                  <li><Link href="/">Flash Sale</Link></li>
+                  <li><Link href="/">Tin tức & biên tập</Link></li>
                   <li><Link href="/about">Thương hiệu</Link></li>
                 </ul>
               </div>
