@@ -1,6 +1,7 @@
 import { CartProvider } from "@/components/CartContext";
 import Link from "next/link";
 
+
 export default function Layout({ children }) {
   return (
     <html lang="vi">
