@@ -31,7 +31,7 @@ export default function CategoryManagement() {
     try {
       const res = await fetch(`/api/categories/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setCategories(categories.filter((cat) => cat.id !== id));
+        setCategories(categories.filter((cat) => cat._id !== id));
         alert("Đã xóa danh mục thành công!");
       }
     } catch (error) {
@@ -39,7 +39,7 @@ export default function CategoryManagement() {
     }
   };
 
-  // 3. Thay đổi trạng thái nhanh (Hiện/Ẩn)
+  // 3. Thay đổi trạng thái nhanh
   const toggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";
     try {
@@ -51,7 +51,7 @@ export default function CategoryManagement() {
       if (res.ok) {
         setCategories(
           categories.map((cat) =>
-            cat.id === id ? { ...cat, status: newStatus } : cat
+            cat._id === id ? { ...cat, status: newStatus } : cat
           )
         );
       }
@@ -92,7 +92,7 @@ export default function CategoryManagement() {
       {/* Thanh tìm kiếm */}
       <div className="card shadow-sm border-0 mb-4">
         <div className="card-body">
-            <div className="input-group" style={{ maxWidth: "400px" }}>
+          <div className="input-group" style={{ maxWidth: "400px" }}>
             <span className="input-group-text bg-white border-end-0">
               <i className="bi bi-search text-muted"></i>
             </span>
@@ -114,6 +114,7 @@ export default function CategoryManagement() {
             <thead className="table-light">
               <tr>
                 <th className="ps-4">Hình ảnh</th>
+                <th>Mã</th>
                 <th>Tên danh mục</th>
                 <th>Mô tả</th>
                 <th>Trạng thái</th>
@@ -123,20 +124,21 @@ export default function CategoryManagement() {
             <tbody>
               {filteredCategories.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-5 text-muted">
-                    Chưa có danh mục nào được tạo.
-                  </td>
+                  <td colSpan={6} className="text-center py-5 text-muted">Chưa có danh mục nào được tạo.</td>
                 </tr>
               ) : (
                 filteredCategories.map((cat) => (
-                  <tr key={cat.id}>
+                  <tr key={cat._id}>
                     <td className="ps-4">
                       <img
-                        src={cat.image || "https://via.placeholder.com/50"}
+                        src={cat.image && cat.image.startsWith("http") ? cat.image : "https://via.placeholder.com/50"}
                         alt={cat.name}
                         className="rounded"
                         style={{ width: "50px", height: "50px", objectFit: "cover" }}
                       />
+                    </td>
+                    <td>
+                      <span className="text-secondary small fw-mono">{cat.id || "N/A"}</span>
                     </td>
                     <td>
                       <span className="fw-bold text-dark">{cat.name}</span>
@@ -147,31 +149,29 @@ export default function CategoryManagement() {
                       </small>
                     </td>
                     <td>
-                      <div 
-                        className={`form-check form-switch cursor-pointer`}
-                        onClick={() => toggleStatus(cat.id, cat.status)}
-                      >
-                        <input 
-                          className="form-check-input" 
-                          type="checkbox" 
-                          role="switch" 
-                          checked={cat.status === "active"} 
-                          readOnly 
+                      <div className="form-check form-switch">
+                        <input
+                          className="form-check-input cursor-pointer"
+                          type="checkbox"
+                          role="switch"
+                          id={`switch-${cat._id}`}
+                          checked={cat.status === "active"}
+                          onChange={() => toggleStatus(cat._id, cat.status)}
                         />
-                        <span className={`badge ${cat.status === "active" ? "text-success" : "text-danger"}`}>
+                        <label className={`form-check-label small ms-1 ${cat.status === "active" ? "text-success" : "text-danger"}`} htmlFor={`switch-${cat._id}`}>
                           {cat.status === "active" ? "Đang hiện" : "Đang ẩn"}
-                        </span>
+                        </label>
                       </div>
                     </td>
                     <td className="text-end pe-4">
-                      <Link 
-                        href={`/admin/category/edit/${cat.id}`} 
+                      <Link
+                        href={`/admin/category/edit/${cat._id}`}
                         className="btn btn-sm btn-outline-primary me-2"
                       >
                         <i className="bi bi-pencil"></i> Sửa
                       </Link>
-                      <button 
-                        onClick={() => handleDelete(cat.id)}
+                      <button
+                        onClick={() => handleDelete(cat._id)}
                         className="btn btn-sm btn-outline-danger"
                       >
                         <i className="bi bi-trash"></i> Xóa
