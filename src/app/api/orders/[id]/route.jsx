@@ -19,9 +19,6 @@ export async function PATCH(request, { params }) {
     return Response.json({ status: "success"});
     } catch (error) {
         console.error(error);
-        return Response.json({error: "Cập nhật trạng thái thất bại" });
-
-    
+        return Response.json({error: "Cập nhật trạng thái thất bại" });  
   }
 }
-
