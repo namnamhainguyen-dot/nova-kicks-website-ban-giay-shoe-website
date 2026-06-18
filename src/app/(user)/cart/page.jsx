@@ -239,13 +239,9 @@ export default function Cart() {
         <Link href="/products" className="btn btn-outline-secondary">
           ← Tiếp tục mua sắm
         </Link>
-        <button 
-          className="btn btn-success btn-lg" 
-          onClick={handleOrder}
-          disabled={isOrdering || cart.length === 0 || !inputLocation}
-        >
-          {isOrdering ? "Đang xử lý..." : "Thanh toán"}
-        </button>
+        <Link href="/checkout" className="btn btn-success btn-lg px-5 fw-bold shadow-sm">
+          Tiến hành thanh toán →
+        </Link>
       </div>
     </main>
   );
