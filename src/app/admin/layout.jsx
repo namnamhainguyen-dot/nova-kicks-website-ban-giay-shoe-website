@@ -23,7 +23,7 @@ export default function Layout({ children }) {
 
           <ul className="nav flex-column">
             <li className="nav-item mb-2">
-              <Link href="/admin" className="nav-link active">
+              <Link href="/admin" className="nav-link ">
                 Tổng quan
               </Link>
             </li>
@@ -48,7 +48,7 @@ export default function Layout({ children }) {
 
             <li className="nav-item mb-2">
               <Link href="/admin/account" className="nav-link">
-                Quản lý tài khoản
+                Quản lý người dùng
               </Link>
             </li>
 
