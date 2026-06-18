@@ -152,7 +152,7 @@ export default async function Menu() {
               {/* Đổi nền card khu vực Đang Hot sang màu trắng */}
               <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
                 <div className="p-4" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
-                  <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Hot item" />
+                  <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Hot item" />
                 </div>
                 <div className="card-body p-3">
                   <h6 className="fw-bold text-uppercase mb-1" style={{ color: "var(--text-primary)" }}>NOVA AIR ONE</h6>
@@ -170,14 +170,14 @@ export default async function Menu() {
         <div className="row g-4">
           <div className="col-md-4">
             <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
-              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
+              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
             </div>
             <h6 className="fw-bold text-uppercase">Nghệ thuật chế tác giày thủ công</h6>
             <p className="small" style={{ color: "var(--text-secondary)" }}>Từng đường kim mũi chỉ tạo nên giá trị độc bản bền bỉ cùng thời gian thực tế.</p>
           </div>
           <div className="col-md-4">
             <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
-              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
+              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-metcon-10-nam-xanh-den-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
             </div>
             <h6 className="fw-bold text-uppercase">Xu hướng Techwear 2026</h6>
             <p className="small" style={{ color: "var(--text-secondary)" }}>Khám phá phong cách đường phố tối giản kết hợp công nghệ tối tân nhất.</p>
