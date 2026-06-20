@@ -14,33 +14,26 @@ export default function ProductDetailPage() {
     const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
 
-useEffect(() => {
-    if (!id) return;
+    useEffect(() => {
+        if (!id) return;
 
-    fetch(`/api/products/${id}`)
-        .then((res) => res.json())
-        .then((data) => {
-            // TỰ ĐỘNG BÙ DỮ LIỆU MẪU NẾU API TRẢ VỀ BỊ THIẾU
-            const chuẩn_hóa_data = {
-                ...data,
-                // Nếu API chưa có colors, ta tự thêm mảng màu mẫu vào để test giao diện
-                colors: data.colors && data.colors.length > 0 ? data.colors : ['Trắng', 'Đen', 'Xanh Dương'],
-                // Nếu API chưa có sizes, ta tự thêm mảng size mẫu vào
-                sizes: data.sizes && data.sizes.length > 0 ? data.sizes : ['39', '40', '41', '42']
-            };
+        fetch(`/api/products/${id}`)
+            .then((res) => res.json())
+            .then((data) => {
+                // Dùng đúng dữ liệu thật từ DB (do admin cập nhật),
+                // không tự bù dữ liệu mẫu nữa để tránh sai lệch với admin.
+                setProduct(data);
+                setLoading(false);
 
-            setProduct(chuẩn_hóa_data);
-            setLoading(false);
-
-            // Chọn phần tử đầu tiên làm mặc định
-            setSelectedSize(chuẩn_hóa_data.sizes[0] || '');
-            setSelectedColor(chuẩn_hóa_data.colors[0] || '');
-        })
-        .catch((err) => {
-            console.error(err);
-            setLoading(false);
-        });
-}, [id]);
+                // Chọn phần tử đầu tiên làm mặc định (nếu có)
+                setSelectedSize(data.sizes?.[0] ?? '');
+                setSelectedColor(data.colors?.[0] ?? '');
+            })
+            .catch((err) => {
+                console.error(err);
+                setLoading(false);
+            });
+    }, [id]);
 
     if (loading) {
         return (
@@ -96,7 +89,7 @@ useEffect(() => {
                         </p>
                     </div>
 
-                    {/* Chọn Màu sắc */}
+                    {/* Chọn Màu sắc - chỉ hiện nếu admin đã thêm màu */}
                     {product.colors && product.colors.length > 0 && (
                         <div style={{ marginBottom: '20px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
@@ -120,7 +113,7 @@ useEffect(() => {
                         </div>
                     )}
 
-                    {/* Chọn Kích thước */}
+                    {/* Chọn Kích thước - chỉ hiện nếu admin đã thêm size */}
                     {product.sizes && product.sizes.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>

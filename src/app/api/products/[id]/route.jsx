@@ -33,7 +33,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params; // ✅ await params
     const body = await request.json();
-    const { name, price, description, image, quantity, status } = body;
+    const { name, price, description, image, quantity, status, sizes, colors } = body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
@@ -42,6 +42,14 @@ export async function PUT(request, { params }) {
     if (image !== undefined) updateData.image = image;
     if (quantity !== undefined) updateData.quantity = Number(quantity);
     if (status !== undefined) updateData.status = status;
+
+    // ✅ Thêm xử lý sizes & colors - trước đây bị thiếu nên không lưu xuống DB
+    if (sizes !== undefined) {
+      updateData.sizes = Array.isArray(sizes) ? sizes.map(Number) : [];
+    }
+    if (colors !== undefined) {
+      updateData.colors = Array.isArray(colors) ? colors.map(String) : [];
+    }
 
     if (Object.keys(updateData).length === 0) {
       return Response.json({ error: "Không có dữ liệu cập nhật." }, { status: 400 });
