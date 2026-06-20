@@ -21,25 +21,15 @@ export default async function Menu() {
         className="position-relative text-white d-flex align-items-center" 
         style={{ 
           height: "80vh", 
-          backgroundImage: "url('https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg')",
+          backgroundImage: "url('./img/Gemini_Generated_Image_jqml2cjqml2cjqml.png')",
           backgroundSize: "cover", 
           backgroundPosition: "center" 
         }}
       >
         {/* Lớp phủ mờ màu đen để nổi bật chữ trên banner */}
-        <div className="position-absolute top-0 start-0 w-100 h-100 bg-black opacity-50"></div>
+     
         
-        <div className="container position-relative z-3 px-4">
-          <div className="col-lg-6">
-            <h1 className="display-4 fw-black text-uppercase tracking-wider mb-3 nk-text-white-forced" style={{ lineHeight: "1.2" }}>
-              THIẾT KẾ CHUYÊN DỤNG<br />CHO ĐƯỜNG PHỐ
-            </h1>
-            <div className="d-flex gap-2">
-              <span className="bg-white text-black d-inline-block px-1 mb-4" style={{ width: "30px", height: "4px" }}></span>
-              <span className="bg-secondary d-inline-block px-1 mb-4" style={{ width: "30px", height: "4px" }}></span>
-            </div>
-          </div>
-        </div>
+        
       </section>
 
       {/* ================= CATEGORIES MINI BANNERS ================= */}

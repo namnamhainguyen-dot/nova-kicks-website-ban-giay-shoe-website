@@ -42,7 +42,7 @@ export default function Layout({ children }) {
 
             <li className="nav-item mb-2">
               <Link href="/admin/cart" className="nav-link">
-                Quản lý giỏ hàng
+                Quản lý đơn hàng
               </Link>
             </li>
 
