@@ -35,6 +35,15 @@ const userData = [
     status: "Hoạt động",
     avatar: "https://i.pravatar.cc/80?img=15",
   },
+  {
+    id: "NK-8821",
+    name: "Mông Danh",
+    email: "danhmw@gmail.com",
+    role: "ADMIN",
+    joined: "Jun 12, 2025",
+    status: "Hoạt động",
+    avatar: "https://i.pravatar.cc/80?img=12",
+  },
 ];
 
 export default function Account() {
@@ -142,7 +151,7 @@ export default function Account() {
           </div>
 
           <div className="px-4 py-3 border-top text-muted small">
-            Hiển thị 1 đến 4 trong 2,842 kết quả
+            Hiển thị 1 đến 5 trong 5 kết quả
           </div>
         </div>
       </div>
