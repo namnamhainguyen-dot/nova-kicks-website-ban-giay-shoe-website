@@ -41,7 +41,7 @@ export default function Layout({ children }) {
             </li>
 
             <li className="nav-item mb-2">
-              <Link href="/admin/cart" className="nav-link">
+              <Link href="/admin/order" className="nav-link">
                 Quản lý đơn hàng
               </Link>
             </li>

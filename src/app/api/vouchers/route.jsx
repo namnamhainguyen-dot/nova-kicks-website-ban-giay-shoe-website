@@ -11,8 +11,9 @@ export async function POST(request) {
     const db = client.db("Nova-kicks");
 
     // Tìm voucher trong collection "vouchers"
-    const voucher = await db.collection("vouchers").findOne({ code: code.toUpperCase() });
-
+    const voucher = await db.collection("vouchers").findOne({
+      code: code.trim().toUpperCase(),
+    });
     if (!voucher) {
       return Response.json({ success: false, message: "Mã giảm giá không tồn tại!" });
     }

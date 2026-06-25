@@ -150,8 +150,9 @@ export default function Checkout() {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
         
-        setCart([]); // Kiết xuất giỏ hàng thành công
-        setIsSuccess(true); 
+      setCart([]);
+      localStorage.removeItem("cart");
+      setIsSuccess(true);
       } else {
         alert(result.message || "Có lỗi xảy ra khi xử lý đơn hàng!");
       }
