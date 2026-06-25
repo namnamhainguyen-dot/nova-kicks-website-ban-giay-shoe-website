@@ -1,6 +1,6 @@
 import { CartProvider } from "@/components/CartContext";
+import { WishlistProvider } from "@/components/WishlistContext"; // 1. Import Wishlist ở đây
 import Link from "next/link";
-
 
 export default function Layout({ children }) {
   return (
@@ -415,37 +415,48 @@ export default function Layout({ children }) {
       </head>
       <body className="d-flex flex-column min-vh-100">
 
-        {/* ── NAVBAR ── */}
-        <nav className="nk-nav">
-          <div className="container">
-            <Link className="nk-brand" href="/">
-              <span className="nk-brand-dot"></span>
-              NOVA KICKS
-            </Link>
-
-            <ul className="nk-links">
-              <li><Link href="/" className="active">Trang chủ</Link></li>
-              <li><Link href="/products">Bộ sưu tập</Link></li>
-              <li><Link href="/about">Thương hiệu</Link></li>
-            </ul>
-
-            <ul className="nk-actions">
-              <li>
-                <Link href="/cart" className="nk-cart-link" style={{color:'var(--text-secondary)', textDecoration:'none', fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', position:'relative'}}>
-                  Giỏ hàng
-                </Link>
-              </li>
-              <li><Link href="/login">Đăng nhập</Link></li>
-              <li><Link href="/register" className="btn-nk-outline">Đăng ký</Link></li>
-            </ul>
-          </div>
-        </nav>
-
-        {/* ── CONTENT ── */}
+        {/* 2. Bọc hai lớp Provider bao ngoài hệ thống */}
         <CartProvider>
-          <main>
-            {children}
-          </main>
+          <WishlistProvider>
+            
+            {/* ── NAVBAR ── */}
+            <nav className="nk-nav">
+              <div className="container">
+                <Link className="nk-brand" href="/">
+                  <span className="nk-brand-dot"></span>
+                  NOVA KICKS
+                </Link>
+
+                <ul className="nk-links">
+                  <li><Link href="/" className="active">Trang chủ</Link></li>
+                  <li><Link href="/products">Bộ sưu tập</Link></li>
+                  <li><Link href="/about">Thương hiệu</Link></li>
+                </ul>
+
+                <ul className="nk-actions">
+                  {/* TÍNH NĂNG MỚI: Thêm nút Yêu Thích lên thanh Header */}
+                  <li>
+                    <Link href="/wishlist" style={{color:'var(--text-secondary)', textDecoration:'none', fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase'}}>
+                      Yêu thích
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/cart" className="nk-cart-link" style={{color:'var(--text-secondary)', textDecoration:'none', fontSize:'0.72rem', fontWeight:600, letterSpacing:'0.12em', textTransform:'uppercase', position:'relative'}}>
+                      Giỏ hàng
+                    </Link>
+                  </li>
+                  <li><Link href="/login">Đăng nhập</Link></li>
+                  <li><Link href="/register" className="btn-nk-outline">Đăng ký</Link></li>
+                </ul>
+              </div>
+            </nav>
+
+            {/* ── CONTENT ── */}
+            <main>
+              {children}
+            </main>
+
+          </WishlistProvider>
         </CartProvider>
 
         {/* ── FOOTER ── */}
