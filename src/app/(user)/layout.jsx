@@ -68,8 +68,9 @@ export default function Layout({ children }) {
             min-height: 100vh;
           }
 
+          /* Tăng padding-top từ 68px lên 112px để không bị đè nội dung do có thêm thanh categories cố định */
           main {
-            padding-top: 68px;
+            padding-top: 112px;
             background-color: var(--background);
             flex: 1;
           }
@@ -288,6 +289,43 @@ export default function Layout({ children }) {
 
           .nk-cart-link { position: relative; }
 
+          /* ── STYLE NEW: THANH CATEGORIES PHỤ (SUB-NAVBAR) ── */
+          .nk-categories-bar {
+            position: fixed;
+            top: 68px; left: 0; right: 0;
+            z-index: 999;
+            background: rgba(255, 255, 255, 0.9) !important;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border-light);
+            height: 44px;
+            display: flex;
+            align-items: center;
+          }
+
+          .nk-categories-list {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2.5rem;
+            list-style: none;
+            margin: 0 auto; padding: 0;
+          }
+
+          .nk-categories-list a {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.2s, transform 0.2s;
+          }
+
+          .nk-categories-list a:hover {
+            color: var(--text-primary);
+          }
+
           /* ── CARDS & PRODUCTS LIGHT THEME ────────────────── */
           .nk-card {
             background: var(--surface-card);
@@ -368,6 +406,7 @@ export default function Layout({ children }) {
             font-family: var(--font-display);
             font-weight: 800;
             letter-spacing: 0.08em;
+            text-transform: uppercase;
           }
 
           .nk-footer p {
@@ -419,7 +458,7 @@ export default function Layout({ children }) {
         <CartProvider>
           <WishlistProvider>
             
-            {/* ── NAVBAR ── */}
+            {/* ── NAVBAR CHÍNH ── */}
             <nav className="nk-nav">
               <div className="container">
                 <Link className="nk-brand" href="/">
@@ -450,6 +489,21 @@ export default function Layout({ children }) {
                 </ul>
               </div>
             </nav>
+
+            {/* ── THANH DANH MỤC SẢN PHẨM MỚI (CATEGORIES BAR) ── */}
+            <div className="nk-categories-bar">
+              <div className="container">
+                <ul className="nk-categories-list">
+                  <li><Link href="/products?categoryID=CAT-G001">Nike</Link></li>
+                  <li><Link href="/products?categoryID=CAT-G002">Jordan</Link></li>
+                  <li><Link href="/products?categoryID=CAT-G003">Adidas</Link></li>
+                  <li><Link href="/products?categoryID=CAT-G004">Yeezy</Link></li>
+                  <li><Link href="/products?categoryID=CAT-G005">New Balance</Link></li>
+                  <li><Link href="/products?categoryID=CAT-G006">Phụ kiện</Link></li>
+                </ul>
+              </div>
+            </div>
+            
 
             {/* ── CONTENT ── */}
             <main>
