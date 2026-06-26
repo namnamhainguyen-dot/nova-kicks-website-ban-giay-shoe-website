@@ -506,9 +506,9 @@ export default function ProductFilter({ products }) {
                     </Link>
 
                     <div className="card-body pt-0">
-                      <AddToCart product={p}>
-                        <span className="btn btn-dark w-100">Thêm vào giỏ hàng</span>
-                      </AddToCart>
+                      <Link href={`/products/${p._id?.$oid || p._id}`} style={{ textDecoration: "none" }}>
+                        <button className="btn btn-dark w-100">Xem chi tiết</button>
+                      </Link>
                     </div>
                   </div>
                 </div>
