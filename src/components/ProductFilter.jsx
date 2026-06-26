@@ -7,9 +7,10 @@ import AddToCart from "@/components/AddToCart";
 // ── BẢN ĐỒ ÁNH XẠ MÃ ID THỰC TẾ TỪ DB SANG TÊN THƯƠNG HIỆU ĐẸP ──
 const CATEGORY_MAP = {
   "6a2932c7044b3063b3d05171": "NIKE",
-  // Bạn có thể copy thêm các mã ID danh mục từ database của Jordan, Adidas... vào đây:
-  // "mã_id_jordan_ở_db": "JORDAN",
-  // "mã_id_adidas_ở_db": "ADIDAS",
+  "6a2932c7044b3063b3d05172": "Giày tây",
+  "6a2932c7044b3063b3d05173": "giày cao gót",
+  "6a2932c7044b3063b3d05174": "giày sandal",
+
 };
 
 export default function ProductFilter({ products }) {

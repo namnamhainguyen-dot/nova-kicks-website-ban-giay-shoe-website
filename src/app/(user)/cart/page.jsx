@@ -182,17 +182,33 @@ export default function Cart() {
             {cart.map((product) => (
               <tr key={product._id}>
                 <td>
-                  <strong>{product.name}</strong>
-                  {product.image && (
-                    <div className="mt-1">
-                      <img 
-                        src={product.image} 
-                        alt={product.name}
-                        style={{ width: "50px", height: "50px", objectFit: "cover" }}
-                      />
+                    <strong>{product.name}</strong>
+
+                    <div className="text-muted small mt-1">
+                      {product.selectedColor && (
+                        <div>Màu: {product.selectedColor}</div>
+                      )}
+
+                      {product.selectedSize && (
+                        <div>Size: {product.selectedSize}</div>
+                      )}
                     </div>
-                  )}
-                </td>
+
+                    {product.image && (
+                      <div className="mt-2">
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          style={{
+                            width: "60px",
+                            height: "60px",
+                            objectFit: "cover",
+                            borderRadius: "6px",
+                          }}
+                        />
+                      </div>
+                    )}
+                  </td>
                 <td>
                   <input
                     type="number"

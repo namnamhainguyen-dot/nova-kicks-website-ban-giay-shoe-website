@@ -1,3 +1,4 @@
+// /src/app/(user)/checkout/page.jsx
 "use client";
 import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
@@ -17,7 +18,7 @@ export default function Checkout() {
 
   // ── STATE DÀNH RIÊNG CHO VOUCHER ──
   const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState(null); // Lưu thông tin voucher khi áp dụng thành công
+  const [appliedVoucher, setAppliedVoucher] = useState(null); 
   const [voucherError, setVoucherError] = useState("");
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
@@ -37,10 +38,10 @@ export default function Checkout() {
     }
   }
 
-  // Tổng tiền cuối cùng phải thanh toán (Không được âm)
+  // Tổng tiền cuối cùng phải thanh toán
   const finalTotal = Math.max(0, total - discountAmount);
 
-  // Xử lý áp dụng thử Voucher
+  // Xử lý áp dụng Voucher
   const handleApplyVoucher = async () => {
     if (!voucherCode.trim()) {
       setVoucherError("Vui lòng nhập mã code!");
@@ -61,7 +62,6 @@ export default function Checkout() {
       const result = await res.json();
 
       if (result.success) {
-        // Kiểm tra xem đơn hàng đã đạt giá trị tối thiểu chưa
         if (total < result.min_order_value) {
           setVoucherError(`Đơn hàng phải tối thiểu từ ${result.min_order_value.toLocaleString("vi-VN")}đ để dùng mã này!`);
           setAppliedVoucher(null);
@@ -125,12 +125,14 @@ export default function Checkout() {
         product_id: item._id,
         name: item.name,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
+        color: item.selectedColor || null, // Đã thêm: Gửi màu sắc lên server
+        size: item.selectedSize || null    // Đã thêm: Gửi size lên server
       })),
       total: total,
-      discount: discountAmount, // Gửi số tiền giảm lên server
-      final_total: finalTotal,  // Gửi số tổng tiền cuối cùng thực tế
-      applied_voucher: appliedVoucher ? voucherCode.toUpperCase() : null // Lưu lại tên mã giảm giá
+      discount: discountAmount, 
+      final_total: finalTotal,  
+      applied_voucher: appliedVoucher ? voucherCode.toUpperCase() : null 
     };
 
     try {
@@ -150,9 +152,9 @@ export default function Checkout() {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
         
-      setCart([]);
-      localStorage.removeItem("cart");
-      setIsSuccess(true);
+        setCart([]);
+        localStorage.removeItem("cart");
+        setIsSuccess(true);
       } else {
         alert(result.message || "Có lỗi xảy ra khi xử lý đơn hàng!");
       }
@@ -207,7 +209,7 @@ export default function Checkout() {
     );
   }
 
-  // 3. BIỂU MẪU ĐIỀN THÔNG TIN ĐẶT HÀNG (SHIP TẬN NHÀ)
+  // 3. BIỂU MẪU ĐIỀN THÔNG TIN ĐẶT HÀNG
   return (
     <main className="container mt-5 pt-5 mb-5">
       <div className="row g-4">
@@ -219,7 +221,6 @@ export default function Checkout() {
               <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
               
               <form onSubmit={handleOrder}>
-                {/* Tên khách hàng */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold small">Họ và tên người nhận <span className="text-danger">*</span></label>
                   <input
@@ -232,7 +233,6 @@ export default function Checkout() {
                   />
                 </div>
 
-                {/* Số điện thoại */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold small">Số điện thoại liên hệ <span className="text-danger">*</span></label>
                   <input
@@ -245,7 +245,6 @@ export default function Checkout() {
                   />
                 </div>
 
-                {/* Địa chỉ giao hàng */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold small">Địa chỉ giao hàng <span className="text-danger">*</span></label>
                   <input
@@ -258,13 +257,12 @@ export default function Checkout() {
                   />
                 </div>
 
-                {/* Ghi chú */}
                 <div className="mb-4">
                   <label className="form-label fw-semibold small">Ghi chú đơn hàng (Size giày, màu sắc...)</label>
                   <textarea
                     className="form-control"
                     rows="3"
-                    placeholder="Ví dụ: Lấy cho mình size 41, giao vào giờ hành chính..."
+                    placeholder="Ví dụ: Giao vào giờ hành chính..."
                     value={orderNote}
                     onChange={(e) => setOrderNote(e.target.value)}
                   ></textarea>
@@ -281,7 +279,6 @@ export default function Checkout() {
                   </button>
                   <Link href="/cart" className="btn btn-link text-muted small">Quay lại giỏ hàng</Link>
                 </div>
-
               </form>
             </div>
           </div>
@@ -293,8 +290,7 @@ export default function Checkout() {
             <div className="card-body p-4">
               <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({cart.length})</h4>
               
-              {/* Danh sách sản phẩm trong giỏ */}
-              <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "240px" }}>
+              <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
                 {cart.map((product) => (
                   <div key={product._id} className="d-flex align-items-center justify-content-between py-2 border-bottom">
                     <div className="d-flex align-items-center">
@@ -308,6 +304,14 @@ export default function Checkout() {
                       )}
                       <div>
                         <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>{product.name}</h6>
+                        
+                        {/* Đã thêm: Hiển thị phân loại Size và Màu sắc ngay dưới tên sản phẩm */}
+                        <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
+                          {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
+                          {product.selectedColor && product.selectedSize && <span> | </span>}
+                          {product.selectedSize && <span>Size: {product.selectedSize}</span>}
+                        </div>
+
                         <small className="text-muted">Số lượng: {product.quantity}</small>
                       </div>
                     </div>
@@ -328,7 +332,7 @@ export default function Checkout() {
                     placeholder="NHẬP MÃ GIẢM GIÁ"
                     value={voucherCode}
                     onChange={(e) => setVoucherCode(e.target.value)}
-                    disabled={!!appliedVoucher} // Khóa ô nhập nếu đã áp dụng thành công
+                    disabled={!!appliedVoucher} 
                   />
                   {appliedVoucher ? (
                     <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
@@ -346,12 +350,11 @@ export default function Checkout() {
                   )}
                 </div>
                 
-                {/* Thông báo lỗi / Thành công của Voucher */}
                 {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
                 {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
               </div>
 
-              {/* Bảng tính toán tổng chi phí */}
+              {/* Bảng tính toán chi phí */}
               <div className="d-flex justify-content-between mb-2 small">
                 <span className="text-muted">Tạm tính giỏ hàng:</span>
                 <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>

@@ -3,8 +3,11 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useContext } from "react";
+import { CartContext } from "@/components/CartContext";
 
 export default function ProductDetailPage() {
+    const { cart, setCart } = useContext(CartContext);
     const params = useParams();
     const router = useRouter();
     const id = params.id;
@@ -36,7 +39,7 @@ export default function ProductDetailPage() {
 
     // ─── Thêm vào giỏ hàng ───────────────────────────────────────────────────
     const handleAddToCart = () => {
-        const cart = JSON.parse(localStorage.getItem('cart') || '[]');
+        const newCart = [...cart];
 
         const existingIndex = cart.findIndex(
             (item) =>
