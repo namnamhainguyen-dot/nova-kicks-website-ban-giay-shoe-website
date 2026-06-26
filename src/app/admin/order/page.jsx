@@ -140,18 +140,12 @@ export default function AdminOrderPage() {
   }
 
   return (
-    <div
-      className="container my-5"
-      style={{ maxWidth: "1000px" }}
-    >
-      <div className="text-center mb-4">
-        <h3 className="fw-bold">
-          📦 Quản Lý Đơn Hàng
-        </h3>
-
-        <p className="text-muted">
-          Quản lý trạng thái và xử lý đơn hàng
-        </p>
+    <div className="content admin-order-dashboard">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+        <div>
+          <h1 className="display-6 fw-bold mb-2">Quản lý đơn hàng</h1>
+          <p className="text-muted mb-0">Theo dõi đơn hàng và cập nhật nhanh.</p>
+        </div>
       </div>
 
       {/* Dashboard */}
