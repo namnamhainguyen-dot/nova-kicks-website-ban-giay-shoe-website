@@ -2,6 +2,7 @@ import { CartProvider } from "@/components/CartContext";
 import { WishlistProvider } from "@/components/WishlistContext";
 import clientPromise from "@/libs/mongodb"; // Import kết nối MongoDB của bạn
 import Link from "next/link";
+import Image from "next/image";
 
 // ── HÀM LẤY DANH MỤC ĐỘNG TỪ MONGODB ──
 async function getCategories() {
@@ -9,7 +10,7 @@ async function getCategories() {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
     
-    // Lấy danh sách danh mục từ collection 'categories' (hoặc tên tương ứng của bạn)
+    // Lấy danh sách danh mục từ collection 'categories'
     const categoriesList = await db.collection("categories").find({}).toArray();
     
     return categoriesList.map(cat => ({
@@ -22,7 +23,7 @@ async function getCategories() {
   }
 }
 
-// Chuyển Layout thành async function để sử dụng await lấy dữ liệu
+// Layout là async function để sử dụng await lấy dữ liệu từ database
 export default async function Layout({ children }) {
   // Lấy danh mục trực tiếp từ database trước khi render giao diện
   const categories = await getCategories();
@@ -97,18 +98,12 @@ export default async function Layout({ children }) {
           }
           .nk-nav .container { display: flex; align-items: center; justify-content: space-between; }
           .nk-brand {
-            font-family: var(--font-display);
-            font-size: 1.6rem;
-            font-weight: 800;
-            letter-spacing: 0.08em;
-            text-transform: uppercase;
-            color: #111111 !important;
-            text-decoration: none;
             display: flex;
             align-items: center;
-            gap: 6px;
+            text-decoration: none;
+            transition: opacity 0.2s;
           }
-          .nk-brand-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; flex-shrink: 0; }
+          .nk-brand:hover { opacity: 0.85; }
           .nk-links { display: flex; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0; }
           .nk-links a { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; position: relative; }
           .nk-links a:hover, .nk-links a.active { color: var(--accent); }
@@ -133,14 +128,32 @@ export default async function Layout({ children }) {
           .nk-categories-list a { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
           .nk-categories-list a:hover { color: var(--text-primary); }
           .nk-footer { background: #f8f9fa !important; border-top: 1px solid var(--border-light); padding: 3rem 0 2rem; margin-top: auto; }
-          .nk-footer-brand { color: var(--text-primary); font-family: var(--font-display); font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+          .nk-footer-brand {
+            display: flex;
+            align-items: center;
+            text-decoration: none;
+          }
           .nk-footer-links { list-style: none; padding: 0; margin: 0; }
           .nk-footer-links li { margin-bottom: 0.5rem; }
           .nk-footer-links a { color: var(--text-secondary); text-decoration: none; font-size: 0.88rem; transition: color 0.2s; }
           .nk-footer-links a:hover { color: var(--accent); }
           .nk-footer-label { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; color: var(--text-primary); }
           .nk-footer-copy { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.82rem; }
-        `}</style>
+        .nk-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: transform 0.2s ease, opacity 0.2s;
+  height: 100%; /* Chiếm toàn bộ chiều cao linh hoạt của container */
+}
+
+.nk-brand:hover {
+  opacity: 0.9;
+  transform: scale(1.02); /* Hiệu ứng phóng to cực nhẹ khi hover tạo cảm giác cao cấp */
+}
+        `}
+        </style>
       </head>
       <body className="d-flex flex-column min-vh-100">
 
@@ -150,9 +163,20 @@ export default async function Layout({ children }) {
             {/* ── NAVBAR CHÍNH ── */}
             <nav className="nk-nav">
               <div className="container">
+                {/* Khu vực chứa Logo dạng ảnh */}
                 <Link className="nk-brand" href="/">
-                  <span className="nk-brand-dot"></span>
-                  NOVA KICKS
+                  <Image 
+                    src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"               // Đổi đuôi sang .png đã xóa nền
+                    alt="Nova Kicks Logo" 
+                    width={160}                          // Tăng nhẹ chiều rộng lên để chữ rõ hơn
+                    height={48}                          // Tăng nhẹ chiều cao
+                    style={{ 
+                      objectFit: 'contain',
+                      maxHeight: '44px',                 // Đảm bảo không đè mất padding của nav (68px)
+                      filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.05))' // Tạo độ nổi nhẹ cho chữ
+                    }} 
+                    priority 
+                  />
                 </Link>
 
                 <ul className="nk-links">
@@ -174,10 +198,8 @@ export default async function Layout({ children }) {
             <div className="nk-categories-bar">
               <div className="container">
                 <ul className="nk-categories-list">
-                  {/* Vòng lặp map() tự sinh link dựa trên dữ liệu thật */}
                   {categories.map((cat) => (
                     <li key={cat._id}>
-                      {/* Cú pháp truyền mã thật: ?categoryID=chuỗi_id_mongo */}
                       <Link href={`/products?categoryID=${cat._id}`}>
                         {cat.name}
                       </Link>
@@ -195,12 +217,24 @@ export default async function Layout({ children }) {
           </WishlistProvider>
         </CartProvider>
 
+        {/* ── FOOTER DƯỚI TRANG ── */}
         <footer className="nk-footer">
           <div className="container">
             <div className="row g-5">
               <div className="col-md-5">
-                <div className="nk-footer-brand mb-3">
-                  <span style={{color:'var(--accent)'}}>●</span> NOVA KICKS
+                <div className="mb-3">
+                  <Link className="nk-footer-brand" href="/">
+                    <Image 
+                      src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"              // Đồng bộ file logo sạch nền
+                      alt="Nova Kicks Logo" 
+                      width={300} 
+                      height={200} 
+                      style={{ 
+                        objectFit: 'contain',
+                        mixBlendMode: 'multiply'           // Giúp hòa trộn ảnh tốt hơn nếu nền footer hơi xám
+                      }} 
+                    />
+                  </Link>
                 </div>
                 <p style={{maxWidth:'320px'}}>
                   Nền tảng phân phối giày Streetwear cao cấp — nơi văn hóa đường phố gặp gỡ thiết kế đương đại.
