@@ -3,6 +3,8 @@ import { WishlistProvider } from "@/components/WishlistContext";
 import clientPromise from "@/libs/mongodb"; // Import kết nối MongoDB của bạn
 import Link from "next/link";
 import Image from "next/image";
+import UserActions from "@/components/UserActions"; // 1. IMPORT COMPONENT HÀNH ĐỘNG THÀNH VIÊN
+import { Toaster } from "react-hot-toast";
 
 // ── HÀM LẤY DANH MỤC ĐỘNG TỪ MONGODB ──
 async function getCategories() {
@@ -101,16 +103,18 @@ export default async function Layout({ children }) {
             display: flex;
             align-items: center;
             text-decoration: none;
-            transition: opacity 0.2s;
+            transition: transform 0.2s ease, opacity 0.2s;
+            height: 100%; 
           }
-          .nk-brand:hover { opacity: 0.85; }
+          .nk-brand:hover {
+            opacity: 0.9;
+            transform: scale(1.02); 
+          }
           .nk-links { display: flex; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0; }
           .nk-links a { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; position: relative; }
           .nk-links a:hover, .nk-links a.active { color: var(--accent); }
           .nk-actions { display: flex; align-items: center; gap: 1.25rem; list-style: none; margin: 0; padding: 0; }
           .nk-actions a { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
-          .btn-nk-outline { font-size: 0.7rem !important; font-weight: 600 !important; letter-spacing: 0.12em !important; text-transform: uppercase !important; color: #111111 !important; border: 1px solid #111111 !important; background: transparent !important; padding: 0.4rem 1rem !important; border-radius: 30px !important; transition: all 0.2s !important; }
-          .btn-nk-outline:hover { background: #111111 !important; color: #ffffff !important; }
           
           .nk-categories-bar {
             position: fixed;
@@ -139,23 +143,16 @@ export default async function Layout({ children }) {
           .nk-footer-links a:hover { color: var(--accent); }
           .nk-footer-label { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; color: var(--text-primary); }
           .nk-footer-copy { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.82rem; }
-        .nk-brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  transition: transform 0.2s ease, opacity 0.2s;
-  height: 100%; /* Chiếm toàn bộ chiều cao linh hoạt của container */
-}
-
-.nk-brand:hover {
-  opacity: 0.9;
-  transform: scale(1.02); /* Hiệu ứng phóng to cực nhẹ khi hover tạo cảm giác cao cấp */
-}
+          .nav-item.dropdown:hover > .dropdown-menu {display: block; margin-top: 0; /* Loại bỏ khoảng cách mặc định */}
+          /* Tùy chỉnh hiệu ứng mượt mà */
+          .dropdown-menu {display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease;
+          }
+          @keyframes fadeIn {from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); }}
         `}
         </style>
       </head>
       <body className="d-flex flex-column min-vh-100">
+        <Toaster position="bottom-right" reverseOrder={false} />
 
         <CartProvider>
           <WishlistProvider>
@@ -163,17 +160,16 @@ export default async function Layout({ children }) {
             {/* ── NAVBAR CHÍNH ── */}
             <nav className="nk-nav">
               <div className="container">
-                {/* Khu vực chứa Logo dạng ảnh */}
                 <Link className="nk-brand" href="/">
                   <Image 
-                    src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"               // Đổi đuôi sang .png đã xóa nền
+                    src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
                     alt="Nova Kicks Logo" 
-                    width={160}                          // Tăng nhẹ chiều rộng lên để chữ rõ hơn
-                    height={48}                          // Tăng nhẹ chiều cao
+                    width={160}
+                    height={48}
                     style={{ 
                       objectFit: 'contain',
-                      maxHeight: '44px',                 // Đảm bảo không đè mất padding của nav (68px)
-                      filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.05))' // Tạo độ nổi nhẹ cho chữ
+                      maxHeight: '44px',
+                      filter: 'drop-shadow(0px 1px 2px rgba(0,0,0,0.05))'
                     }} 
                     priority 
                   />
@@ -185,12 +181,8 @@ export default async function Layout({ children }) {
                   <li><Link href="/about">Thương hiệu</Link></li>
                 </ul>
 
-                <ul className="nk-actions">
-                  <li><Link href="/wishlist">Yêu thích</Link></li>
-                  <li><Link href="/cart">Giỏ hàng</Link></li>
-                  <li><Link href="/login">Đăng nhập</Link></li>
-                  <li><Link href="/register" className="btn-nk-outline">Đăng ký</Link></li>
-                </ul>
+                {/* 2. CHỨA COMPONENT ĐỘNG ĐÃ ĐƯỢC XÓA ĐĂNG KÝ */}
+                <UserActions />
               </div>
             </nav>
 
@@ -225,13 +217,13 @@ export default async function Layout({ children }) {
                 <div className="mb-3">
                   <Link className="nk-footer-brand" href="/">
                     <Image 
-                      src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"              // Đồng bộ file logo sạch nền
+                      src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
                       alt="Nova Kicks Logo" 
                       width={300} 
                       height={200} 
                       style={{ 
                         objectFit: 'contain',
-                        mixBlendMode: 'multiply'           // Giúp hòa trộn ảnh tốt hơn nếu nền footer hơi xám
+                        mixBlendMode: 'multiply'
                       }} 
                     />
                   </Link>
@@ -255,7 +247,7 @@ export default async function Layout({ children }) {
                 <ul className="nk-footer-links">
                   <li><a href="tel:0123456789">0123 456 789</a></li>
                   <li><a href="mailto:support@nova-kicks.com">support@nova-kicks.com</a></li>
-                  <li style={{color:'var(--text-secondary)', fontSize:'0.82rem'}}>123 Phố Tràng Tiền, HN</li>
+                  <li style={{color:'var(--text-secondary)', fontSize:'0.82rem'}}>123 CVPM Quang Trung, Quận 12, TP.HCM</li>
                   <li style={{color:'var(--text-secondary)', fontSize:'0.82rem'}}>09:00 – 22:00 hàng ngày</li>
                 </ul>
               </div>

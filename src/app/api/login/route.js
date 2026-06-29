@@ -1,41 +1,68 @@
 import { NextResponse } from "next/server";
-// import { connectToDatabase } from "@/lib/mongodb"; // Thay bằng hàm kết nối Mongo của bạn
-// import User from "@/models/User"; // Thay bằng Model User của bạn
+import clientPromise from "@/libs/mongodb";
+import bcrypt from "bcryptjs";
 
 export async function POST(request) {
   try {
-    const { identity, password } = await request.json(); // identity là email hoặc phone
+    const client = await clientPromise;
+    const db = client.db("Nova-kicks");
 
-    // 1. Kết nối DB và kiểm tra user (Đoạn này bạn tự cấu hình theo dự án của mình nhé)
-    // await connectToDatabase();
-    // const user = await User.findOne({ $or: [{ email: identity }, { phone: identity }] });
-    // if (!user || user.password !== password) { 
-    //   return NextResponse.json({ message: "Sai tài khoản hoặc mật khẩu" }, { status: 401 }); 
-    // }
+    const body = await request.json();
+    const { identifier, password } = body; 
 
-    // Giả lập một object user thành công sau khi check DB
-    const mockUser = {
-      id: "6a2bae4f89cab539d5399c4b",
-      name: "Hai Nam",
-      email: identity.includes("@") ? identity : "hainam@example.com",
-    };
+    if (!identifier || !password) {
+      return NextResponse.json(
+        { message: "Vui lòng nhập đầy đủ tài khoản và mật khẩu!" },
+        { status: 400 }
+      );
+    }
 
-    const response = NextResponse.json({ 
-      success: true, 
-      message: "Đăng nhập thành công!",
-      user: mockUser 
+    // 1. Tìm kiếm User
+    const user = await db.collection("users").findOne({
+      $or: [
+        { email: identifier.trim() },
+        { phone: identifier.trim() }
+      ]
     });
 
-    // 2. Lưu thông tin đăng nhập vào Cookie của trình duyệt (Hết hạn sau 7 ngày)
-    response.cookies.set("user", JSON.stringify(mockUser), {
-      httpOnly: false, // Để JavaScript ở Frontend có thể đọc được trạng thái đăng nhập
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 7, 
-      path: "/",
-    });
+    // 2. Nếu không tìm thấy tài khoản
+    if (!user) {
+      return NextResponse.json(
+        { message: "Tài khoản hoặc mật khẩu không chính xác!" },
+        { status: 401 }
+      );
+    }
 
-    return response;
+    // 3. So sánh mật khẩu
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return NextResponse.json(
+        { message: "Tài khoản hoặc mật khẩu không chính xác!" },
+        { status: 401 }
+      );
+    }
+
+    // 4. Đăng nhập thành công, trả thông tin về cho Client
+    // 🔥 CẬP NHẬT: Thêm trường 'role' từ database vào object trả về
+    return NextResponse.json(
+      {
+        message: "Đăng nhập thành công!",
+        user: {
+          id: user._id,
+          fullname: user.fullname,
+          email: user.email || null,
+          phone: user.phone || null,
+          role: user.role || "user", // Mặc định là 'user' nếu chưa có role
+        },
+      },
+      { status: 200 }
+    );
+
   } catch (error) {
-    return NextResponse.json({ message: "Lỗi hệ thống" }, { status: 500 });
+    console.error("Lỗi Đăng nhập MongoDB Driver:", error);
+    return NextResponse.json(
+      { message: "Lỗi hệ thống máy chủ, vui lòng thử lại!" },
+      { status: 500 }
+    );
   }
 }

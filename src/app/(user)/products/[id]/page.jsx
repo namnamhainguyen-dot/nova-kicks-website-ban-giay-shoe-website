@@ -1,9 +1,8 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import Link from 'next/link';
-import { useContext } from "react";
 import { CartContext } from "@/components/CartContext";
 
 export default function ProductDetailPage() {
@@ -15,12 +14,21 @@ export default function ProductDetailPage() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addedToCart, setAddedToCart] = useState(false);
+    
+    // State để kiểm tra quyền Admin
+    const [isAdmin, setIsAdmin] = useState(false);
 
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
 
     useEffect(() => {
+        // Kiểm tra quyền từ localStorage khi component mount
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user && user.role === 'admin') {
+            setIsAdmin(true);
+        }
+
         if (!id) return;
 
         fetch(`/api/products/${id}`)
@@ -49,9 +57,9 @@ export default function ProductDetailPage() {
         );
 
         if (existingIndex !== -1) {
-            cart[existingIndex].quantity += quantity;
+            newCart[existingIndex].quantity += quantity;
         } else {
-            cart.push({
+            newCart.push({
                 _id: product._id,
                 name: product.name,
                 price: product.price,
@@ -63,12 +71,10 @@ export default function ProductDetailPage() {
             });
         }
 
-        localStorage.setItem('cart', JSON.stringify(cart));
-
-        // Dispatch event để header/cart icon cập nhật số lượng ngay lập tức
+        setCart(newCart);
+        localStorage.setItem('cart', JSON.stringify(newCart));
         window.dispatchEvent(new Event('cartUpdated'));
 
-        // Hiện thông báo thêm thành công tạm thời
         setAddedToCart(true);
         setTimeout(() => setAddedToCart(false), 2000);
     };
@@ -119,8 +125,6 @@ export default function ProductDetailPage() {
             margin: '0 auto', padding: '40px 20px',
             fontFamily: 'sans-serif',
         }}>
-
-            {/* Breadcrumb */}
             <nav style={{ marginBottom: '28px', fontSize: '13px', color: '#6b7280' }}>
                 <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Trang chủ</Link>
                 <span style={{ margin: '0 8px' }}>›</span>
@@ -129,10 +133,7 @@ export default function ProductDetailPage() {
                 <span style={{ color: '#111827', fontWeight: '500' }}>{product.name}</span>
             </nav>
 
-            {/* Layout 2 cột */}
             <div style={{ display: 'flex', gap: '50px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-
-                {/* ── CỘT TRÁI: Ảnh sản phẩm ── */}
                 <div style={{ flex: '1 1 45%', minWidth: '300px' }}>
                     <div style={{
                         width: '100%', borderRadius: '16px',
@@ -147,10 +148,7 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
 
-                {/* ── CỘT PHẢI: Thông tin chi tiết ── */}
                 <div style={{ flex: '1 1 50%', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
-
-                    {/* Tên sản phẩm */}
                     <h1 style={{
                         fontSize: '28px', fontWeight: '800', color: '#030712',
                         margin: '0 0 10px 0', textTransform: 'uppercase',
@@ -158,13 +156,11 @@ export default function ProductDetailPage() {
                         {product.name}
                     </h1>
 
-                    {/* Đánh giá */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                         <span style={{ color: '#fbbf24' }}>⭐⭐⭐⭐⭐</span>
                         <span style={{ fontSize: '12px', color: '#6b7280' }}>(125 đánh giá)</span>
                     </div>
 
-                    {/* Giá */}
                     <div style={{ marginBottom: '24px' }}>
                         <p style={{ fontSize: '30px', fontWeight: '900', color: '#e11d48', margin: 0 }}>
                             {product.price?.toLocaleString('vi-VN')}
@@ -172,15 +168,10 @@ export default function ProductDetailPage() {
                         </p>
                     </div>
 
-                    {/* Màu sắc */}
                     {product.colors?.length > 0 && (
                         <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{
-                                fontSize: '14px', fontWeight: '700',
-                                textTransform: 'uppercase', color: '#111827', marginBottom: '10px',
-                            }}>
-                                Màu sắc:{' '}
-                                <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedColor}</span>
+                            <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
+                                Màu sắc: <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedColor}</span>
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                 {product.colors.map((color) => (
@@ -190,7 +181,7 @@ export default function ProductDetailPage() {
                                         style={{
                                             padding: '8px 16px', fontSize: '14px', fontWeight: '500',
                                             border: selectedColor === color ? '2px solid #000' : '1px solid #e5e7eb',
-                                            borderRadius: '12px', cursor: 'pointer', transition: '0.2s',
+                                            borderRadius: '12px', cursor: 'pointer',
                                             backgroundColor: selectedColor === color ? '#000' : '#fff',
                                             color: selectedColor === color ? '#fff' : '#374151',
                                         }}
@@ -202,15 +193,10 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Kích thước */}
                     {product.sizes?.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
-                            <h3 style={{
-                                fontSize: '14px', fontWeight: '700',
-                                textTransform: 'uppercase', color: '#111827', marginBottom: '10px',
-                            }}>
-                                Kích thước:{' '}
-                                <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedSize}</span>
+                            <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
+                                Kích thước: <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedSize}</span>
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                 {product.sizes.map((size) => (
@@ -221,7 +207,7 @@ export default function ProductDetailPage() {
                                             minWidth: '44px', height: '44px', padding: '0 10px',
                                             fontSize: '14px', fontWeight: '600',
                                             border: selectedSize === size ? '2px solid #000' : '1px solid #e5e7eb',
-                                            borderRadius: '12px', cursor: 'pointer', transition: '0.2s',
+                                            borderRadius: '12px', cursor: 'pointer',
                                             backgroundColor: selectedSize === size ? '#000' : '#fff',
                                             color: selectedSize === size ? '#fff' : '#374151',
                                         }}
@@ -233,114 +219,60 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Số lượng */}
                     <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{
-                            fontSize: '14px', fontWeight: '700',
-                            textTransform: 'uppercase', color: '#111827', marginBottom: '10px',
-                        }}>
-                            Số lượng
-                        </h3>
+                        <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>Số lượng</h3>
                         <div style={{
                             display: 'flex', alignItems: 'center', width: '112px',
                             border: '1px solid #e5e7eb', borderRadius: '12px',
                             backgroundColor: '#f9fafb', padding: '2px',
                         }}>
-                            <button
-                                onClick={() => quantity > 1 && setQuantity(quantity - 1)}
-                                style={{
-                                    width: '36px', height: '36px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center',
-                                    border: 'none', background: 'none',
-                                    fontWeight: 'bold', cursor: quantity > 1 ? 'pointer' : 'not-allowed',
-                                    color: quantity > 1 ? '#111827' : '#d1d5db', fontSize: '18px',
-                                }}
-                            >
-                                −
-                            </button>
-                            <span style={{
-                                flex: 1, textAlign: 'center',
-                                fontWeight: '600', fontSize: '14px',
-                                color: '#111827', userSelect: 'none',
-                            }}>
-                                {quantity}
-                            </span>
-                            <button
-                                onClick={() => setQuantity(quantity + 1)}
-                                style={{
-                                    width: '36px', height: '36px', display: 'flex',
-                                    alignItems: 'center', justifyContent: 'center',
-                                    border: 'none', background: 'none',
-                                    fontWeight: 'bold', cursor: 'pointer',
-                                    color: '#111827', fontSize: '18px',
-                                }}
-                            >
-                                +
-                            </button>
+                            <button onClick={() => quantity > 1 && setQuantity(quantity - 1)} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>−</button>
+                            <span style={{ flex: 1, textAlign: 'center', fontWeight: '600', fontSize: '14px' }}>{quantity}</span>
+                            <button onClick={() => setQuantity(quantity + 1)} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>+</button>
                         </div>
                     </div>
 
-                    {/* Thông báo thêm giỏ thành công */}
                     {addedToCart && (
-                        <div style={{
-                            backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0',
-                            color: '#15803d', borderRadius: '10px',
-                            padding: '10px 16px', marginBottom: '16px',
-                            fontSize: '14px', fontWeight: '500',
-                            display: 'flex', alignItems: 'center', gap: '8px',
-                        }}>
+                        <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#15803d', borderRadius: '10px', padding: '10px 16px', marginBottom: '16px', fontSize: '14px', fontWeight: '500' }}>
                             ✅ Đã thêm vào giỏ hàng!
                         </div>
                     )}
 
-                    {/* Nút hành động */}
-                    <div style={{
-                        display: 'flex', gap: '12px',
-                        borderTop: '1px solid #f3f4f6', paddingTop: '16px',
-                    }}>
+                    <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
                         <button
                             onClick={handleAddToCart}
+                            disabled={isAdmin}
                             style={{
-                                flex: 1, backgroundColor: '#fff',
-                                border: '1.5px solid #111827', color: '#111827',
+                                flex: 1, backgroundColor: isAdmin ? '#d1d5db' : '#fff',
+                                border: '1.5px solid #111827', color: isAdmin ? '#fff' : '#111827',
                                 fontWeight: '600', padding: '13px 0',
-                                borderRadius: '12px', cursor: 'pointer',
-                                fontSize: '14px', transition: '0.2s',
+                                borderRadius: '12px', cursor: isAdmin ? 'not-allowed' : 'pointer',
+                                fontSize: '14px',
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
                         >
                             Thêm vào giỏ hàng
                         </button>
                         <button
                             onClick={handleBuyNow}
+                            disabled={isAdmin}
                             style={{
-                                flex: 1, backgroundColor: '#111827',
+                                flex: 1, backgroundColor: isAdmin ? '#9ca3af' : '#111827',
                                 border: 'none', color: '#fff',
                                 fontWeight: '600', padding: '13px 0',
-                                borderRadius: '12px', cursor: 'pointer',
-                                fontSize: '14px', transition: '0.2s',
+                                borderRadius: '12px', cursor: isAdmin ? 'not-allowed' : 'pointer',
+                                fontSize: '14px',
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#374151'}
-                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#111827'}
                         >
-                            Mua ngay
+                            {isAdmin ? 'Admin không thể mua' : 'Mua ngay'}
                         </button>
                     </div>
 
-                    {/* Mô tả sản phẩm */}
                     <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #f3f4f6' }}>
-                        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#030712', marginBottom: '10px' }}>
-                            Mô tả sản phẩm
-                        </h3>
-                        <p style={{
-                            color: '#4b5563', fontSize: '14px',
-                            lineHeight: '1.8', whiteSpace: 'pre-line', margin: 0,
-                        }}>
+                        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#030712', marginBottom: '10px' }}>Mô tả sản phẩm</h3>
+                        <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: '1.8', whiteSpace: 'pre-line', margin: 0 }}>
                             {product.description || 'Chưa có mô tả chi tiết cho sản phẩm này.'}
                         </p>
                     </div>
-
                 </div>
             </div>
         </div>
