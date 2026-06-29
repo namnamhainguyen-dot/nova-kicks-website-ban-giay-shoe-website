@@ -1,6 +1,144 @@
+"use client";
+
 import Link from "next/link";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
+  const googleBtnRef = useRef(null); // Dùng ref để định vị nơi render nút Google
+
+  const [formData, setFormData] = useState({
+    identifier: "",
+    password: "",
+  });
+
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // 1. TỰ ĐỘNG TẢI THƯ VIỆN & RENDER NÚT BẤM CHUẨN GOOGLE
+  useEffect(() => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if (window.google) {
+        window.google.accounts.id.initialize({
+          client_id: "965150602590-a9bj52dr13dpgtf4nbenusvr3m1ekael.apps.googleusercontent.com",
+          callback: handleGoogleResponse,
+          use_fedcm: true,
+        });
+
+        if (googleBtnRef.current) {
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: "outline",
+            size: "large",
+            width: "100%", // 🔥 SỬA DÒNG NÀY: Thay cái cũ thành "100%" giống hệt thế này
+            text: "continue_with",
+            shape: "square",
+          });
+        }
+      }
+    };
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
+  // 2. XỬ LÝ DỮ LIỆU GOOGLE TRẢ VỀ
+  const handleGoogleResponse = async (response) => {
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      setSuccess("Đang xác thực tài khoản Google với hệ thống...");
+
+      const res = await fetch("/api/login-google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: response.credential }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Xác thực tài khoản Google thất bại!");
+      }
+
+      if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) localStorage.setItem("token", data.token);
+
+      setSuccess("Đăng nhập bằng Google thành công! Đang chuyển hướng...");
+
+      setTimeout(() => {
+        window.dispatchEvent(new Event("userLogin"));
+        if (data.user?.role === "admin") {
+          router.push("/admin");
+        } else {
+          router.push("/");
+        }
+      }, 1000);
+
+    } catch (err) {
+      setError(err.message || "Đăng nhập bằng Google thất bại. Vui lòng thử lại!");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSuccess("");
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          identifier: formData.identifier.trim(),
+          password: formData.password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Đăng nhập thất bại. Kiểm tra lại thông tin!");
+      }
+
+      setSuccess("Đăng nhập thành công! Đang chuyển hướng...");
+      if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
+      if (data.token) localStorage.setItem("token", data.token);
+
+      setTimeout(() => {
+        if (data.user.role === "admin") {
+          router.push("/admin"); 
+        } else {
+          window.dispatchEvent(new Event("userLogin"));
+          router.push("/");
+        }
+      }, 1000);
+
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <main
       className="container-fluid min-vh-100 d-flex justify-content-center align-items-center position-relative px-0"
@@ -12,7 +150,6 @@ export default function Login() {
         color: "#ffffff"
       }}
     >
-      {/* Lớp phủ màu sáng/mờ làm dịu ảnh nền giống Figma */}
       <div className="position-absolute top-0 start-0 w-100 h-100 bg-white opacity-75 z-0"></div>
 
       <div className="col-11 col-sm-8 col-md-6 col-lg-4 position-relative z-1 my-5 text-dark">
@@ -25,30 +162,31 @@ export default function Login() {
           </small>
         </div>
 
-        {/* Nút đăng nhập nhanh bằng Google theo thiết kế */}
-        <button className="btn btn-outline-dark w-100 rounded-0 py-2 mb-4 fw-bold text-uppercase d-flex align-items-center justify-content-center gap-2 border-2 small tracking-wide bg-white-50">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12.24 10.285V13.4h6.887c-.275 1.565-1.88 4.604-6.887 4.604-4.33 0-7.866-3.577-7.866-8s3.536-8 7.866-8c2.46 0 4.105 1.025 5.047 1.926l2.427-2.334C17.955 2.192 15.34 1 12.24 1c-6.075 0-11 4.925-11 11s4.925 11 11 11c6.34 0 10.556-4.43 10.556-10.74 0-.72-.08-1.265-.175-1.685H12.24z"/>
-          </svg>
-          CONTINUE WITH GOOGLE
-        </button>
+        {error && <div className="alert alert-danger rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{error}</div>}
+        {success && <div className="alert alert-success rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{success}</div>}
+
+        {/* NÚT BẤM GOOGLE CHÍNH CHỦ ĐÃ ĐƯỢC CHUẨN HÓA BẢO MẬT FEDCM */}
+        <div className="w-100 mb-4 d-flex justify-content-center">
+          <div ref={googleBtnRef} className="w-100" style={{ minHeight: "44px" }}></div>
+        </div>
 
         <div className="position-relative text-center my-4">
           <hr className="border-secondary opacity-25" />
           <span className="position-absolute top-50 start-50 translate-middle bg-transparent px-3 text-secondary small fw-bold tracking-widest">OR EMAIL</span>
         </div>
 
-        {/* Form đăng nhập - Giữ nguyên toàn bộ các thẻ input và ID ban đầu */}
-        <form>
+        <form onSubmit={handleSubmit}>
           <div className="mb-3">
-            <label htmlFor="phone" className="form-label text-uppercase small fw-bold tracking-wider m-0 mb-1">
+            <label htmlFor="identifier" className="form-label text-uppercase small fw-bold tracking-wider m-0 mb-1">
               Nhập Email hoặc Số điện thoại
             </label>
             <input 
               type="text" 
               className="form-control rounded-0 border-secondary bg-white text-dark py-2" 
-              id="phone" 
+              id="identifier" 
               placeholder="Email hoặc số điện thoại của bạn..."
+              value={formData.identifier}
+              onChange={handleChange}
               required 
             />
           </div>
@@ -62,6 +200,8 @@ export default function Login() {
               className="form-control rounded-0 border-secondary bg-white text-dark py-2" 
               id="password" 
               placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
               required 
             />
           </div>
@@ -74,8 +214,13 @@ export default function Login() {
             <a href="#" className="text-secondary text-decoration-none fs-7">Quên mật khẩu</a>
           </div>
 
-          <button type="submit" className="btn btn-dark w-100 rounded-0 py-2.5 text-uppercase fw-bold tracking-widest border-0" style={{ backgroundColor: "#012a3a" }}>
-            Đăng nhập vào tài khoản
+          <button 
+            type="submit" 
+            className="btn btn-dark w-100 rounded-0 py-2.5 text-uppercase fw-bold tracking-widest border-0" 
+            style={{ backgroundColor: "#012a3a" }}
+            disabled={loading}
+          >
+            {loading ? "Đang xác thực..." : "Đăng nhập vào tài khoản"}
           </button>
         </form>
 

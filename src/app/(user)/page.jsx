@@ -1,53 +1,84 @@
+import Link from 'next/link'; 
 import AddToCart from "@/components/AddToCart";
-import '../(user)/layout.jsx'; // Đảm bảo import CSS toàn cục nếu cần thiết
+import '../(user)/layout.jsx'; 
 
 export default async function Menu() {
-  // Thêm cache: 'no-store' để đảm bảo lấy dữ liệu mới nhất từ Mongo khi F5 (Giữ nguyên logic)
+  // Lấy dữ liệu mới nhất từ database
   const res = await fetch('http://localhost:3000/api/products', { cache: 'no-store' });
   const productList = await res.json();
 
-  // Kiểm tra xem productList có thực sự là mảng không để tránh lỗi .map (Giữ nguyên logic)
   const isArray = Array.isArray(productList);
-  const featuredProducts = isArray ? productList.filter((product) => product.showOnHome) : [];
-  const displayProducts = featuredProducts.length > 0 ? featuredProducts : (isArray ? productList : []);
+  
+  const displayProducts = isArray ? productList : [];
+
+  // Ảnh đại diện cho 2 ô banner phụ dựa trên dữ liệu thật
+  const firstNewProductImage = displayProducts[0]?.image;
+  const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
+
+  // PHÂN CHIA DỮ LIỆU ĐỘNG CHO TỪNG KHU VỰC ĐỂ KHÔNG BỊ TRÙNG LẶP
+  const newArrivalsData = displayProducts.slice(0, 4); 
+  const flashSaleData = displayProducts.slice(6, 10);
+  const hotProductsData = displayProducts.slice(10).concat(displayProducts.slice(0, 5)); // 8 sản phẩm tiếp theo
 
   return (
-    /* 1. SỬA MÀU NỀN TỔNG THỂ: Gỡ bỏ class text-white và mã màu tối #121212, thay bằng màu nền từ hệ thống biến tự động */
     <main className="min-vh-100" style={{ paddingTop: "70px", backgroundColor: "var(--background)" }}>
       
       {/* ================= HERO BANNER SECTION ================= */}
-      {/* Giữ chữ trắng độc lập trên ảnh Hero bằng class nk-text-white-forced hoặc ép style để không bị chìm trên banner ảnh */}
       <section 
         className="position-relative text-white d-flex align-items-center" 
         style={{ 
           height: "80vh", 
-          backgroundImage: "url('./img/Gemini_Generated_Image_jqml2cjqml2cjqml.png')",
+          backgroundImage: "url('/img/Gemini_Generated_Image_jqml2cjqml2cjqml.png')", 
           backgroundSize: "cover", 
           backgroundPosition: "center" 
         }}
       >
-        {/* Lớp phủ mờ màu đen để nổi bật chữ trên banner */}
-     
-        
-        
       </section>
 
       {/* ================= CATEGORIES MINI BANNERS ================= */}
       <section className="container my-5">
         <div className="row g-4">
+          
+          {/* Ô NEW ARRIVALS */}
           <div className="col-md-6">
-            {/* Sử dụng biến màu của hệ thống kính mờ Light Mode */}
-            <div className="glass-card p-5 d-flex align-items-end position-relative overflow-hidden" style={{ height: "180px" }}>
-              <h4 className="fw-bold m-0 text-uppercase tracking-wide">NEW ARRIVALS</h4>
-              <small className="position-absolute end-0 bottom-0 p-3 text-uppercase tracking-widest fs-7" style={{ color: "var(--text-secondary)" }}>Xem ngay &rarr;</small>
-            </div>
+            <Link href="/products" className="text-decoration-none text-dark">
+              <div className="glass-card p-4 d-flex align-items-center justify-content-between position-relative overflow-hidden" style={{ height: "180px", backgroundColor: "var(--surface-card)" }}>
+                <div className="z-1">
+                  <h4 className="fw-black m-0 text-uppercase tracking-wide" style={{ color: "var(--text-primary)" }}>NEW ARRIVALS</h4>
+                  <small className="text-uppercase tracking-widest fs-7 d-block mt-2" style={{ color: "var(--text-secondary)" }}>Xem ngay &rarr;</small>
+                </div>
+                <div className="position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center me-3" style={{ width: "45%", height: "100%" }}>
+                  <img 
+                    src={firstNewProductImage || "https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg"} 
+                    className="img-fluid h-100 object-fit-contain img-hover-scale" 
+                    alt="New Arrival Showcase" 
+                    style={{ maxHeight: "140px" }}
+                  />
+                </div>
+              </div>
+            </Link>
           </div>
+
+          {/* Ô BEST SELLERS */}
           <div className="col-md-6">
-            <div className="glass-card p-5 d-flex align-items-end position-relative overflow-hidden" style={{ height: "180px" }}>
-              <h4 className="fw-bold m-0 text-uppercase tracking-wide">BEST SELLERS</h4>
-              <small className="position-absolute end-0 bottom-0 p-3 text-uppercase tracking-widest fs-7" style={{ color: "var(--text-secondary)" }}>Xem ngay &rarr;</small>
-            </div>
+            <Link href="/products" className="text-decoration-none text-dark">
+              <div className="glass-card p-4 d-flex align-items-center justify-content-between position-relative overflow-hidden" style={{ height: "180px", backgroundColor: "var(--surface-card)" }}>
+                <div className="z-1">
+                  <h4 className="fw-black m-0 text-uppercase tracking-wide" style={{ color: "var(--text-primary)" }}>BEST SELLERS</h4>
+                  <small className="text-uppercase tracking-widest fs-7 d-block mt-2" style={{ color: "var(--text-secondary)" }}>Xem ngay &rarr;</small>
+                </div>
+                <div className="position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center me-3" style={{ width: "45%", height: "100%" }}>
+                  <img 
+                    src={firstBestProductImage || "https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg"} 
+                    className="img-fluid h-100 object-fit-contain img-hover-scale" 
+                    alt="Best Seller Showcase" 
+                    style={{ maxHeight: "140px" }}
+                  />
+                </div>
+              </div>
+            </Link>
           </div>
+
         </div>
       </section>
 
@@ -55,31 +86,31 @@ export default async function Menu() {
       <section className="container my-5">
         <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4" style={{ borderColor: "var(--border-light)" }}>
           <h3 className="text-uppercase fw-black tracking-wide m-0 fs-4">HÀNG MỚI VỀ</h3>
-          <a href="#" className="text-decoration-none small text-uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Xem tất cả</a>
+          <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Xem tất cả</Link>
         </div>
 
         <div className="row g-4">
-          {displayProducts.length > 0 ? (
-            displayProducts.slice(0, 8).map((p) => (
+          {newArrivalsData.length > 0 ? (
+            newArrivalsData.map((p) => (
               <div key={p._id} className="col-sm-6 col-md-4 col-lg-3">
-                {/* 2. SỬA MÀU NỀN THẺ SẢN PHẨM: Gỡ bỏ text-white và màu nền #1e1e1e, dùng biến --surface-card (màu trắng) từ layout */}
                 <div className="card h-100 card-product nk-card border-0 rounded-0" style={{ backgroundColor: "var(--surface-card)" }}>
-                  {/* Khu vực chứa ảnh giày đổi sang nền xám nhạt tinh tế nhẹ nhàng */}
-                  <div className="overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "240px", backgroundColor: "#f9f9f9" }}>
-                    <img 
-                      src={p.image || "/img/hero-banner.jpg"} 
-                      className="card-img-top rounded-0 img-fluid img-hover-scale" 
-                      alt={p.name} 
-                      style={{ objectFit: "contain", maxHeight: "100%" }}
-                    />
-                  </div>
-                  <div className="card-body p-3 text-start">
-                    <h6 className="card-title fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
-                    <p className="small text-truncate mb-2" style={{ color: "var(--text-secondary)" }}>{p.description}</p>
-                    <p className="fw-black text-danger mb-3 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
-                    
+                  <Link href={`/products/${p._id}`} className="text-decoration-none text-start d-block flex-grow-1">
+                    <div className="overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "240px", backgroundColor: "#f9f9f9" }}>
+                      <img 
+                        src={p.image || "/img/hero-banner.jpg"} 
+                        className="card-img-top rounded-0 img-fluid img-hover-scale" 
+                        alt={p.name} 
+                        style={{ objectFit: "contain", maxHeight: "100%" }}
+                      />
+                    </div>
+                    <div className="p-3 pb-3"> {/* Tăng padding bottom một chút cho cân đối vì không có nút */}
+                      <h6 className="card-title fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
+                      <p className="small text-truncate mb-2" style={{ color: "var(--text-secondary)" }}>{p.description}</p>
+                      <p className="fw-black text-danger m-0 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
+                    </div>
+                  </Link>
+                  <div className="card-body p-3 pt-0 text-start">
                     <AddToCart product={p}>
-                      {/* Đổi nút thêm vào giỏ hàng từ btn-light sang btn-dark để tạo điểm nhấn tương phản trên thẻ màu trắng */}
                       <span className="btn btn-dark w-100 rounded-0 fw-bold btn-sm text-uppercase py-2">Thêm vào giỏ hàng</span>
                     </AddToCart>
                   </div>
@@ -88,15 +119,13 @@ export default async function Menu() {
             ))
           ) : (
             <div className="col-12 text-center my-5 py-4 border rounded-0" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-light)" }}>
-              <p className="text-danger fw-bold m-0">Không có sản phẩm trang chủ để hiển thị.</p>
-              <small style={{ color: "var(--text-secondary)" }}>Hãy thêm sản phẩm và bật hiển thị trang chủ trong trang quản trị.</small>
+              <p className="text-danger fw-bold m-0">Không có sản phẩm để hiển thị.</p>
             </div>
           )}
         </div>
       </section>
 
-      {/* ================= FLASH SALE SECTION (STATIC/DEMO THEO ẢNH) ================= */}
-      {/* 3. SỬA NỀN VÙNG FLASH SALE: Thay đổi nền tối #161616 thành nền xám nhạt phụ của hệ thống sáng (var(--surface)) */}
+      {/* ================= FLASH SALE SECTION ================= */}
       <section className="py-5 my-5" style={{ backgroundColor: "var(--surface)" }}>
         <div className="container">
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
@@ -108,49 +137,101 @@ export default async function Menu() {
                 <span className="bg-dark text-white px-2 py-1">13</span>
               </div>
             </div>
-            <a href="#" className="text-decoration-none small text-uppercase tracking-wider mt-2 mt-md-0" style={{ color: "var(--text-secondary)" }}>Xem thêm</a>
+            <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider mt-2 mt-md-0" style={{ color: "var(--text-secondary)" }}>Xem thêm</Link>
           </div>
 
           <div className="row g-4">
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="col-sm-6 col-md-3">
-                {/* Đổi nền card Flash sale sang màu trắng cao cấp đồng bộ */}
-                <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
-                  <div className="p-3" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
-                    <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Flash Sale" />
+            {flashSaleData.length > 0 ? (
+              flashSaleData.map((p) => {
+                const originalPrice = Number(p.price) * 1.35; 
+                return (
+                  <div key={p._id} className="col-sm-6 col-md-3">
+                    <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
+                      {/* ĐÃ BỎ NÚT: Toàn bộ vùng thẻ Link bọc kín sản phẩm */}
+                      <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1 pb-3">
+                        <div className="p-3 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                          <img src={p.image || "/img/hero-banner.jpg"} className="img-fluid h-100 object-fit-contain img-hover-scale" alt={p.name} />
+                        </div>
+                        <div className="card-body p-3 pb-0 text-start">
+                          <h6 className="fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
+                          <p className="text-danger fw-black m-0 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
+                          <del className="small" style={{ color: "var(--text-muted)" }}>{Math.round(originalPrice).toLocaleString('vi-VN')} VND</del>
+                        </div>
+                      </Link>
+                    </div>
                   </div>
-                  <div className="card-body p-3">
-                    <h6 className="fw-bold text-uppercase m-0" style={{ color: "var(--text-primary)" }}>NOVA AIR ONE</h6>
-                    <p className="text-danger fw-bold m-0">3.200.000 VND</p>
-                    <del className="small" style={{ color: "var(--text-muted)" }}>4.500.000 VND</del>
-                  </div>
+                );
+              })
+            ) : (
+              [1, 2, 3, 4].map((item, index) => (
+                <div key={index} className="col-sm-6 col-md-3">
+                  <Link href={`/products/${item}`} className="text-decoration-none d-block h-100">
+                    <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
+                      <div className="p-3" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                        <img src={`https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-0${item}.jpg`} className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Flash Sale Fake" />
+                      </div>
+                      <div className="card-body p-3">
+                        <h6 className="fw-bold text-uppercase m-0" style={{ color: "var(--text-primary)" }}>NOVA RUNNER V{item}</h6>
+                        <p className="text-danger fw-bold m-0">2.450.000 VND</p>
+                      </div>
+                    </div>
+                  </Link>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </section>
 
-      {/* ================= ĐANG HOT HIỆN TẠI (STATIC GRID) ================= */}
+      {/* ================= ĐANG HOT HIỆN TẠI ================= */}
       <section className="container my-5">
         <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4" style={{ borderColor: "var(--border-light)" }}>
           <h3 className="text-uppercase fw-black tracking-wide m-0 fs-4">ĐANG HOT HIỆN TẠI</h3>
         </div>
         <div className="row g-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((item) => (
-            <div key={item} className="col-sm-6 col-md-4 col-lg-3">
-              {/* Đổi nền card khu vực Đang Hot sang màu trắng */}
-              <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
-                <div className="p-4" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
-                  <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Hot item" />
-                </div>
-                <div className="card-body p-3">
-                  <h6 className="fw-bold text-uppercase mb-1" style={{ color: "var(--text-primary)" }}>NOVA AIR ONE</h6>
-                  <p className="text-danger fw-bold small m-0">3.200.000 VND</p>
+          {hotProductsData.length > 0 ? (
+            hotProductsData.map((p) => (
+              <div key={p._id} className="col-sm-6 col-md-4 col-lg-3">
+                <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
+                  {/* ĐÃ BỎ NÚT: Toàn bộ vùng thẻ Link bọc kín sản phẩm */}
+                  <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1 pb-3">
+                    <div className="p-4 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                      <img src={p.image || "/img/hero-banner.jpg"} className="img-fluid h-100 object-fit-contain img-hover-scale" alt={p.name} />
+                    </div>
+                    <div className="card-body p-3 pb-0 text-start">
+                      <h6 className="fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
+                      <p className="text-danger fw-black small m-0">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
+                    </div>
+                  </Link>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          ) : (
+            [
+              { id: 1, name: "Nike Air Max Plus", price: 4200000 },
+              { id: 2, name: "Adidas Samba OG", price: 3100000 },
+              { id: 3, name: "Puma Palermo Sneaker", price: 2600000 },
+              { id: 4, name: "New Balance 9060", price: 4800000 },
+              { id: 5, name: "Asics Gel-Kayano 14", price: 3900000 },
+              { id: 6, name: "Converse Chuck 70", price: 2100000 },
+              { id: 7, name: "Vans Old Skool Classic", price: 1850000 },
+              { id: 8, name: "Nike Dunk Low Panda", price: 3500000 }
+            ].map((item) => (
+              <div key={item.id} className="col-sm-6 col-md-4 col-lg-3">
+                <Link href={`/products/${item.id}`} className="text-decoration-none d-block h-100">
+                  <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
+                    <div className="p-4" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                      <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt={item.name} />
+                    </div>
+                    <div className="card-body p-3 text-start">
+                      <h6 className="fw-bold text-uppercase mb-1 text-truncate" style={{ color: "var(--text-primary)" }}>{item.name}</h6>
+                      <p className="text-danger fw-bold small m-0">{item.price.toLocaleString('vi-VN')} VND</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            ))
+          )}
         </div>
       </section>
 
@@ -182,15 +263,14 @@ export default async function Menu() {
         </div>
       </section>
 
-      {/* ================= TRẢI NGHIỆM TRỰC TIẾP (MAP AREA) ================= */}
-      {/* 4. SỬA NỀN KHU VỰC BẢN ĐỒ: Thay màu đen sẫm bằng màu nền phụ sáng (var(--surface)) */}
+      {/* ================= TRẢI NGHIỆM TRỰC TIẾP ================= */}
       <section className="py-5 my-5" style={{ backgroundColor: "var(--surface)" }}>
         <div className="container">
           <div className="row align-items-center g-4">
             <div className="col-md-5">
               <h4 className="fw-black text-uppercase tracking-wider">TRẢI NGHIỆM TRỰC TIẾP</h4>
               <p className="small mt-3" style={{ color: "var(--text-secondary)" }}>Cửa hàng flagship trưng bày đầy đủ các phiên bản giới hạn độc quyền.</p>
-              <p className="m-0 fw-bold" style={{ color: "var(--text-primary)" }}>123 Phố Tràng Tiền, Quận Hoàn Kiếm, Hà Nội</p>
+              <p className="m-0 fw-bold" style={{ color: "var(--text-primary)" }}>123 CVPM Quang Trung, Quận 12, TP.HCM</p>
               <p className="small" style={{ color: "var(--text-secondary)" }}>Mở cửa: 09:00 AM - 10:00 PM</p>
             </div>
             <div className="col-md-7">
@@ -219,7 +299,6 @@ export default async function Menu() {
         <p className="small mb-4" style={{ color: "var(--text-secondary)" }}>Mọi phản hồi của bạn giúp chúng tôi hoàn thiện chất lượng dịch vụ tốt hơn.</p>
         <div className="d-flex justify-content-center">
           <div className="input-group w-50 min-w-300">
-            {/* Input đổi màu border đồng bộ Light Mode */}
             <input type="email" className="form-control bg-white border rounded-0" placeholder="Nhập email của bạn..." style={{ color: "var(--text-primary)", borderColor: "var(--border-medium)" }} />
             <button className="btn btn-dark rounded-0 text-uppercase fw-bold px-4" type="button">Gửi</button>
           </div>

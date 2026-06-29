@@ -2,63 +2,53 @@
 
 import { useContext, useState, useEffect } from "react";
 import { CartContext } from "./CartContext";
+import { toast } from "react-hot-toast";
 
 export default function AddToCart({ product, children }) {
   const { cart, setCart } = useContext(CartContext);
-  const [quantity, setQuantity] = useState(0);
+  const [user, setUser] = useState(null);
 
-  // Đồng bộ quantity với cart trong context (Giữ nguyên)
   useEffect(() => {
-    const productInCart = cart.find((p) => p._id === product._id);
-    setQuantity(productInCart ? productInCart.quantity : 0);
-  }, [cart, product._id]);
+    // Lấy thông tin user để kiểm tra quyền
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser));
+      } catch (e) {
+        setUser(null);
+      }
+    }
+  }, []);
 
-  // HÀM MỚI: Cập nhật cart (Thay thế cho useEffect gây lỗi)
-  const updateCart = (newQty) => {
-    setQuantity(newQty); // Cập nhật local state để UI mượt mà
-    
+  const handleAddToCart = () => {
+    // 1. CHẶN ADMIN: Kiểm tra quyền trước khi thực hiện
+    if (user && user.role === "admin") {
+      toast.error("Quản trị viên không thể mua hàng!");
+      return;
+    }
+
+    // 2. Logic thêm vào giỏ hàng
     let newCart = [...cart];
     const index = newCart.findIndex((p) => p._id === product._id);
 
-    if (newQty > 0) {
-      if (index >= 0) {
-        newCart[index] = { ...newCart[index], quantity: newQty };
-      } else {
-        newCart.push({ ...product, quantity: newQty });
-      }
+    if (index >= 0) {
+      newCart[index] = { ...newCart[index], quantity: newCart[index].quantity + 1 };
     } else {
-      if (index >= 0) {
-        newCart.splice(index, 1);
-      }
+      newCart.push({ ...product, quantity: 1 });
     }
+
     setCart(newCart);
+
+    // 3. THÔNG BÁO: Hiển thị toast thay vì chuyển sang ô nhập số lượng
+    toast.success(`Đã thêm ${product.name} vào giỏ hàng!`, {
+      position: "bottom-right",
+    });
   };
 
-  if (quantity === 0) {
-    return (
-      <button className="btn btn-dark" onClick={() => updateCart(1)}>
-        {children}
-      </button>
-    );
-  } else {
-    return (
-      <div className="input-group">
-        {/* Thay setQuantity bằng updateCart */}
-        <div className="btn btn-dark" onClick={() => updateCart(quantity - 1)}>
-          -
-        </div>
-        <input
-          type="number"
-          value={quantity}
-          min="0"
-          className="text-center"
-          style={{ width: "60px" }}
-          onChange={(e) => updateCart(parseInt(e.target.value) || 0)}
-        />
-        <div className="btn btn-dark" onClick={() => updateCart(quantity + 1)}>
-          +
-        </div>
-      </div>
-    );
-  }
+  // Luôn trả về nút bấm cố định, không render ô input số lượng
+  return (
+    <button className="btn btn-dark w-100" onClick={handleAddToCart}>
+      {children}
+    </button>
+  );
 }
