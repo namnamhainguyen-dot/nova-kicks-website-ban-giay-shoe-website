@@ -70,7 +70,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Thông tin người nhận */}
+        {/* Informational Section */}
         <div className="p-4 border-bottom bg-light-subtle">
           <h6 className="fw-bold mb-3 text-secondary">📍 Thông tin nhận hàng</h6>
           <div className="row g-2 small">
@@ -85,26 +85,41 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Chi tiết danh sách giày */}
+        {/* Danh sách sản phẩm thực tế */}
         <div className="p-4 border-bottom">
           <h6 className="fw-bold mb-3 text-secondary">👟 Danh sách sản phẩm</h6>
-          {order.order_items?.map((item, idx) => (
-            <div key={idx} className="d-flex align-items-center justify-content-between py-2 border-bottom last-item-border-0">
-              <div className="d-flex align-items-center">
-                <img 
-                  src={item.image || "https://via.placeholder.com/60"} 
-                  alt={item.name} 
-                  className="rounded border me-3 object-fit-cover" 
-                  style={{ width: "55px", height: "55px" }} 
-                />
-                <div>
-                  <span className="fw-bold d-block text-dark small">{item.name}</span>
-                  <small className="text-muted">Số lượng: x{item.quantity}</small>
+          {order.order_items?.map((item, idx) => {
+            // Tạo chuỗi định danh độc nhất cho key (ngăn ngừa tuyệt đối lỗi lặp cấu trúc phần tử con)
+            const itemKey = `${item.product_id || idx}-${item.color || "none"}-${item.size || "none"}`;
+
+            return (
+              <div key={itemKey} className="d-flex align-items-center justify-content-between py-2 border-bottom last-item-border-0">
+                <div className="d-flex align-items-center">
+                  <img 
+                    src={item.image || "https://via.placeholder.com/60"} 
+                    alt={item.name} 
+                    className="rounded border me-3 object-fit-cover" 
+                    style={{ width: "55px", height: "55px" }} 
+                  />
+                  <div>
+                    <span className="fw-bold d-block text-dark small">{item.name}</span>
+                    
+                    {/* ĐÃ THÊM: Hiển thị phân loại màu sắc và size giày của đơn hàng cũ */}
+                    {(item.color || item.size) && (
+                      <div className="text-muted small mb-1" style={{ fontSize: "0.75rem" }}>
+                        {item.color && <span>Màu: {item.color}</span>}
+                        {item.color && item.size && <span> | </span>}
+                        {item.size && <span>Size: {item.size}</span>}
+                      </div>
+                    )}
+
+                    <small className="text-muted">Số lượng: x{item.quantity}</small>
+                  </div>
                 </div>
+                <span className="fw-bold small text-dark">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
               </div>
-              <span className="fw-bold small text-dark">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Ghi chú hệ thống */}

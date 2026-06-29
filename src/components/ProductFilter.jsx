@@ -4,57 +4,33 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import AddToCart from "@/components/AddToCart";
 
-// ── BẢN ĐỒ ÁNH XẠ MÃ ID THỰC TẾ TỪ DB SANG TÊN THƯƠNG HIỆU ĐẸP ──
-const CATEGORY_MAP = {
-  "6a2932c7044b3063b3d05171": "NIKE",
-  "6a2932c7044b3063b3d05172": "Giày tây",
-  "6a2932c7044b3063b3d05173": "giày cao gót",
-  "6a2932c7044b3063b3d05174": "giày sandal",
-
-};
-
 export default function ProductFilter({ products }) {
-  const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Lấy danh sách các categoryID duy nhất có trong sản phẩm
-  const allCategories = useMemo(() => {
-    const cats = products.map((p) => p.categoryID).filter(Boolean).flat();
-    return [...new Set(cats)].sort();
-  }, [products]);
-
+  // Lấy danh sách các size duy nhất có trong sản phẩm
   const allSizes = useMemo(() => {
     const sizes = products.flatMap((p) => p.sizes || []);
     return [...new Set(sizes)].sort();
   }, [products]);
 
-  // Logic lọc sản phẩm theo mã ID
+  // Logic lọc sản phẩm (Đã bỏ lọc theo Danh mục)
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const price = Number(p.price) || 0;
       const minOk = priceRange.min === "" || price >= Number(priceRange.min);
       const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
-      
-      const catOk =
-        selectedCategories.length === 0 ||
-        selectedCategories.some(
-          (c) =>
-            p.categoryID === c ||
-            (Array.isArray(p.categoryID) && p.categoryID.includes(c))
-        );
         
       const sizeOk =
         selectedSizes.length === 0 ||
         selectedSizes.some((s) => (p.sizes || []).includes(s));
         
-      return minOk && maxOk && catOk && sizeOk;
+      return minOk && maxOk && sizeOk;
     });
-  }, [products, priceRange, selectedCategories, selectedSizes]);
+  }, [products, priceRange, selectedSizes]);
 
   const activeCount =
-    selectedCategories.length +
     selectedSizes.length +
     (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0);
 
@@ -65,7 +41,6 @@ export default function ProductFilter({ products }) {
   }
 
   function clearAll() {
-    setSelectedCategories([]);
     setSelectedSizes([]);
     setPriceRange({ min: "", max: "" });
   }
@@ -196,58 +171,6 @@ export default function ProductFilter({ products }) {
           })}
         </div>
       </div>
-
-      {/* ── HIỂN THỊ TÊN DANH MỤC THAY VÌ ID ── */}
-      {allCategories.length > 0 && (
-        <div style={{ marginBottom: "24px" }}>
-          <p
-            style={{
-              fontWeight: 600,
-              fontSize: "13px",
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              color: "#6b7280",
-              marginBottom: "10px",
-            }}
-          >
-            Danh mục
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            {allCategories.map((catID) => {
-              const active = selectedCategories.includes(catID);
-              // Lấy tên hiển thị từ CATEGORY_MAP, nếu không có thì fallback về chính mã ID
-              const categoryName = CATEGORY_MAP[catID] || catID;
-
-              return (
-                <label
-                  key={catID}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    cursor: "pointer",
-                    fontSize: "14px",
-                    color: active ? "#111" : "#374151",
-                    fontWeight: active ? 600 : 400,
-                    padding: "4px 0",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={active}
-                    onChange={() =>
-                      toggleItem(selectedCategories, setSelectedCategories, catID)
-                    }
-                    style={{ accentColor: "#111", width: "15px", height: "15px" }}
-                  />
-                  {/* Hiển thị Tên thương hiệu đẹp đẽ ra ngoài UI */}
-                  {categoryName} 
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
       {/* Bộ lọc Kích thước */}
       {allSizes.length > 0 && (

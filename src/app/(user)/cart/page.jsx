@@ -20,12 +20,10 @@ export default function Cart() {
         setIsLoading(true);
         const res = await fetch("http://localhost:3000/api/tables");
         
-        // Kiểm tra response có OK không
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
         
-        // Kiểm tra content-type
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
           throw new Error("Server không trả về JSON");
@@ -36,7 +34,6 @@ export default function Cart() {
       } catch (err) {
         console.error("Lỗi lấy danh sách cửa hàng:", err);
         setLocationList([]);
-        // Không hiển thị alert ở đây vì đây không phải lỗi nghiêm trọng
       } finally {
         setIsLoading(false);
       }
@@ -45,22 +42,21 @@ export default function Cart() {
     fetchLocations();
   }, []);
 
-  // Cập nhật số lượng sản phẩm
-  const handleQuantity = (id, value) => {
+  // Cập nhật số lượng sản phẩm dựa trên INDEX của mảng
+  const handleQuantity = (index, value) => {
     const newQuantity = parseInt(value, 10);
     if (isNaN(newQuantity) || newQuantity < 1) return;
     
     const newCart = [...cart];
-    const index = newCart.findIndex((p) => p._id === id);
-    if (index >= 0) {
+    if (newCart[index]) {
       newCart[index].quantity = newQuantity;
       setCart(newCart);
     }
   };
 
-  // Xóa một sản phẩm
-  const handleRemove = (id) => {
-    const newCart = cart.filter((p) => p._id !== id);
+  // Xóa một sản phẩm dựa trên INDEX của mảng
+  const handleRemove = (index) => {
+    const newCart = cart.filter((_, i) => i !== index);
     setCart(newCart);
   };
 
@@ -96,7 +92,7 @@ export default function Cart() {
     setIsOrdering(true);
     
     const order = {
-      name: "Tên Khách", // sau này lấy từ thông tin đăng nhập
+      name: "Tên Khách", 
       location_id: inputLocation,
       order_items: cart.map(item => ({
         product_id: item._id,
@@ -116,14 +112,12 @@ export default function Cart() {
         body: JSON.stringify(order),
       });
       
-      // Kiểm tra response
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Server response:", errorText);
         throw new Error(`HTTP error! status: ${res.status}`);
       }
       
-      // Kiểm tra content-type
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Server không trả về JSON");
@@ -132,7 +126,7 @@ export default function Cart() {
       const result = await res.json();
 
       if (result.code === "success" || result.success) {
-        setCart([]); // Xóa giỏ hàng
+        setCart([]); 
         router.push("/success");
       } else {
         alert(result.message || "Có lỗi xảy ra khi thêm đơn hàng!");
@@ -179,9 +173,13 @@ export default function Cart() {
             </tr>
           </thead>
           <tbody>
-            {cart.map((product) => (
-              <tr key={product._id}>
-                <td>
+            {cart.map((product, index) => {
+              // Tạo key độc nhất bằng cách kết hợp ID, màu sắc và kích thước
+              const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
+
+              return (
+                <tr key={uniqueKey}>
+                  <td>
                     <strong>{product.name}</strong>
 
                     <div className="text-muted small mt-1">
@@ -209,27 +207,28 @@ export default function Cart() {
                       </div>
                     )}
                   </td>
-                <td>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={product.quantity}
-                    min="1"
-                    onChange={(e) => handleQuantity(product._id, e.target.value)}
-                  />
-                </td>
-                <td>{product.price.toLocaleString("vi-VN")}đ</td>
-                <td>{(product.quantity * product.price).toLocaleString("vi-VN")}đ</td>
-                <td>
-                  <button
-                    className="btn btn-danger btn-sm"
-                    onClick={() => handleRemove(product._id)}
-                  >
-                    Xóa
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  <td>
+                    <input
+                      type="number"
+                      className="form-control"
+                      value={product.quantity}
+                      min="1"
+                      onChange={(e) => handleQuantity(index, e.target.value)}
+                    />
+                  </td>
+                  <td>{product.price.toLocaleString("vi-VN")}đ</td>
+                  <td>{(product.quantity * product.price).toLocaleString("vi-VN")}đ</td>
+                  <td>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => handleRemove(index)}
+                    >
+                      Xóa
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr>
@@ -249,7 +248,6 @@ export default function Cart() {
       </div>
 
       {/* Phần chọn địa điểm nhận hàng */}
-
 
       <div className="d-flex justify-content-between mt-4">
         <Link href="/products" className="btn btn-outline-secondary">

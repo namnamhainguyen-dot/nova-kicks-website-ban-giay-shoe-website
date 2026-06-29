@@ -126,8 +126,8 @@ export default function Checkout() {
         name: item.name,
         quantity: item.quantity,
         price: item.price,
-        color: item.selectedColor || null, // Đã thêm: Gửi màu sắc lên server
-        size: item.selectedSize || null    // Đã thêm: Gửi size lên server
+        color: item.selectedColor || null, 
+        size: item.selectedSize || null    
       })),
       total: total,
       discount: discountAmount, 
@@ -291,35 +291,40 @@ export default function Checkout() {
               <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({cart.length})</h4>
               
               <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
-                {cart.map((product) => (
-                  <div key={product._id} className="d-flex align-items-center justify-content-between py-2 border-bottom">
-                    <div className="d-flex align-items-center">
-                      {product.image && (
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="rounded border me-3 object-fit-cover"
-                          style={{ width: "50px", height: "50px" }}
-                        />
-                      )}
-                      <div>
-                        <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>{product.name}</h6>
-                        
-                        {/* Đã thêm: Hiển thị phân loại Size và Màu sắc ngay dưới tên sản phẩm */}
-                        <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
-                          {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
-                          {product.selectedColor && product.selectedSize && <span> | </span>}
-                          {product.selectedSize && <span>Size: {product.selectedSize}</span>}
-                        </div>
+                {cart.map((product) => {
+                  // Tạo key độc nhất bằng cách kết hợp ID, màu sắc và kích thước
+                  const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
 
-                        <small className="text-muted">Số lượng: {product.quantity}</small>
+                  return (
+                    <div key={uniqueKey} className="d-flex align-items-center justify-content-between py-2 border-bottom">
+                      <div className="d-flex align-items-center">
+                        {product.image && (
+                          <img 
+                            src={product.image} 
+                            alt={product.name}
+                            className="rounded border me-3 object-fit-cover"
+                            style={{ width: "50px", height: "50px" }}
+                          />
+                        )}
+                        <div>
+                          <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>{product.name}</h6>
+                          
+                          {/* Hiển thị phân loại Size và Màu sắc ngay dưới tên sản phẩm */}
+                          <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
+                            {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
+                            {product.selectedColor && product.selectedSize && <span> | </span>}
+                            {product.selectedSize && <span>Size: {product.selectedSize}</span>}
+                          </div>
+
+                          <small className="text-muted">Số lượng: {product.quantity}</small>
+                        </div>
                       </div>
+                      <span className="fw-medium text-dark">
+                        {(product.quantity * product.price).toLocaleString("vi-VN")}đ
+                      </span>
                     </div>
-                    <span className="fw-medium text-dark">
-                      {(product.quantity * product.price).toLocaleString("vi-VN")}đ
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               {/* ── Ô NHẬP VOUCHER GIẢM GIÁ ── */}
