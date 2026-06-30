@@ -1,5 +1,5 @@
 import Link from 'next/link'; 
-import AddToCart from "@/components/AddToCart";
+import CountdownTimer from "@/components/CountdownTimer";
 import '../(user)/layout.jsx'; 
 
 export default async function Menu() {
@@ -103,16 +103,18 @@ export default async function Menu() {
                         style={{ objectFit: "contain", maxHeight: "100%" }}
                       />
                     </div>
-                    <div className="p-3 pb-3"> {/* Tăng padding bottom một chút cho cân đối vì không có nút */}
+                    <div className="p-3 pb-3"> 
                       <h6 className="card-title fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
                       <p className="small text-truncate mb-2" style={{ color: "var(--text-secondary)" }}>{p.description}</p>
                       <p className="fw-black text-danger m-0 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
                     </div>
                   </Link>
+                  
+                  {/* 🔥 ĐÃ CẬP NHẬT: Thay nút Thêm vào giỏ hàng thành nút Xem chi tiết nhảy link chuẩn */}
                   <div className="card-body p-3 pt-0 text-start">
-                    <AddToCart product={p}>
-                      <span className="btn btn-dark w-100 rounded-0 fw-bold btn-sm text-uppercase py-2">Thêm vào giỏ hàng</span>
-                    </AddToCart>
+                    <Link href={`/products/${p._id}`} className="text-decoration-none">
+                      <span className="btn btn-dark w-100 rounded-0 fw-bold btn-sm text-uppercase py-2">XEM CHI TIẾT</span>
+                    </Link>
                   </div>
                 </div>
               </div>
@@ -131,11 +133,7 @@ export default async function Menu() {
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
             <div className="d-flex align-items-center gap-3">
               <h3 className="text-uppercase fw-black tracking-wide m-0 fs-4">FLASH SALE</h3>
-              <div className="d-flex gap-2 font-monospace small fw-bold">
-                <span className="bg-dark text-white px-2 py-1">04</span>:
-                <span className="bg-dark text-white px-2 py-1">20</span>:
-                <span className="bg-dark text-white px-2 py-1">13</span>
-              </div>
+              <CountdownTimer /> 
             </div>
             <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider mt-2 mt-md-0" style={{ color: "var(--text-secondary)" }}>Xem thêm</Link>
           </div>
@@ -147,7 +145,6 @@ export default async function Menu() {
                 return (
                   <div key={p._id} className="col-sm-6 col-md-3">
                     <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
-                      {/* ĐÃ BỎ NÚT: Toàn bộ vùng thẻ Link bọc kín sản phẩm */}
                       <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1 pb-3">
                         <div className="p-3 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
                           <img src={p.image || "/img/hero-banner.jpg"} className="img-fluid h-100 object-fit-contain img-hover-scale" alt={p.name} />
@@ -193,7 +190,6 @@ export default async function Menu() {
             hotProductsData.map((p) => (
               <div key={p._id} className="col-sm-6 col-md-4 col-lg-3">
                 <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
-                  {/* ĐÃ BỎ NÚT: Toàn bộ vùng thẻ Link bọc kín sản phẩm */}
                   <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1 pb-3">
                     <div className="p-4 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
                       <img src={p.image || "/img/hero-banner.jpg"} className="img-fluid h-100 object-fit-contain img-hover-scale" alt={p.name} />
