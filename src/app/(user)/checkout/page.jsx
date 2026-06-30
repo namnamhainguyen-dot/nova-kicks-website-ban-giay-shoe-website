@@ -1,8 +1,7 @@
-// /src/app/(user)/checkout/page.jsx
 "use client";
 import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
-import { useContext, useState } from "react";
+import { useContext, useState, useEffect } from "react";
 import Link from "next/link";
 
 export default function Checkout() {
@@ -16,6 +15,9 @@ export default function Checkout() {
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState("");
 
+  // Mảng chứa các sản phẩm thực tế được tick chọn mua chuyển từ Cart sang
+  const [checkoutItems, setCheckoutItems] = useState([]);
+
   // ── STATE DÀNH RIÊNG CHO VOUCHER ──
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null); 
@@ -25,10 +27,31 @@ export default function Checkout() {
 
   const router = useRouter();
 
-  // Tính tổng tiền gốc của đơn hàng
-  const total = cart.reduce((sum, product) => sum + product.price * product.quantity, 0);
+  // Đọc danh sách sản phẩm mua từ sessionStorage khi load trang
+  useEffect(() => {
+    const storedItems = sessionStorage.getItem("checkout_items");
+    if (storedItems) {
+      try {
+        const parsedItems = JSON.parse(storedItems);
+        if (Array.isArray(parsedItems) && parsedItems.length > 0) {
+          setCheckoutItems(parsedItems);
+          return;
+        }
+      } catch (e) {
+        console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
+      }
+    }
+    
+    // Dự phòng nếu user reload trang hoặc vào thẳng URL bằng tay
+    if (cart && cart.length > 0) {
+      setCheckoutItems(cart);
+    }
+  }, [cart]);
 
-  // Tính số tiền được giảm giá
+  // Tính tổng tiền CHỈ trên danh sách sản phẩm được chọn mua
+  const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
+
+  // Tính số tiền được giảm giá dựa trên tổng tiền mới
   let discountAmount = 0;
   if (appliedVoucher) {
     if (appliedVoucher.discount_type === "fixed") {
@@ -42,7 +65,9 @@ export default function Checkout() {
   const finalTotal = Math.max(0, total - discountAmount);
 
   // Xử lý áp dụng Voucher
-  const handleApplyVoucher = async () => {
+  const handleApplyVoucher = async (e) => {
+    if (e) e.preventDefault(); // Chặn reload trang tuyệt đối
+
     if (!voucherCode.trim()) {
       setVoucherError("Vui lòng nhập mã code!");
       return;
@@ -53,24 +78,24 @@ export default function Checkout() {
     setIsValidatingVoucher(true);
 
     try {
-      const res = await fetch("/api/vouchers", {
+      const res = await fetch("/api/vouchers/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: voucherCode }),
+        body: JSON.stringify({ code: voucherCode.trim().toUpperCase() }),
       });
 
       const result = await res.json();
 
-      if (result.success) {
+      if (result.success || res.ok) {
         if (total < result.min_order_value) {
           setVoucherError(`Đơn hàng phải tối thiểu từ ${result.min_order_value.toLocaleString("vi-VN")}đ để dùng mã này!`);
           setAppliedVoucher(null);
         } else {
           setAppliedVoucher(result);
-          setVoucherSuccess(result.message);
+          setVoucherSuccess(result.message || "Áp dụng mã giảm giá thành công!");
         }
       } else {
-        setVoucherError(result.message);
+        setVoucherError(result.message || "Mã giảm giá không hợp lệ hoặc đã hết hạn.");
         setAppliedVoucher(null);
       }
     } catch (err) {
@@ -80,7 +105,7 @@ export default function Checkout() {
     }
   };
 
-  // Hủy không dùng mã nữa
+  // Hủy dùng voucher
   const handleRemoveVoucher = () => {
     setAppliedVoucher(null);
     setVoucherCode("");
@@ -88,28 +113,28 @@ export default function Checkout() {
     setVoucherError("");
   };
 
-  // Kiểm tra tính hợp lệ của biểu mẫu
+  // Kiểm tra biểu mẫu thông tin khách hàng bằng javascript tự chọn thay vì required của form gò bó
   const validateOrder = () => {
-    if (cart.length === 0) {
-      alert("Giỏ hàng trống! Không thể thanh toán.");
+    if (checkoutItems.length === 0) {
+      alert("Không tìm thấy sản phẩm nào để thanh toán!");
       return false;
     }
     if (!customerName.trim()) {
-      alert("Vui lòng nhập tên người nhận!");
+      alert("Vui lòng điền đầy đủ Họ và tên người nhận!");
       return false;
     }
     if (!customerPhone.trim()) {
-      alert("Vui lòng nhập số điện thoại liên hệ!");
+      alert("Vui lòng điền đầy đủ Số điện thoại liên hệ!");
       return false;
     }
     if (!deliveryAddress.trim()) {
-      alert("Vui lòng nhập chính xác địa chỉ giao hàng!");
+      alert("Vui lòng điền đầy đủ Địa chỉ giao hàng!");
       return false;
     }
     return true;
   };
 
-  // Xử lý gửi đơn hàng lên server
+  // Gửi đơn hàng lên API
   const handleOrder = async (e) => {
     if (e) e.preventDefault(); 
     if (!validateOrder()) return;
@@ -121,7 +146,7 @@ export default function Checkout() {
       phone: customerPhone,
       location_id: deliveryAddress, 
       note: orderNote,
-      order_items: cart.map(item => ({
+      order_items: checkoutItems.map(item => ({
         product_id: item._id,
         name: item.name,
         quantity: item.quantity,
@@ -152,8 +177,22 @@ export default function Checkout() {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
         
-        setCart([]);
-        localStorage.removeItem("cart");
+        // CHỈ XÓA những sản phẩm vừa thanh toán thành công ra khỏi giỏ hàng chính
+        const remainingCart = cart.filter(cartItem => 
+          !checkoutItems.some(checkoutItem => 
+            checkoutItem._id === cartItem._id &&
+            checkoutItem.selectedColor === cartItem.selectedColor &&
+            checkoutItem.selectedSize === cartItem.selectedSize
+          )
+        );
+        
+        setCart(remainingCart);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("cart", JSON.stringify(remainingCart));
+        }
+
+        // Xóa vùng nhớ tạm sessionStorage
+        sessionStorage.removeItem("checkout_items");
         setIsSuccess(true);
       } else {
         alert(result.message || "Có lỗi xảy ra khi xử lý đơn hàng!");
@@ -174,9 +213,8 @@ export default function Checkout() {
           <div className="fs-1 mb-3">🎉</div>
           <h2 className="fw-bold text-success mb-2">Đặt Hàng Thành Công!</h2>
           <p className="text-muted mb-4 px-3">
-            Cảm ơn bạn đã tin tưởng lựa chọn sản phẩm của chúng tôi. Đơn hàng của bạn đang được đóng gói và sẽ sớm giao tới địa chỉ của bạn.
+            Cảm ơn bạn đã tin tưởng lựa chọn sản phẩm của chúng tôi. Đơn hàng đang được đóng gói và sẽ sớm giao tới bạn.
           </p>
-          
           <div className="d-grid gap-3 px-4">
             <Link 
               href={createdOrderId ? `/orders/${createdOrderId}` : "/orders/history"} 
@@ -209,12 +247,12 @@ export default function Checkout() {
     );
   }
 
-  // 3. BIỂU MẪU ĐIỀN THÔNG TIN ĐẶT HÀNG
+  // 3. BIỂU MẪU ĐIỀN THÔNG TIN ĐẶT HÀNG CHÍNH THỨC
   return (
     <main className="container mt-5 pt-5 mb-5">
       <div className="row g-4">
         
-        {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG */}
+        {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG (Dùng Form riêng biệt ở đây) */}
         <div className="col-lg-7 col-md-12">
           <div className="card shadow-sm border-0 rounded-3">
             <div className="card-body p-4">
@@ -229,7 +267,6 @@ export default function Checkout() {
                     placeholder="Nhập tên người nhận hàng"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    required
                   />
                 </div>
 
@@ -241,7 +278,6 @@ export default function Checkout() {
                     placeholder="Nhập số điện thoại liên hệ"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    required
                   />
                 </div>
 
@@ -253,7 +289,6 @@ export default function Checkout() {
                     placeholder="Ví dụ: 123 Đường Nguyễn Trãi, Phường 3, Quận 5, TP.HCM"
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
-                    required
                   />
                 </div>
 
@@ -271,29 +306,29 @@ export default function Checkout() {
                 {/* Nút hành động trên Mobile */}
                 <div className="d-grid d-lg-none gap-2">
                   <button 
-                    type="submit" 
+                    type="button"
+                    onClick={handleOrder}
                     className="btn btn-dark btn-lg py-3 fw-bold shadow-sm rounded-pill"
-                    disabled={isOrdering || !deliveryAddress}
+                    disabled={isOrdering}
                   >
                     {isOrdering ? "Đang xử lý..." : `Xác Nhận Đặt Hàng • ${finalTotal.toLocaleString("vi-VN")}đ`}
                   </button>
-                  <Link href="/cart" className="btn btn-link text-muted small">Quay lại giỏ hàng</Link>
+                  <Link href="/cart" className="btn btn-link text-muted small text-center">Quay lại giỏ hàng</Link>
                 </div>
               </form>
             </div>
           </div>
         </div>
 
-        {/* CỘT PHẢI: TÓM TẮT GIỎ HÀNG & MÃ GIẢM GIÁ */}
+        {/* CỘT PHẢI: TÓM TẮT GIỎ HÀNG ĐÃ LỌC & MÃ GIẢM GIÁ */}
         <div className="col-lg-5 col-md-12">
           <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
             <div className="card-body p-4">
-              <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({cart.length})</h4>
+              <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({checkoutItems.length})</h4>
               
               <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
-                {cart.map((product) => {
-                  // Tạo key độc nhất bằng cách kết hợp ID, màu sắc và kích thước
-                  const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
+                {checkoutItems.map((product, index) => {
+                  const uniqueKey = `checkout-${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}-${index}`;
 
                   return (
                     <div key={uniqueKey} className="d-flex align-items-center justify-content-between py-2 border-bottom">
@@ -308,14 +343,11 @@ export default function Checkout() {
                         )}
                         <div>
                           <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>{product.name}</h6>
-                          
-                          {/* Hiển thị phân loại Size và Màu sắc ngay dưới tên sản phẩm */}
                           <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
                             {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
                             {product.selectedColor && product.selectedSize && <span> | </span>}
                             {product.selectedSize && <span>Size: {product.selectedSize}</span>}
                           </div>
-
                           <small className="text-muted">Số lượng: {product.quantity}</small>
                         </div>
                       </div>
@@ -327,7 +359,7 @@ export default function Checkout() {
                 })}
               </div>
 
-              {/* ── Ô NHẬP VOUCHER GIẢM GIÁ ── */}
+              {/* ── Ô NHẬP VOUCHER GIẢM GIÁ (Đã tách biệt khỏi Form) ── */}
               <div className="mb-4 bg-light p-3 rounded-3">
                 <label className="form-label fw-bold text-secondary small mb-2">🎟️ Thẻ giảm giá (Voucher)</label>
                 <div className="input-group">
@@ -361,7 +393,7 @@ export default function Checkout() {
 
               {/* Bảng tính toán chi phí */}
               <div className="d-flex justify-content-between mb-2 small">
-                <span className="text-muted">Tạm tính giỏ hàng:</span>
+                <span className="text-muted">Tạm tính đơn hàng:</span>
                 <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>
               </div>
               
@@ -385,9 +417,10 @@ export default function Checkout() {
               {/* Nút hành động trên Desktop */}
               <div className="d-none d-lg-block">
                 <button 
+                  type="button"
                   onClick={handleOrder}
                   className="btn btn-dark btn-lg w-100 py-3 fw-bold shadow-sm rounded-pill"
-                  disabled={isOrdering || !deliveryAddress}
+                  disabled={isOrdering}
                 >
                   {isOrdering ? (
                     <>

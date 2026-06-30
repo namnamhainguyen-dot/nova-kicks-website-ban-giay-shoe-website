@@ -6,14 +6,17 @@ import Image from "next/image";
 import UserActions from "@/components/UserActions"; // 1. IMPORT COMPONENT HÀNH ĐỘNG THÀNH VIÊN
 import { Toaster } from "react-hot-toast";
 
-// ── HÀM LẤY DANH MỤC ĐỘNG TỪ MONGODB ──
+// ── HÀM LẤY DANH MỤC ĐỘNG TỪ MONGODB (ĐÃ THÊM FILTER CHỈ LẤY ACTIVE) ──
 async function getCategories() {
   try {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
     
-    // Lấy danh sách danh mục từ collection 'categories'
-    const categoriesList = await db.collection("categories").find({}).toArray();
+    // 🔥 Sửa ở đây: Thêm { status: "active" } để chỉ hiển thị các danh mục đang hiện
+    const categoriesList = await db
+      .collection("categories")
+      .find({ status: "active" }) 
+      .toArray();
     
     return categoriesList.map(cat => ({
       ...cat,
@@ -143,13 +146,10 @@ export default async function Layout({ children }) {
           .nk-footer-links a:hover { color: var(--accent); }
           .nk-footer-label { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; color: var(--text-primary); }
           .nk-footer-copy { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.82rem; }
-          .nav-item.dropdown:hover > .dropdown-menu {display: block; margin-top: 0; /* Loại bỏ khoảng cách mặc định */}
-          /* Tùy chỉnh hiệu ứng mượt mà */
-          .dropdown-menu {display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease;
-          }
+          .nav-item.dropdown:hover > .dropdown-menu {display: block; margin-top: 0; }
+          .dropdown-menu {display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease; }
           @keyframes fadeIn {from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); }}
-        `}
-        </style>
+        `}</style>
       </head>
       <body className="d-flex flex-column min-vh-100">
         <Toaster position="bottom-right" reverseOrder={false} />
@@ -181,7 +181,6 @@ export default async function Layout({ children }) {
                   <li><Link href="/about">Thương hiệu</Link></li>
                 </ul>
 
-                {/* 2. CHỨA COMPONENT ĐỘNG ĐÃ ĐƯỢC XÓA ĐĂNG KÝ */}
                 <UserActions />
               </div>
             </nav>

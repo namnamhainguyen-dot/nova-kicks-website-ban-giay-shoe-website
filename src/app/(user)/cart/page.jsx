@@ -1,4 +1,3 @@
-// /src/app/(user)/cart/page.jsx
 "use client";
 import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
@@ -8,10 +7,8 @@ import Link from "next/link";
 export default function Cart() {
   const { cart, setCart } = useContext(CartContext);
   const [locationList, setLocationList] = useState([]);
-  const [inputLocation, setInputLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isOrdering, setIsOrdering] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]); // index các sản phẩm được chọn mua
+  const [selectedItems, setSelectedItems] = useState([]); // Chứa index các sản phẩm được chọn mua
   const router = useRouter();
 
   // Lấy danh sách cửa hàng / điểm nhận hàng từ API khi mount
@@ -43,7 +40,7 @@ export default function Cart() {
     fetchLocations();
   }, []);
 
-  // Mặc định tick chọn hết khi số lượng sản phẩm trong giỏ thay đổi
+  // Mặc định tick chọn tất cả sản phẩm khi giỏ hàng thay đổi số lượng dòng
   useEffect(() => {
     setSelectedItems(cart.map((_, index) => index));
   }, [cart.length]);
@@ -57,7 +54,7 @@ export default function Cart() {
     );
   };
 
-  // Tick / bỏ tick tất cả
+  // Tick / bỏ tick tất cả sản phẩm
   const toggleSelectAll = () => {
     if (selectedItems.length === cart.length) {
       setSelectedItems([]);
@@ -105,92 +102,31 @@ export default function Cart() {
     }
   };
 
-  // Tổng tiền chỉ tính trên sản phẩm được tick chọn
+  // Tổng tiền chỉ tính trên sản phẩm được tick chọn hiển thị ngay tại Cart
   const total = cart.reduce(
     (sum, product, index) =>
       selectedItems.includes(index) ? sum + product.price * product.quantity : sum,
     0
   );
 
-  // Kiểm tra giỏ hàng trước khi thanh toán
-  const validateOrder = () => {
-    if (cart.length === 0) {
-      alert("Giỏ hàng trống! Vui lòng thêm sản phẩm.");
-      return false;
-    }
-
+  // Xử lý chuyển dữ liệu sang trang Checkout
+  const handleGoToCheckout = () => {
     if (selectedItems.length === 0) {
-      alert("Vui lòng chọn ít nhất 1 sản phẩm để mua!");
-      return false;
+      alert("Vui lòng chọn ít nhất 1 sản phẩm để thanh toán!");
+      return;
     }
-
-    if (!inputLocation) {
-      alert("Vui lòng chọn địa điểm nhận hàng!");
-      return false;
-    }
-
-    return true;
+    
+    // Đóng gói danh sách sản phẩm thực tế được tick chọn
+    const itemsToCheckout = cart.filter((_, index) => selectedItems.includes(index));
+    
+    // Lưu thẳng danh sách này vào sessionStorage
+    sessionStorage.setItem("checkout_items", JSON.stringify(itemsToCheckout));
+    
+    // Chuyển hướng sang trang thanh toán
+    router.push("/checkout");
   };
 
-  // Thanh toán
-  const handleOrder = async () => {
-    if (!validateOrder()) return;
-
-    setIsOrdering(true);
-
-    const itemsToOrder = cart.filter((_, index) => selectedItems.includes(index));
-
-    const order = {
-      name: "Tên Khách",
-      location_id: inputLocation,
-      order_items: itemsToOrder.map((item) => ({
-        product_id: item._id,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-      })),
-      total: total,
-    };
-
-    try {
-      const res = await fetch("http://localhost:3000/api/orders", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(order),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        console.error("Server response:", errorText);
-        throw new Error(`HTTP error! status: ${res.status}`);
-      }
-
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("Server không trả về JSON");
-      }
-
-      const result = await res.json();
-
-      if (result.code === "success" || result.success) {
-        // Chỉ xóa các sản phẩm đã đặt, giữ lại sản phẩm chưa tick
-        const remainingCart = cart.filter((_, index) => !selectedItems.includes(index));
-        setCart(remainingCart);
-        router.push("/success");
-      } else {
-        alert(result.message || "Có lỗi xảy ra khi thêm đơn hàng!");
-      }
-    } catch (err) {
-      console.error("Order error:", err);
-      alert("Không thể kết nối tới server! Vui lòng thử lại sau.\n" + err.message);
-    } finally {
-      setIsOrdering(false);
-    }
-  };
-
-  // Hiển thị khi giỏ hàng trống
+  // Hiển thị khi giỏ hàng trống hoàn toàn
   if (cart.length === 0) {
     return (
       <main className="container mt-5 pt-5">
@@ -234,7 +170,6 @@ export default function Cart() {
           </thead>
           <tbody>
             {cart.map((product, index) => {
-              // Tạo key độc nhất bằng cách kết hợp ID, màu sắc và kích thước
               const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
               const checked = selectedItems.includes(index);
 
@@ -250,17 +185,14 @@ export default function Cart() {
                   </td>
                   <td>
                     <strong>{product.name}</strong>
-
                     <div className="text-muted small mt-1">
                       {product.selectedColor && (
                         <div>Màu: {product.selectedColor}</div>
                       )}
-
                       {product.selectedSize && (
                         <div>Size: {product.selectedSize}</div>
                       )}
                     </div>
-
                     {product.image && (
                       <div className="mt-2">
                         <img
@@ -326,20 +258,17 @@ export default function Cart() {
         </table>
       </div>
 
-      {/* Phần chọn địa điểm nhận hàng */}
-
       <div className="d-flex justify-content-between mt-4">
         <Link href="/products" className="btn btn-outline-secondary">
           ← Tiếp tục mua sắm
         </Link>
-        <Link
-          href="/checkout"
-          className={`btn btn-success btn-lg px-5 fw-bold shadow-sm ${
-            selectedItems.length === 0 ? "disabled" : ""
-          }`}
+        <button
+          onClick={handleGoToCheckout}
+          className="btn btn-success btn-lg px-5 fw-bold shadow-sm"
+          disabled={selectedItems.length === 0}
         >
           Tiến hành thanh toán →
-        </Link>
+        </button>
       </div>
     </main>
   );

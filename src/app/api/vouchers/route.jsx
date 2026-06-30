@@ -1,44 +1,67 @@
-import clientPromise from "@/libs/mongodb";
+import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
-export async function POST(request) {
+// Định nghĩa Schema (Thay thế bằng Model thực tế của bạn nếu cần)
+const VoucherSchema = new mongoose.Schema({
+  code: { type: String, required: true, unique: true },
+  discount_type: { type: String, required: true }, 
+  discount_value: { type: Number, required: true },
+  min_order_value: { type: Number, default: 0 },
+  is_active: { type: Boolean, default: true }
+}, { timestamps: true });
+
+const Voucher = mongoose.models.Voucher || mongoose.model("Voucher", VoucherSchema);
+
+async function connectDB() {
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(process.env.MONGODB_URI);
+  }
+}
+
+// GET: Lấy danh sách voucher cho Admin xem
+export async function GET() {
   try {
-    const { code } = await request.json();
-    if (!code) {
-      return Response.json({ success: false, message: "Vui lòng nhập mã giảm giá!" }, { status: 400 });
-    }
-
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
-    // Tìm voucher trong collection "vouchers"
-    const voucher = await db.collection("vouchers").findOne({
-      code: code.trim().toUpperCase(),
-    });
-    if (!voucher) {
-      return Response.json({ success: false, message: "Mã giảm giá không tồn tại!" });
-    }
-
-    // Kiểm tra hạn sử dụng
-    const now = new Date();
-    if (voucher.expiry_date && new Date(voucher.expiry_date) < now) {
-      return Response.json({ success: false, message: "Mã giảm giá này đã hết hạn sử dụng!" });
-    }
-
-    // Kiểm tra số lượng lượt dùng còn lại
-    if (voucher.usage_limit !== undefined && voucher.usage_limit <= 0) {
-      return Response.json({ success: false, message: "Mã giảm giá này đã hết lượt sử dụng!" });
-    }
-
-    return Response.json({
-      success: true,
-      message: "Áp dụng mã giảm giá thành công!",
-      discount_type: voucher.discount_type, // "fixed" (trừ tiền thẳng) hoặc "percentage" (% giảm)
-      discount_value: voucher.discount_value, // số tiền hoặc số %
-      min_order_value: voucher.min_order_value || 0 // giá trị đơn hàng tối thiểu để áp dụng
-    });
-
+    await connectDB();
+    const vouchers = await Voucher.find({}).sort({ createdAt: -1 });
+    return NextResponse.json(vouchers, { status: 200 });
   } catch (error) {
-    console.error("Lỗi API Voucher:", error);
-    return Response.json({ success: false, message: "Lỗi hệ thống!" }, { status: 500 });
+    return NextResponse.json([], { status: 500 });
+  }
+}
+
+// POST: Chỉ dành riêng cho Admin bấm nút TẠO MỚI voucher
+export async function POST(req) {
+  try {
+    await connectDB();
+    const body = await req.json();
+
+    if (!body.code) {
+      return NextResponse.json({ success: false, message: "Mã giảm giá không được trống" }, { status: 400 });
+    }
+
+    const discount_type = body.discount_type || body.type;
+    const discount_value = body.discount_value !== undefined ? body.discount_value : (body.value || body.discount);
+
+    if (!discount_type || discount_value === undefined) {
+      return NextResponse.json({ success: false, message: "Thiếu thông tin loại hoặc giá trị giảm giá!" }, { status: 400 });
+    }
+
+    const formattedCode = body.code.trim().toUpperCase();
+    const existingVoucher = await Voucher.findOne({ code: formattedCode });
+    if (existingVoucher) {
+      return NextResponse.json({ success: false, message: "Mã giảm giá này đã tồn tại!" }, { status: 400 });
+    }
+
+    const newVoucher = await Voucher.create({
+      ...body,
+      code: formattedCode,
+      discount_type,
+      discount_value: Number(discount_value),
+      min_order_value: Number(body.min_order_value || body.minValue || 0)
+    });
+
+    return NextResponse.json({ success: true, message: "Tạo voucher mới thành công!", data: newVoucher }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ success: false, message: "Lỗi hệ thống: " + error.message }, { status: 500 });
   }
 }
