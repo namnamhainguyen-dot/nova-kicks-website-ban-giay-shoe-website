@@ -1,158 +1,179 @@
-const userData = [
-  {
-    id: "NK-8821",
-    name: "Hải Nam",
-    email: "namnamhainguyen@gmail.com",
-    role: "ADMIN",
-    joined: "Oct 12, 2025",
-    status: "Hoạt động",
-    avatar: "https://i.pravatar.cc/80?img=32",
-  },
-  {
-    id: "NK-8821",
-    name: "Hồng Yến",
-    email: "hongyen@gmail.com",
-    role: "MEMBER",
-    joined: "Dec 20, 2025",
-    status: "Hoạt động",
-    avatar: "https://i.pravatar.cc/80?img=12",
-  },
-  {
-    id: "NK-8821",
-    name: "Quốc Huy",
-    email: "lequochuy@gmail.com",
-    role: "MEMBER",
-    joined: "Nov 15, 2025",
-    status: "Bị cấm",
-    avatar: "https://i.pravatar.cc/80?img=7",
-  },
-  {
-    id: "NK-8821",
-    name: "Thành Danh",
-    email: "thanhdanh@gmail.com",
-    role: "ADMIN",
-    joined: "Oct 26, 2025",
-    status: "Hoạt động",
-    avatar: "https://i.pravatar.cc/80?img=15",
-  },
-  {
-    id: "NK-8821",
-    name: "Mông Danh",
-    email: "danhmw@gmail.com",
-    role: "ADMIN",
-    joined: "Jun 12, 2025",
-    status: "Hoạt động",
-    avatar: "https://i.pravatar.cc/80?img=12",
-  },
-];
+"use client";
 
-export default function Account() {
-  const totalUsers = 2842;
-  const activeUsers = 2410;
-  const newUsers = 158;
-  const bannedUsers = 12;
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+export default function AccountManagement() {
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // 1. Lấy danh sách tài khoản từ MongoDB qua API
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      try {
+        const res = await fetch("/api/accounts");
+        const data = await res.json();
+        setAccounts(data);
+      } catch (error) {
+        console.error("Lỗi khi tải danh sách tài khoản:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAccounts();
+  }, []);
+
+  // 2. Xóa tài khoản (Sử dụng _id của MongoDB)
+  const handleDelete = async (id) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) return;
+
+    try {
+      const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        setAccounts(accounts.filter((acc) => acc._id !== id));
+        alert("Đã xóa tài khoản thành công!");
+      }
+    } catch (error) {
+      alert("Lỗi khi xóa tài khoản.");
+    }
+  };
+
+  // 3. Thay đổi nhanh trạng thái (Hoạt động / Bị cấm)
+  const toggleStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === "active" ? "inactive" : "active";
+    try {
+      const res = await fetch(`/api/accounts/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setAccounts(
+          accounts.map((acc) =>
+            acc._id === id ? { ...acc, status: newStatus } : acc
+          )
+        );
+      }
+    } catch (error) {
+      console.error("Lỗi khi cập nhật trạng thái:", error);
+    }
+  };
+
+  // 4. Tìm kiếm tài khoản theo tên hoặc email
+  const filteredAccounts = accounts.filter((acc) =>
+    acc.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    acc.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
-    <div className="content admin-users-dashboard">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start gap-3 mb-4">
+    <div className="container-fluid py-4">
+      <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h1 className="display-6 fw-bold">Quản lý người dùng</h1>
-          <p className="text-muted mb-0">Theo dõi nhanh số liệu người dùng, trạng thái tài khoản và quản lý quyền truy cập.</p>
+          <h4 className="fw-bold mb-1">Quản lý Tài khoản</h4>
+          <p className="text-secondary small mb-0">Danh sách thành viên và phân quyền hệ thống</p>
         </div>
-        <button className="btn btn-dark btn-lg px-4">+ Thêm quản trị viên mới</button>
+        <Link href="/admin/account/add" className="btn btn-dark text-white font-medium">
+          + Thêm tài khoản mới
+        </Link>
       </div>
 
-      <div className="row g-3 mb-4">
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100 stats-card">
-            <div className="card-body">
-              <small className="text-uppercase text-muted">Tổng người dùng</small>
-              <h3 className="mt-3 mb-2">{totalUsers.toLocaleString()}</h3>
+      <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+        <div className="card-header bg-white border-0 pt-4 px-4 pb-2">
+          <div className="row align-items-center">
+            <div className="col-md-4">
+              <input
+                type="text"
+                className="form-control form-control-sm bg-light border-0 px-3 py-2 rounded-3"
+                placeholder="Tìm kiếm tài khoản, email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100 stats-card">
-            <div className="card-body">
-              <small className="text-uppercase text-muted">Thành viên còn hoạt động</small>
-              <h3 className="mt-3 mb-2">{activeUsers.toLocaleString()}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100 stats-card">
-            <div className="card-body">
-              <small className="text-uppercase text-muted">Người dùng mới trong tháng</small>
-              <h3 className="mt-3 mb-2">+{newUsers}</h3>
-            </div>
-          </div>
-        </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card shadow-sm border-0 h-100 stats-card border-danger-subtle">
-            <div className="card-body">
-              <small className="text-uppercase text-muted">Người dùng bị cấm</small>
-              <h3 className="mt-3 mb-2 text-danger">{bannedUsers}</h3>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div className="card shadow-sm border-0">
-        <div className="card-body p-0">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center px-4 py-3 border-bottom">
-            <div>
-              <h5 className="mb-0">Hồ sơ người dùng</h5>
-            </div>
-            <div className="d-flex gap-2 w-100 w-md-auto mt-3 mt-md-0">
-              <input type="text" className="form-control search-input" placeholder="Tìm kiếm bằng tên, email hoặc vai trò..." />
-            </div>
-          </div>
-
-          <div className="table-responsive">
-            <table className="table table-borderless align-middle mb-0">
-              <thead className="table-light">
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0 text-sm">
+            <thead className="table-light text-secondary small uppercase fw-bold border-bottom">
+              <tr>
+                <th className="ps-4">Thành viên</th>
+                <th>Email</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+                <th className="text-end pe-4">Hành động</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
                 <tr>
-                  <th>Hồ sơ người dùng</th>
-                  <th>EMAIL</th>
-                  <th>VAI TRÒ</th>
-                  <th>NGÀY GIA NHẬP</th>
-                  <th>TRẠNG THÁI</th>
-                  <th>HÀNH ĐỘNG</th>
+                  <td colSpan="5" className="text-center py-4 text-secondary">
+                    Đang tải danh sách tài khoản...
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {userData.map((user) => (
-                  <tr key={user.name} className="align-middle">
-                    <td>
+              ) : filteredAccounts.length === 0 ? (
+                <tr>
+                  <td colSpan="5" className="text-center py-4 text-secondary">
+                    Không tìm thấy tài khoản nào.
+                  </td>
+                </tr>
+              ) : (
+                filteredAccounts.map((acc) => (
+                  <tr key={acc._id}>
+                    <td className="ps-4">
                       <div className="d-flex align-items-center gap-3">
-                        <img src={user.avatar} alt={user.name} className="rounded-circle user-avatar" />
+                        <img
+                          src={acc.avatar || "https://i.pravatar.cc/80?img=32"}
+                          alt={acc.name}
+                          className="rounded-circle"
+                          style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                        />
                         <div>
-                          <div className="fw-semibold">{user.name}</div>
-                          <div className="text-muted small">ID: {user.id}</div>
+                          <div className="fw-semibold text-dark">{acc.name}</div>
+                          <div className="text-muted small">Mã: {acc.id || "N/A"}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="text-muted">{user.email}</td>
+                    <td className="text-secondary">{acc.email}</td>
                     <td>
-                      <span className={`badge ${user.role === "ADMIN" ? "bg-dark" : "bg-secondary text-white"}`}>{user.role}</span>
-                    </td>
-                    <td className="text-muted">{user.joined}</td>
-                    <td>
-                      <span className={`badge ${user.status === "Hoạt động" ? "bg-success" : "bg-danger"}`}>{user.status}</span>
+                      <span className={`badge px-2 py-1.5 rounded-2 ${acc.role === "ADMIN" ? "bg-dark" : "bg-light text-dark border"}`}>
+                        {acc.role}
+                      </span>
                     </td>
                     <td>
-                      <button className="btn btn-outline-secondary btn-sm me-2">✎</button>
-                      <button className={`btn btn-outline-${user.status === "Bị cấm" ? "danger" : "secondary"} btn-sm`}>{user.status === "Bị cấm" ? "↺" : "🗑"}</button>
+                      <div className="form-check form-switch mb-0">
+                        <input
+                          className="form-check-input cursor-pointer"
+                          type="checkbox"
+                          role="switch"
+                          id={`switch-${acc._id}`}
+                          checked={acc.status === "active"}
+                          onChange={() => toggleStatus(acc._id, acc.status)}
+                        />
+                        <label className={`form-check-label small ms-1 ${acc.status === "active" ? "text-success" : "text-danger"}`} htmlFor={`switch-${acc._id}`}>
+                          {acc.status === "active" ? "Hoạt động" : "Bị khóa"}
+                        </label>
+                      </div>
+                    </td>
+                    <td className="text-end pe-4">
+                      <Link
+                        href={`/admin/account/edit/${acc._id}`}
+                        className="btn btn-sm btn-outline-primary me-2"
+                      >
+                        <i className="bi bi-pencil"></i> Sửa
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(acc._id)}
+                        className="btn btn-sm btn-outline-danger"
+                      >
+                        <i className="bi bi-trash"></i> Xóa
+                      </button>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="px-4 py-3 border-top text-muted small">
-            Hiển thị 1 đến 5 trong 5 kết quả
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
