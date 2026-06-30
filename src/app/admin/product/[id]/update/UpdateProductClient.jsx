@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// Danh sách size cố định để chọn nhanh - chỉnh lại nếu shop bạn bán size khác
+// Danh sách size cố định để chọn nhanh
 const SIZE_OPTIONS = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45];
 
 export default function UpdateProductClient({ id }) {
@@ -21,6 +21,9 @@ export default function UpdateProductClient({ id }) {
   const [colors, setColors] = useState([]); // ví dụ: ["Đen", "Trắng"]
   const [colorInput, setColorInput] = useState("");
 
+  // 🌟 STATE MỚI: Quản lý object ảnh theo màu { "Đen": "url_anh_den", "Trắng": "url_anh_trang" }
+  const [imagesByColor, setImagesByColor] = useState({});
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -30,7 +33,7 @@ export default function UpdateProductClient({ id }) {
     const loadProduct = async () => {
       if (!id) {
         setError("ID sản phẩm không hợp lệ.");
-        setLoading(false);
+        loading(false);
         return;
       }
 
@@ -50,6 +53,9 @@ export default function UpdateProductClient({ id }) {
         setStatus(product.status || "active");
         setSizes(Array.isArray(product.sizes) ? product.sizes : []);
         setColors(Array.isArray(product.colors) ? product.colors : []);
+        
+        // 🌟 Lấy dữ liệu imagesByColor từ database nếu có
+        setImagesByColor(product.imagesByColor && typeof product.imagesByColor === "object" ? product.imagesByColor : {});
       } catch (err) {
         setError(err?.message || "Lỗi khi tải dữ liệu sản phẩm.");
       } finally {
@@ -82,7 +88,6 @@ export default function UpdateProductClient({ id }) {
   };
 
   const handleColorKeyDown = (e) => {
-    // Cho phép thêm màu bằng Enter hoặc dấu phẩy
     if (e.key === "Enter" || e.key === ",") {
       e.preventDefault();
       addColor();
@@ -91,6 +96,20 @@ export default function UpdateProductClient({ id }) {
 
   const removeColor = (color) => {
     setColors((prev) => prev.filter((c) => c !== color));
+    // 🌟 Đồng thời xóa cấu hình ảnh của màu đó ra khỏi object
+    setImagesByColor((prev) => {
+      const updated = { ...prev };
+      delete updated[color];
+      return updated;
+    });
+  };
+
+  // 🌟 HÀM MỚI: Cập nhật URL ảnh cho từng màu cụ thể
+  const handleColorImageUrlChange = (color, url) => {
+    setImagesByColor((prev) => ({
+      ...prev,
+      [color]: url
+    }));
   };
 
   const handleSubmit = async (event) => {
@@ -121,6 +140,8 @@ export default function UpdateProductClient({ id }) {
           status,
           sizes,
           colors,
+          // 🌟 Gửi kèm object imagesByColor lên server API
+          imagesByColor, 
         }),
       });
 
@@ -243,14 +264,14 @@ export default function UpdateProductClient({ id }) {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="image" className="form-label">
-                Link ảnh sản phẩm
+              <label htmlFor="image" className="form-label font-weight-bold">
+                Link ảnh sản phẩm mặc định (Ảnh chính)
               </label>
               <input
                 type="text"
                 className="form-control"
                 id="image"
-                placeholder="Nhập URL ảnh sản phẩm"
+                placeholder="Nhập URL ảnh sản phẩm chính"
                 value={image}
                 onChange={(e) => setImage(e.target.value)}
               />
@@ -350,6 +371,45 @@ export default function UpdateProductClient({ id }) {
               )}
             </div>
 
+            {/* 🌟 KHU VỰC MỚI: Đường dẫn hình ảnh theo từng màu sắc */}
+            {colors.length > 0 && (
+              <div className="mb-4 p-3 border rounded bg-light">
+                <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">
+                  📷 Cấu hình đường dẫn ảnh cho từng màu sắc
+                </h6>
+                <div className="row g-3">
+                  {colors.map((color) => (
+                    <div className="col-12" key={color}>
+                      <div className="input-group">
+                        <span className="input-group-text bg-dark text-white" style={{ minWidth: "110px", justifyContent: "center" }}>
+                          {color}
+                        </span>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder={`Nhập URL hình ảnh dành riêng cho màu ${color}`}
+                          value={imagesByColor[color] || ""}
+                          onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
+                        />
+                        {imagesByColor[color] && (
+                          <span className="input-group-text p-1 bg-white">
+                            <img 
+                              src={imagesByColor[color]} 
+                              alt={`Preview ${color}`} 
+                              style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px" }}
+                              onError={(e) => { e.target.style.display = 'none'; }} // Ẩn nếu URL lỗi
+                            />
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+              </div>
+            )}
+
+            {/* ----- Các nút thao tác ----- */}
             <div className="d-flex gap-2">
               <button type="submit" className="btn btn-dark" disabled={saving || deleting}>
                 {saving ? "Đang lưu..." : "Lưu sản phẩm"}

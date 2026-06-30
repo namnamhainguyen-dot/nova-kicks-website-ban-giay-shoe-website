@@ -11,6 +11,7 @@ export default function Cart() {
   const [inputLocation, setInputLocation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isOrdering, setIsOrdering] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]); // index các sản phẩm được chọn mua
   const router = useRouter();
 
   // Lấy danh sách cửa hàng / điểm nhận hàng từ API khi mount
@@ -19,16 +20,16 @@ export default function Cart() {
       try {
         setIsLoading(true);
         const res = await fetch("http://localhost:3000/api/tables");
-        
+
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);
         }
-        
+
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
           throw new Error("Server không trả về JSON");
         }
-        
+
         const locations = await res.json();
         setLocationList(Array.isArray(locations) ? locations : []);
       } catch (err) {
@@ -38,15 +39,40 @@ export default function Cart() {
         setIsLoading(false);
       }
     }
-    
+
     fetchLocations();
   }, []);
+
+  // Mặc định tick chọn hết khi số lượng sản phẩm trong giỏ thay đổi
+  useEffect(() => {
+    setSelectedItems(cart.map((_, index) => index));
+  }, [cart.length]);
+
+  // Tick / bỏ tick 1 sản phẩm
+  const toggleSelectItem = (index) => {
+    setSelectedItems((prev) =>
+      prev.includes(index)
+        ? prev.filter((i) => i !== index)
+        : [...prev, index]
+    );
+  };
+
+  // Tick / bỏ tick tất cả
+  const toggleSelectAll = () => {
+    if (selectedItems.length === cart.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(cart.map((_, index) => index));
+    }
+  };
+
+  const isAllSelected = cart.length > 0 && selectedItems.length === cart.length;
 
   // Cập nhật số lượng sản phẩm dựa trên INDEX của mảng
   const handleQuantity = (index, value) => {
     const newQuantity = parseInt(value, 10);
     if (isNaN(newQuantity) || newQuantity < 1) return;
-    
+
     const newCart = [...cart];
     if (newCart[index]) {
       newCart[index].quantity = newQuantity;
@@ -67,8 +93,24 @@ export default function Cart() {
     }
   };
 
-  // Tổng tiền
-  const total = cart.reduce((sum, product) => sum + product.price * product.quantity, 0);
+  // Xóa các sản phẩm đang được tick chọn
+  const handleRemoveSelected = () => {
+    if (selectedItems.length === 0) {
+      alert("Bạn chưa chọn sản phẩm nào để xóa!");
+      return;
+    }
+    if (window.confirm(`Xóa ${selectedItems.length} sản phẩm đã chọn?`)) {
+      const newCart = cart.filter((_, i) => !selectedItems.includes(i));
+      setCart(newCart);
+    }
+  };
+
+  // Tổng tiền chỉ tính trên sản phẩm được tick chọn
+  const total = cart.reduce(
+    (sum, product, index) =>
+      selectedItems.includes(index) ? sum + product.price * product.quantity : sum,
+    0
+  );
 
   // Kiểm tra giỏ hàng trước khi thanh toán
   const validateOrder = () => {
@@ -76,29 +118,36 @@ export default function Cart() {
       alert("Giỏ hàng trống! Vui lòng thêm sản phẩm.");
       return false;
     }
-    
+
+    if (selectedItems.length === 0) {
+      alert("Vui lòng chọn ít nhất 1 sản phẩm để mua!");
+      return false;
+    }
+
     if (!inputLocation) {
       alert("Vui lòng chọn địa điểm nhận hàng!");
       return false;
     }
-    
+
     return true;
   };
 
   // Thanh toán
   const handleOrder = async () => {
     if (!validateOrder()) return;
-    
+
     setIsOrdering(true);
-    
+
+    const itemsToOrder = cart.filter((_, index) => selectedItems.includes(index));
+
     const order = {
-      name: "Tên Khách", 
+      name: "Tên Khách",
       location_id: inputLocation,
-      order_items: cart.map(item => ({
+      order_items: itemsToOrder.map((item) => ({
         product_id: item._id,
         name: item.name,
         quantity: item.quantity,
-        price: item.price
+        price: item.price,
       })),
       total: total,
     };
@@ -106,27 +155,29 @@ export default function Cart() {
     try {
       const res = await fetch("http://localhost:3000/api/orders", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(order),
       });
-      
+
       if (!res.ok) {
         const errorText = await res.text();
         console.error("Server response:", errorText);
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-      
+
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         throw new Error("Server không trả về JSON");
       }
-      
+
       const result = await res.json();
 
       if (result.code === "success" || result.success) {
-        setCart([]); 
+        // Chỉ xóa các sản phẩm đã đặt, giữ lại sản phẩm chưa tick
+        const remainingCart = cart.filter((_, index) => !selectedItems.includes(index));
+        setCart(remainingCart);
         router.push("/success");
       } else {
         alert(result.message || "Có lỗi xảy ra khi thêm đơn hàng!");
@@ -160,11 +211,20 @@ export default function Cart() {
   return (
     <main className="container mt-5 pt-5">
       <h1 className="text-center mb-4">Giỏ hàng của bạn</h1>
-      
+
       <div className="table-responsive">
         <table className="table table-bordered align-middle">
           <thead className="table-dark">
             <tr>
+              <th style={{ width: "50px" }}>
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  checked={isAllSelected}
+                  onChange={toggleSelectAll}
+                  title="Chọn tất cả"
+                />
+              </th>
               <th>Sản phẩm</th>
               <th style={{ width: "120px" }}>Số lượng</th>
               <th>Giá</th>
@@ -176,9 +236,18 @@ export default function Cart() {
             {cart.map((product, index) => {
               // Tạo key độc nhất bằng cách kết hợp ID, màu sắc và kích thước
               const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
+              const checked = selectedItems.includes(index);
 
               return (
-                <tr key={uniqueKey}>
+                <tr key={uniqueKey} className={!checked ? "table-secondary" : ""}>
+                  <td>
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={checked}
+                      onChange={() => toggleSelectItem(index)}
+                    />
+                  </td>
                   <td>
                     <strong>{product.name}</strong>
 
@@ -232,15 +301,25 @@ export default function Cart() {
           </tbody>
           <tfoot>
             <tr>
-              <th colSpan={3}>TỔNG TIỀN</th>
+              <th colSpan={4}>
+                TỔNG TIỀN ({selectedItems.length}/{cart.length} sản phẩm đã chọn)
+              </th>
               <th className="text-danger h5">{total.toLocaleString("vi-VN")}đ</th>
               <th>
-                <button 
-                  className="btn btn-warning btn-sm" 
-                  onClick={handleRemoveAll}
-                >
-                  Xóa hết
-                </button>
+                <div className="d-flex flex-column gap-1">
+                  <button
+                    className="btn btn-outline-danger btn-sm"
+                    onClick={handleRemoveSelected}
+                  >
+                    Xóa đã chọn
+                  </button>
+                  <button
+                    className="btn btn-warning btn-sm"
+                    onClick={handleRemoveAll}
+                  >
+                    Xóa hết
+                  </button>
+                </div>
               </th>
             </tr>
           </tfoot>
@@ -253,7 +332,12 @@ export default function Cart() {
         <Link href="/products" className="btn btn-outline-secondary">
           ← Tiếp tục mua sắm
         </Link>
-        <Link href="/checkout" className="btn btn-success btn-lg px-5 fw-bold shadow-sm">
+        <Link
+          href="/checkout"
+          className={`btn btn-success btn-lg px-5 fw-bold shadow-sm ${
+            selectedItems.length === 0 ? "disabled" : ""
+          }`}
+        >
           Tiến hành thanh toán →
         </Link>
       </div>

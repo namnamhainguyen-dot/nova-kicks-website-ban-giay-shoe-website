@@ -14,16 +14,16 @@ export default function ProductDetailPage() {
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addedToCart, setAddedToCart] = useState(false);
-    
-    // State để kiểm tra quyền Admin
     const [isAdmin, setIsAdmin] = useState(false);
 
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
+    
+    // 🌟 STATE MỚI: Quản lý hình ảnh đang hiển thị hiện tại
+    const [currentImage, setCurrentImage] = useState('');
 
     useEffect(() => {
-        // Kiểm tra quyền từ localStorage khi component mount
         const user = JSON.parse(localStorage.getItem('user'));
         if (user && user.role === 'admin') {
             setIsAdmin(true);
@@ -37,13 +37,34 @@ export default function ProductDetailPage() {
                 setProduct(data);
                 setLoading(false);
                 setSelectedSize(data.sizes?.[0] ?? '');
-                setSelectedColor(data.colors?.[0] ?? '');
+                
+                const defaultColor = data.colors?.[0] ?? '';
+                setSelectedColor(defaultColor);
+                
+                // 🌟 Thiết lập ảnh mặc định ban đầu khi tải trang
+                setCurrentImage(data.image || '/placeholder.png');
             })
             .catch((err) => {
                 console.error(err);
                 setLoading(false);
             });
     }, [id]);
+
+    // 🌟 HÀM MỚI: Xử lý khi người dùng click chọn màu sắc
+    const handleColorChange = (color) => {
+        setSelectedColor(color);
+
+        // Kiểm tra xem trong dữ liệu sản phẩm có mảng ảnh theo màu cụ thể không
+        // Giả sử cấu trúc tương lai bạn lưu là: product.imagesByColor = { "Đen": "url_anh_den", "Trắng": "url_anh_trang" }
+        if (product?.imagesByColor && product.imagesByColor[color]) {
+            setCurrentImage(product.imagesByColor[color]);
+        } 
+        // HOẶC nếu bạn muốn hardcode test nhanh trực tiếp theo logic đổi ảnh ngẫu nhiên hoặc ảnh mẫu:
+        else if (product?.image) {
+            // Nếu không có cấu trúc riêng, tạm thời giữ nguyên ảnh gốc của JSON
+            setCurrentImage(product.image);
+        }
+    };
 
     // ─── Thêm vào giỏ hàng ───────────────────────────────────────────────────
     const handleAddToCart = () => {
@@ -63,7 +84,8 @@ export default function ProductDetailPage() {
                 _id: product._id,
                 name: product.name,
                 price: product.price,
-                image: product.image,
+                // 🌟 LƯU Ý: Giỏ hàng sẽ lưu đúng hình ảnh của màu đã chọn
+                image: currentImage, 
                 selectedSize,
                 selectedColor,
                 quantity,
@@ -140,21 +162,26 @@ export default function ProductDetailPage() {
                         overflow: 'hidden', border: '1px solid #e5e7eb',
                         backgroundColor: '#f9fafb',
                     }}>
+                        {/* 🌟 THAY ĐỔI: Sử dụng src={currentImage} thay vì product.image để cập nhật linh hoạt */}
                         <img
-                            src={product.image || '/placeholder.png'}
+                            src={currentImage}
                             alt={product.name}
-                            style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover' }}
+                            style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', transition: 'all 0.3s ease' }}
                         />
                     </div>
                 </div>
 
                 <div style={{ flex: '1 1 50%', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
                     <h1 style={{
-                        fontSize: '28px', fontWeight: '800', color: '#030712',
-                        margin: '0 0 10px 0', textTransform: 'uppercase',
-                    }}>
-                        {product.name}
-                    </h1>
+                            fontSize: '28px', 
+                            fontWeight: '800', 
+                            color: '#030712',
+                            margin: '0 0 10px 0', 
+                            textTransform: 'uppercase',
+                            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                        }}>
+                            {product.name}
+                        </h1>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                         <span style={{ color: '#fbbf24' }}>⭐⭐⭐⭐⭐</span>
@@ -177,7 +204,8 @@ export default function ProductDetailPage() {
                                 {product.colors.map((color) => (
                                     <button
                                         key={color}
-                                        onClick={() => setSelectedColor(color)}
+                                        /* 🌟 THAY ĐỔI: Gọi hàm handleColorChange để vừa đổi màu vừa đổi ảnh */
+                                        onClick={() => handleColorChange(color)}
                                         style={{
                                             padding: '8px 16px', fontSize: '14px', fontWeight: '500',
                                             border: selectedColor === color ? '2px solid #000' : '1px solid #e5e7eb',
