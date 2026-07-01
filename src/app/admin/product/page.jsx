@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 
+// Dữ liệu danh mục từ DB của bạn để đổ vào Select Box
+const CATEGORIES_DATA = [
+  { oid: "6a2932c7044b3063b3d05171", id: "CAT-G001", name: "NIKE" },
+  { oid: "6a2932c7044b3063b3d05172", id: "CAT-G002", name: "Giày Tây / Giày Công Sở" },
+  { oid: "6a2932c7044b3063b3d05173", id: "CAT-G003", name: "Giày Cao Gót" },
+  { oid: "6a2932c7044b3063b3d05174", id: "CAT-G004", name: "Sandal & Dép" },
+  { oid: "6a3166d279a15e51f78006a5", id: "CAT-G005", name: "TÔNG LÀO" },
+];
+
 export default function Product() {
   const [productList, setProductList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -10,6 +19,7 @@ export default function Product() {
 
   // --- Filter states ---
   const [searchName, setSearchName] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all"); // Quản lý bằng OID danh mục
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
   const [stockFilter, setStockFilter] = useState("all"); // "all" | "instock" | "low" | "out"
@@ -35,7 +45,14 @@ export default function Product() {
   };
 
   const getQuantity = (product) => product.quantity ?? 12;
-  const getCategory = (product) => product.category || "N/A";
+  
+  // 🌟 ĐÃ SỬA: Kiểm tra cả p.categoryId (từ form mới) lẫn p.categoryID (phòng dữ liệu cũ)
+  const getCategory = (product) => {
+    const pCatId = product.categoryId || product.categoryID;
+    const found = CATEGORIES_DATA.find((cat) => cat.oid === pCatId);
+    return found ? found.name : "N/A";
+  };
+
   const getStockPercent = (product) => {
     const qty = getQuantity(product);
     return Math.min(100, Math.round((qty / 120) * 100));
@@ -50,6 +67,11 @@ export default function Product() {
       list = list.filter((p) =>
         p.name?.toLowerCase().includes(searchName.trim().toLowerCase())
       );
+    }
+
+    // 🌟 ĐÃ SỬA: Lọc danh mục chấp nhận cả 2 kiểu viết hoa/thường của key
+    if (categoryFilter !== "all") {
+      list = list.filter((p) => (p.categoryId || p.categoryID) === categoryFilter);
     }
 
     // Lọc theo giá
@@ -77,10 +99,11 @@ export default function Product() {
     else if (sortBy === "name_asc") list.sort((a, b) => (a.name || "").localeCompare(b.name || "", "vi"));
 
     return list;
-  }, [productList, searchName, priceMin, priceMax, stockFilter, sortBy]);
+  }, [productList, searchName, categoryFilter, priceMin, priceMax, stockFilter, sortBy]);
 
   const handleResetFilters = () => {
     setSearchName("");
+    setCategoryFilter("all");
     setPriceMin("");
     setPriceMax("");
     setStockFilter("all");
@@ -88,7 +111,7 @@ export default function Product() {
   };
 
   const hasActiveFilter =
-    searchName || priceMin || priceMax || stockFilter !== "all" || sortBy !== "default";
+    searchName || categoryFilter !== "all" || priceMin || priceMax || stockFilter !== "all" || sortBy !== "default";
 
   // Summary stats (dùng toàn bộ list, không lọc)
   const totalProducts = productList.length;
@@ -153,7 +176,7 @@ export default function Product() {
           <div className="row g-2 align-items-end">
 
             {/* Tìm theo tên */}
-            <div className="col-12 col-md-3">
+            <div className="col-12 col-md-2">
               <label className="form-label small text-secondary mb-1">Tìm theo tên</label>
               <input
                 type="text"
@@ -162,6 +185,23 @@ export default function Product() {
                 value={searchName}
                 onChange={(e) => setSearchName(e.target.value)}
               />
+            </div>
+
+            {/* Chọn Danh mục */}
+            <div className="col-6 col-md-2">
+              <label className="form-label small text-secondary mb-1">Danh mục</label>
+              <select
+                className="form-select form-select-sm"
+                value={categoryFilter}
+                onChange={(e) => setCategoryFilter(e.target.value)}
+              >
+                <option value="all">Tất cả danh mục</option>
+                {CATEGORIES_DATA.map((cat) => (
+                  <option key={cat.oid} value={cat.oid}>
+                    {cat.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Giá từ */}
@@ -191,7 +231,7 @@ export default function Product() {
             </div>
 
             {/* Tồn kho */}
-            <div className="col-6 col-md-2">
+            <div className="col-6 col-md-1">
               <label className="form-label small text-secondary mb-1">Tồn kho</label>
               <select
                 className="form-select form-select-sm"
@@ -248,6 +288,7 @@ export default function Product() {
       </div>
       {/* ===== KẾT THÚC BỘ LỌC ===== */}
 
+      {/* ===== BẢNG DANH SÁCH ===== */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-0">
           <div className="table-responsive">
@@ -265,13 +306,13 @@ export default function Product() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-4 text-muted">
+                    <td colSpan={6} className="text-center py-4 text-muted">
                       Đang tải sản phẩm...
                     </td>
                   </tr>
                 ) : filteredList.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-4 text-muted">
+                    <td colSpan={6} className="text-center py-4 text-muted">
                       {hasActiveFilter
                         ? "Không tìm thấy sản phẩm phù hợp với bộ lọc."
                         : "Chưa có sản phẩm nào. Hãy thêm sản phẩm mới."}
@@ -296,7 +337,9 @@ export default function Product() {
                           <div className="text-secondary small">SKU: {String(product._id).slice(-8)}</div>
                         </td>
                         <td>
-                          <span className="badge bg-light text-dark category-badge">{getCategory(product)}</span>
+                          <span className="badge bg-light text-dark category-badge">
+                            {getCategory(product)}
+                          </span>
                         </td>
                         <td>
                           <div className="stock-meta mb-2">Còn lại {getQuantity(product)}</div>

@@ -16,6 +16,10 @@ export default function UpdateProductClient({ id }) {
   const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState("active");
 
+  // 🌟 STATE MỚI: Quản lý danh mục
+  const [categoryId, setCategoryId] = useState(""); 
+  const [categories, setCategories] = useState([]); // Chứa danh sách danh mục từ API
+
   // ----- Biến thể: size & màu -----
   const [sizes, setSizes] = useState([]); // ví dụ: [39, 40, 41]
   const [colors, setColors] = useState([]); // ví dụ: ["Đen", "Trắng"]
@@ -30,14 +34,22 @@ export default function UpdateProductClient({ id }) {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const loadProduct = async () => {
+    const loadData = async () => {
       if (!id) {
         setError("ID sản phẩm không hợp lệ.");
-        loading(false);
+        setLoading(false);
         return;
       }
 
       try {
+        // 🌟 1. Tải danh sách danh mục phục vụ cho thẻ select option
+        const resCategories = await fetch("/api/categories");
+        if (resCategories.ok) {
+          const categoriesData = await resCategories.json();
+          setCategories(Array.isArray(categoriesData) ? categoriesData : []);
+        }
+
+        // 🌟 2. Tải thông tin chi tiết sản phẩm cần cập nhật
         const res = await fetch(`/api/products/${id}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -54,6 +66,9 @@ export default function UpdateProductClient({ id }) {
         setSizes(Array.isArray(product.sizes) ? product.sizes : []);
         setColors(Array.isArray(product.colors) ? product.colors : []);
         
+        // 🌟 Điền dữ liệu danh mục của sản phẩm (nếu có lưu categoryId hoặc category)
+        setCategoryId(product.categoryId || product.category?._id || "");
+        
         // 🌟 Lấy dữ liệu imagesByColor từ database nếu có
         setImagesByColor(product.imagesByColor && typeof product.imagesByColor === "object" ? product.imagesByColor : {});
       } catch (err) {
@@ -63,7 +78,7 @@ export default function UpdateProductClient({ id }) {
       }
     };
 
-    loadProduct();
+    loadData();
   }, [id]);
 
   // Bật/tắt 1 size trong danh sách đã chọn
@@ -115,6 +130,10 @@ export default function UpdateProductClient({ id }) {
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (!categoryId) {
+      setError("Vui lòng chọn một danh mục sản phẩm.");
+      return;
+    }
     if (sizes.length === 0) {
       setError("Vui lòng chọn ít nhất 1 size.");
       return;
@@ -140,8 +159,8 @@ export default function UpdateProductClient({ id }) {
           status,
           sizes,
           colors,
-          // 🌟 Gửi kèm object imagesByColor lên server API
           imagesByColor, 
+          categoryId, // 🌟 Gửi kèm categoryId lên Server API
         }),
       });
 
@@ -246,6 +265,28 @@ export default function UpdateProductClient({ id }) {
                   min="0"
                 />
               </div>
+              
+              {/* 🌟 CẤU HÌNH MỚI: Thêm dropdown Chọn danh mục */}
+              <div className="col">
+                <label htmlFor="category" className="form-label">
+                  Danh mục sản phẩm
+                </label>
+                <select
+                  className="form-select"
+                  id="category"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Chọn danh mục --</option>
+                  {categories.map((cat) => (
+                    <option key={cat._id} value={cat._id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="col">
                 <label htmlFor="status" className="form-label">
                   Trạng thái
@@ -397,7 +438,7 @@ export default function UpdateProductClient({ id }) {
                               src={imagesByColor[color]} 
                               alt={`Preview ${color}`} 
                               style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px" }}
-                              onError={(e) => { e.target.style.display = 'none'; }} // Ẩn nếu URL lỗi
+                              onError={(e) => { e.currentTarget.style.display = 'none'; }} // Sửa lỗi cú pháp nhỏ onError
                             />
                           </span>
                         )}
@@ -405,7 +446,6 @@ export default function UpdateProductClient({ id }) {
                     </div>
                   ))}
                 </div>
-                
               </div>
             )}
 

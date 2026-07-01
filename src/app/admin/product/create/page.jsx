@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 // ─── helpers ───────────────────────────────────────────────
@@ -34,11 +34,31 @@ export default function ProductCreate() {
   const [status, setStatus] = useState("active");
   const [showOnHome, setShowOnHome] = useState(false);
 
+  // 🌟 State quản lý danh mục sản phẩm
+  const [categoryId, setCategoryId] = useState("");
+  const [categories, setCategories] = useState([]);
+
   // Biến thể
   const [variants, setVariants] = useState([emptyVariant()]);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  // 🌟 Fetch danh sách danh mục từ API khi trang load
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await fetch("/api/categories");
+        if (res.ok) {
+          const data = await res.json();
+          setCategories(Array.isArray(data) ? data : []);
+        }
+      } catch (err) {
+        console.error("Lỗi khi tải danh mục:", err);
+      }
+    };
+    fetchCategories();
+  }, []);
 
   // ── variant helpers ──
   const updateVariant = (vIdx, field, value) =>
@@ -86,6 +106,13 @@ export default function ProductCreate() {
   // ── submit ──
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validate danh mục
+    if (!categoryId) {
+      setError("Vui lòng chọn một danh mục sản phẩm.");
+      return;
+    }
+
     setSaving(true);
     setError("");
 
@@ -113,6 +140,7 @@ export default function ProductCreate() {
         image,
         status,
         showOnHome,
+        categoryId, // Gửi chuẩn chuỗi hex ID lên server
         variants: variants.map((v) => ({
           color: v.color,
           size: v.size,
@@ -132,10 +160,11 @@ export default function ProductCreate() {
       });
 
       if (!res.ok) {
-        const body = await res.json();
+        const body = await res.json().catch(() => ({}));
         throw new Error(body?.error || "Lưu sản phẩm thất bại");
       }
 
+      router.refresh();
       router.push("/admin/product");
     } catch (err) {
       setError(err?.message || "Đã có lỗi xảy ra.");
@@ -157,16 +186,43 @@ export default function ProductCreate() {
           <div className="card-body">
             <h5 className="fw-bold mb-4">① Thông tin sản phẩm</h5>
 
-            <div className="mb-3">
-              <label className="form-label">Tên sản phẩm</label>
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Ví dụ: Nike Air Force 1"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+            <div className="row g-3 mb-3">
+              <div className="col-md-8">
+                <label className="form-label">Tên sản phẩm</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Ví dụ: Nike Air Force 1"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                />
+              </div>
+              
+              {/* 🌟 ĐÃ SỬA: Hàm chọn danh mục trích xuất chính xác chuỗi hex string */}
+              <div className="col-md-4">
+                <label className="form-label">Danh mục sản phẩm</label>
+                <select
+                  className="form-select"
+                  value={categoryId}
+                  onChange={(e) => setCategoryId(e.target.value)}
+                  required
+                >
+                  <option value="">-- Chọn danh mục --</option>
+                  {categories.map((cat) => {
+                    // Trích xuất chuỗi ID từ đối tượng DB bọc bằng $oid hoặc giữ nguyên nếu là chuỗi
+                    const actualId = typeof cat._id === "object" && cat._id?.$oid 
+                      ? cat._id.$oid 
+                      : cat._id;
+
+                    return (
+                      <option key={actualId} value={actualId}>
+                        {cat.name}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
             </div>
 
             <div className="row g-3 mb-3">
