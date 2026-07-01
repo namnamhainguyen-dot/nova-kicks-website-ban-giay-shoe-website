@@ -25,9 +25,12 @@ export default function Checkout() {
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
 
+  // STATE LƯU THÔNG TIN NGƯỜI DÙNG ĐĂNG NHẬP ĐỂ ĐỒNG BỘ ĐƠN HÀNG
+  const [currentUser, setCurrentUser] = useState(null);
+
   const router = useRouter();
 
-  // Đọc danh sách sản phẩm mua từ sessionStorage khi load trang
+  // Đọc danh sách sản phẩm mua từ sessionStorage và lấy thông tin User khi load trang
   useEffect(() => {
     const storedItems = sessionStorage.getItem("checkout_items");
     if (storedItems) {
@@ -35,16 +38,31 @@ export default function Checkout() {
         const parsedItems = JSON.parse(storedItems);
         if (Array.isArray(parsedItems) && parsedItems.length > 0) {
           setCheckoutItems(parsedItems);
-          return;
         }
       } catch (e) {
         console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
       }
-    }
-    
-    // Dự phòng nếu user reload trang hoặc vào thẳng URL bằng tay
-    if (cart && cart.length > 0) {
+    } else if (cart && cart.length > 0) {
+      // Dự phòng nếu user reload trang hoặc vào thẳng URL bằng tay
       setCheckoutItems(cart);
+    }
+
+    // Lấy thông tin user đã đăng nhập từ localStorage để gắn danh tính vào đơn hàng
+    if (typeof window !== "undefined") {
+      const savedUser = localStorage.getItem("user");
+      if (savedUser) {
+        try {
+          const parsedUser = JSON.parse(savedUser);
+          setCurrentUser(parsedUser);
+          
+          // Tự động điền thông tin tài khoản có sẵn vào form để tăng trải nghiệm người dùng
+          if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
+          if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
+          if (parsedUser.address) setDeliveryAddress(parsedUser.address);
+        } catch (e) {
+          console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
+        }
+      }
     }
   }, [cart]);
 
@@ -66,7 +84,7 @@ export default function Checkout() {
 
   // Xử lý áp dụng Voucher
   const handleApplyVoucher = async (e) => {
-    if (e) e.preventDefault(); // Chặn reload trang tuyệt đối
+    if (e) e.preventDefault(); 
 
     if (!voucherCode.trim()) {
       setVoucherError("Vui lòng nhập mã code!");
@@ -113,7 +131,7 @@ export default function Checkout() {
     setVoucherError("");
   };
 
-  // Kiểm tra biểu mẫu thông tin khách hàng bằng javascript tự chọn thay vì required của form gò bó
+  // Kiểm tra biểu mẫu thông tin khách hàng
   const validateOrder = () => {
     if (checkoutItems.length === 0) {
       alert("Không tìm thấy sản phẩm nào để thanh toán!");
@@ -142,6 +160,10 @@ export default function Checkout() {
     setIsOrdering(true);
     
     const order = {
+      // ĐÃ THÊM: Gắn email và userId để trang Hồ sơ cá nhân (Profile) có căn cứ để truy vấn
+      email: currentUser?.email || "guest", 
+      userId: currentUser?._id || currentUser?.id || null,
+
       name: customerName,
       phone: customerPhone,
       location_id: deliveryAddress, 
@@ -252,7 +274,7 @@ export default function Checkout() {
     <main className="container mt-5 pt-5 mb-5">
       <div className="row g-4">
         
-        {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG (Dùng Form riêng biệt ở đây) */}
+        {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG */}
         <div className="col-lg-7 col-md-12">
           <div className="card shadow-sm border-0 rounded-3">
             <div className="card-body p-4">
@@ -359,7 +381,7 @@ export default function Checkout() {
                 })}
               </div>
 
-              {/* ── Ô NHẬP VOUCHER GIẢM GIÁ (Đã tách biệt khỏi Form) ── */}
+              {/* ── Ô NHẬP VOUCHER GIẢM GIÁ ── */}
               <div className="mb-4 bg-light p-3 rounded-3">
                 <label className="form-label fw-bold text-secondary small mb-2">🎟️ Thẻ giảm giá (Voucher)</label>
                 <div className="input-group">

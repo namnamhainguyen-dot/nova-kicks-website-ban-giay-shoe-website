@@ -1,4 +1,3 @@
-// /src/app/(user)/orders/history/page.jsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -10,15 +9,36 @@ export default function OrderHistory() {
   const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
-    fetch("/api/orders")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setOrders(data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+    // 1. Lấy thông tin người dùng từ localStorage để lấy email định danh
+    const savedUser = localStorage.getItem("user");
+    
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        const userEmail = parsedUser?.email;
+
+        // Nếu tìm thấy email hợp lệ thì mới gửi kèm qua query parameter sang API
+        if (userEmail) {
+          fetch(`/api/orders?email=${encodeURIComponent(userEmail)}`)
+            .then(res => res.json())
+            .then(data => {
+              if (Array.isArray(data)) {
+                setOrders(data.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
+              }
+            })
+            .catch(err => console.error("Lỗi fetch lịch sử đơn hàng:", err))
+            .finally(() => setLoading(false));
+            
+          return; // Thoát sớm vì đã thực hiện fetch dữ liệu
         }
-      })
-      .catch(err => console.error(err))
-      .finally(() => setLoading(false));
+      } catch (e) {
+        console.error("Lỗi phân giải thông tin user từ localStorage:", e);
+      }
+    }
+
+    // Trường hợp không tìm thấy user hoặc email (khách vãng lai), set mảng rỗng và tắt loading
+    setOrders([]);
+    setLoading(false);
   }, []);
 
   const filteredOrders = orders.filter(order => activeTab === "all" ? true : order.status === activeTab);

@@ -12,16 +12,28 @@ export default function OrderDetailPage() {
   useEffect(() => {
     if (!id) return;
 
-    // Fetch thông tin đơn hàng cụ thể
-    fetch(`/api/orders`)
-      .then(res => res.json())
-      .then(data => {
-        const foundOrder = Array.isArray(data) ? data.find(o => o._id === id) : null;
-        if (foundOrder) {
-          setOrder(foundOrder);
+    setLoading(true); // Đảm bảo trạng thái loading bật khi ID thay đổi
+
+    // ✅ FIX: Gọi thẳng API chi tiết theo ID thay vì gọi danh sách tổng
+    fetch(`/api/orders/${id}`)
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error("Không tìm thấy đơn hàng");
+        }
+        return res.json();
+      })
+      .then((data) => {
+        // Dữ liệu trả về từ api/orders/[id] là 1 Object đơn hàng, không phải Array
+        if (data && data._id) {
+          setOrder(data);
+        } else {
+          setOrder(null);
         }
       })
-      .catch(err => console.error(err))
+      .catch((err) => {
+        console.error("Lỗi khi lấy chi tiết đơn hàng:", err);
+        setOrder(null);
+      })
       .finally(() => setLoading(false));
   }, [id]);
 
