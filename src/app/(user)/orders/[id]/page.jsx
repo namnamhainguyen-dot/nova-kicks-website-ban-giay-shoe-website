@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react"; // 🌟 FIX: Import thêm hook 'use' từ React
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
-export default function OrderDetailPage() {
-  const { id } = useParams(); // Lấy ID đơn hàng từ URL /orders/[id]
+export default function OrderDetailPage({ params }) {
+  // 🌟 FIX CHUẨN NEXT.JS 16: Giải nén Object params dạng Promise từ Props của trang
+  const unwrappedParams = use(params);
+  const id = unwrappedParams?.id;
+
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
 
-    setLoading(true); // Đảm bảo trạng thái loading bật khi ID thay đổi
+    setLoading(true);
 
-    // ✅ FIX: Gọi thẳng API chi tiết theo ID thay vì gọi danh sách tổng
     fetch(`/api/orders/${id}`)
       .then((res) => {
         if (!res.ok) {
@@ -23,7 +25,6 @@ export default function OrderDetailPage() {
         return res.json();
       })
       .then((data) => {
-        // Dữ liệu trả về từ api/orders/[id] là 1 Object đơn hàng, không phải Array
         if (data && data._id) {
           setOrder(data);
         } else {
@@ -47,7 +48,6 @@ export default function OrderDetailPage() {
   if (loading) return <div className="container my-5 text-center">Đang tải dữ liệu đơn hàng...</div>;
   if (!order) return <div className="container my-5 text-center text-danger">⚠️ Không tìm thấy thông tin đơn hàng này!</div>;
 
-  // Dự phòng tính toán nếu trường hợp đơn hàng cũ không có final_total
   const displayTotal = order.total || 0;
   const displayDiscount = order.discount || 0;
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
@@ -65,7 +65,7 @@ export default function OrderDetailPage() {
         <div className="bg-dark text-white p-4">
           <div className="d-flex justify-content-between align-items-center">
             <div>
-              <small className="text-white-50 uppercase">MÃ ĐƠN HÀNG</small>
+              <small className="text-white-50 text-uppercase">MÃ ĐƠN HÀNG</small>
               <h4 className="fw-bold mb-0">#{order._id?.toUpperCase()}</h4>
             </div>
             <div className="text-end">
@@ -91,7 +91,9 @@ export default function OrderDetailPage() {
             <div className="col-8 fw-semibold text-dark">{order.location_id || "Chưa cập nhật địa chỉ"}</div>
             
             <div className="col-4 text-muted">Ngày đặt hàng:</div>
-            <div className="col-8 text-dark">{new Date(order.createdAt).toLocaleString("vi-VN")}</div>
+            <div className="col-8 text-dark">
+              {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}
+            </div>
           </div>
         </div>
 
@@ -100,9 +102,11 @@ export default function OrderDetailPage() {
           <h6 className="fw-bold mb-3 text-secondary">👟 Danh sách sản phẩm</h6>
           {order.order_items?.map((item, idx) => {
             const itemKey = `${item.product_id || idx}-${item.color || "none"}-${item.size || "none"}`;
+            const isLast = idx === (order.order_items.length - 1);
 
             return (
-              <div key={itemKey} className="d-flex align-items-center justify-content-between py-2 border-bottom last-item-border-0">
+              // 🌟 FIX: Dùng class điều kiện của Bootstrap thay thế cho thẻ <style jsx> không chuẩn
+              <div key={itemKey} className={`d-flex align-items-center justify-content-between py-2 ${isLast ? "" : "border-bottom"}`}>
                 <div className="d-flex align-items-center">
                   <img 
                     src={item.image || "https://via.placeholder.com/60"} 
@@ -113,7 +117,6 @@ export default function OrderDetailPage() {
                   <div>
                     <span className="fw-bold d-block text-dark small">{item.name}</span>
                     
-                    {/* Hiển thị phân loại màu sắc và size giày */}
                     {(item.color || item.size) && (
                       <div className="text-muted small mb-1" style={{ fontSize: "0.75rem" }}>
                         {item.color && <span>Màu: {item.color}</span>}
@@ -125,7 +128,7 @@ export default function OrderDetailPage() {
                     <small className="text-muted">Số lượng: x{item.quantity}</small>
                   </div>
                 </div>
-                <span className="fw-bold small text-dark">{(item.price * item.quantity).toLocaleString("vi-VN")}đ</span>
+                <span className="fw-bold small text-dark">{((item.price || 0) * (item.quantity || 1)).toLocaleString("vi-VN")}đ</span>
               </div>
             );
           })}
@@ -146,7 +149,6 @@ export default function OrderDetailPage() {
             <span className="text-dark fw-medium">{displayTotal.toLocaleString("vi-VN")}đ</span>
           </div>
 
-          {/* HIỂN THỊ VOUCHER ĐÃ ÁP DỤNG */}
           {displayDiscount > 0 && (
             <div className="d-flex justify-content-between mb-2">
               <span className="text-muted">
@@ -168,10 +170,6 @@ export default function OrderDetailPage() {
           <span className="h3 fw-bold text-danger mb-0">{displayFinalTotal.toLocaleString("vi-VN")}đ</span>
         </div>
       </div>
-
-      <style jsx>{`
-        .last-item-border-0:last-child { border-bottom: 0 !important; }
-      `}</style>
     </div>
   );
 }
