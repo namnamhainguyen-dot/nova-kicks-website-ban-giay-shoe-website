@@ -2,7 +2,7 @@ import clientPromise from "@/libs/mongodb";
 import { ObjectId } from "mongodb";
 
 // ==========================================
-// 🌟 1. BỔ SUNG HÀM GET (Giải quyết lỗi "Không tìm thấy đơn hàng" ở giao diện chi tiết)
+// 🌟 1. HÀM GET (Chi tiết đơn hàng)
 // ==========================================
 export async function GET(request, { params }) {
   try {
@@ -40,7 +40,7 @@ export async function GET(request, { params }) {
 }
 
 // ==========================================
-// ✅ HÀM PATCH CỦA BẠN (Giữ nguyên cấu trúc chạy rất tốt)
+// ✅ 2. HÀM PATCH (Cập nhật trạng thái)
 // ==========================================
 export async function PATCH(request, { params }) {
   try {
@@ -74,5 +74,40 @@ export async function PATCH(request, { params }) {
   } catch (error) {
     console.error("Lỗi API PATCH đơn hàng:", error);
     return Response.json({ success: false, error: "Lỗi hệ thống" }, { status: 500 });
+  }
+}
+
+// ==========================================
+// 🚀 3. BỔ SUNG HÀM DELETE (Xóa đơn hàng)
+// ==========================================
+export async function DELETE(request, { params }) {
+  try {
+    const client = await clientPromise;
+    const db = client.db("Nova-kicks");
+
+    // Await params theo chuẩn Next.js 16
+    const { id } = await params;
+
+    // Kiểm tra định dạng ID MongoDB (24 ký tự hex)
+    if (!id || id.length !== 24) {
+      return Response.json({ success: false, error: "ID đơn hàng không hợp lệ" }, { status: 400 });
+    }
+
+    // Tiến hành xóa trong MongoDB
+    const result = await db.collection("orders").deleteOne({
+      _id: new ObjectId(String(id)),
+    });
+
+    // Nếu không tìm thấy đơn hàng nào để xóa
+    if (result.deletedCount === 0) {
+      return Response.json({ success: false, error: "Không tìm thấy đơn hàng cần xóa" }, { status: 404 });
+    }
+
+    // Trả về JSON thành công để frontend không bị lỗi "Unexpected end of JSON input"
+    return Response.json({ success: true, message: "Xóa đơn hàng thành công" });
+
+  } catch (error) {
+    console.error("Lỗi API DELETE đơn hàng:", error);
+    return Response.json({ success: false, error: "Lỗi hệ thống khi xóa đơn hàng" }, { status: 500 });
   }
 }

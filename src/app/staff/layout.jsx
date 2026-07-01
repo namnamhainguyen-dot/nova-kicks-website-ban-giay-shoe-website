@@ -1,5 +1,6 @@
 import { CartProvider } from "@/components/CartContext";
 import Link from "next/link";
+import Script from "next/script"; // Sử dụng component Script tối ưu của Next.js
 
 export default function Layout({ children }) {
   return (
@@ -10,7 +11,6 @@ export default function Layout({ children }) {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           rel="stylesheet"
         />
-        {/* Nhúng một chút style cho hiệu ứng hover giống hình ảnh */}
         <style>{`
           .bg-black { background-color: #000000 !important; }
           .text-shadow { text-shadow: 2px 2px 4px rgba(0,0,0,0.8); }
@@ -20,7 +20,6 @@ export default function Layout({ children }) {
       </head>
       
       <div className="bg-black text-white min-vh-100">
-        {/* NAVBAR ĐEN CHUẨN ĐƯỜNG PHỐ */}
         <nav className="navbar navbar-expand-lg navbar-dark bg-black border-bottom border-secondary fixed-top py-3">
           <div className="container-fluid px-4">
             <Link className="navbar-brand fw-black tracking-widest text-uppercase" href="/staff">
@@ -41,6 +40,7 @@ export default function Layout({ children }) {
                 <li className="nav-item px-2">
                   <Link className="nav-link text-white" href="/staff">Cửa hàng</Link>
                 </li>
+                {/* Giữ nguyên href này và đảm bảo đổi tên thư mục thành /staff/orders */}
                 <li className="nav-item px-2">
                   <Link className="nav-link text-secondary" href="/staff/orders">Quản lý Đơn</Link>
                 </li>
@@ -58,13 +58,16 @@ export default function Layout({ children }) {
           </div>
         </nav>
 
-        {/* PROVIDER GIỮ NGUYÊN LOGIC GIỎ HÀNG */}
         <CartProvider>
           {children}
         </CartProvider>
       </div>
 
-      <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+      {/* Tối ưu hóa tải mã script Bootstrap */}
+      <Script 
+        src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
+        strategy="afterInteractive"
+      />
     </>
   );
 }
