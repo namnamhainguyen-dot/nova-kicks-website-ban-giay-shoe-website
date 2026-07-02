@@ -17,24 +17,30 @@ export default function EditVoucher() {
     min_order_value: "",
     max_discount_amount: "",
     usage_limit: "",
+    start_date: "", // 
     expiry_date: "",
     is_active: true,
     description: "",
   });
 
-  // 1. Tải thông tin voucher cũ (Gọi đúng sang /api/vouchers có s)
+  // 1. Tải thông tin voucher cũ
   useEffect(() => {
     const fetchVoucherData = async () => {
       if (!id) return;
       try {
-        const res = await fetch(`/api/vouchers/${id}`); // Thêm s ở đây
+        const res = await fetch(`/api/vouchers/${id}`);
         if (!res.ok) throw new Error("Không lấy được dữ liệu");
         const data = await res.json();
         
-        let formattedDate = "";
+        // Định dạng lại chuỗi ngày giờ để hiển thị lên input datetime-local (YYYY-MM-DDTHH:mm)
+        let formattedStartDate = "";
+        if (data.start_date) {
+          formattedStartDate = new Date(data.start_date).toISOString().slice(0, 16);
+        }
+
+        let formattedExpiryDate = "";
         if (data.expiry_date) {
-          const date = new Date(data.expiry_date);
-          formattedDate = date.toISOString().slice(0, 16);
+          formattedExpiryDate = new Date(data.expiry_date).toISOString().slice(0, 16);
         }
 
         setFormData({
@@ -44,14 +50,15 @@ export default function EditVoucher() {
           min_order_value: data.min_order_value || "",
           max_discount_amount: data.max_discount_amount || "",
           usage_limit: data.usage_limit || "",
-          expiry_date: formattedDate,
+          start_date: formattedStartDate, // Đổ dữ liệu ngày bắt đầu
+          expiry_date: formattedExpiryDate,
           is_active: data.is_active ?? true,
           description: data.description || "",
         });
       } catch (error) {
         console.error(error);
         alert("Lỗi tải dữ liệu hoặc mã voucher không tồn tại!");
-        router.push("/admin/voucher"); // Quay về trang list không s của bạn
+        router.push("/admin/voucher");
       } finally {
         setLoading(false);
       }
@@ -68,47 +75,76 @@ export default function EditVoucher() {
     });
   };
 
-  // 2. Gửi thông tin cập nhật (Gọi đúng sang /api/vouchers có s)
+  // 2. Gửi thông tin cập nhật
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // ==========================================
+    // 🛡️ KIỂM TRA RÀNG BUỘC DỮ LIỆU (VALIDATION)
+    // ==========================================
+    const discountVal = Number(formData.discount_value);
+    const minOrderVal = formData.min_order_value ? Number(formData.min_order_value) : 0;
+    const maxDiscountAmt = formData.max_discount_amount ? Number(formData.max_discount_amount) : 0;
+
+    // 1. Kiểm tra giới hạn phần trăm không quá 50%
+    if (formData.discount_type === "percentage" && discountVal > 50) {
+      alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%!");
+      return;
+    }
+
+    // 2. Kiểm tra logic ngày bắt đầu và ngày hết hạn
+    const startTimestamp = new Date(formData.start_date).getTime();
+    const expiryTimestamp = new Date(formData.expiry_date).getTime();
+    if (startTimestamp >= expiryTimestamp) {
+      alert("⚠️ Ngày hết hạn phải xảy ra sau ngày bắt đầu!");
+      return;
+    }
+
+    // 3. Kiểm tra logic mức giảm tối đa với đơn hàng tối thiểu
+    if (formData.discount_type === "percentage" && maxDiscountAmt > 0 && minOrderVal > 0) {
+      if (maxDiscountAmt >= minOrderVal) {
+        alert("⚠️ Mức giảm tối đa không nên lớn hơn hoặc bằng giá trị đơn hàng tối thiểu!");
+        return;
+      }
+    }
+
     setSubmitLoading(true);
 
     const updatePayload = {
       code: formData.code.trim().toUpperCase(),
       discount_type: formData.discount_type,
-      discount_value: Number(formData.discount_value),
-      min_order_value: formData.min_order_value ? Number(formData.min_order_value) : 0,
-      max_discount_amount: formData.max_discount_amount && formData.discount_type === "percentage" 
-        ? Number(formData.max_discount_amount) 
-        : null,
+      discount_value: discountVal,
+      min_order_value: minOrderVal,
+      max_discount_amount: formData.discount_type === "percentage" && maxDiscountAmt > 0 ? maxDiscountAmt : null,
       usage_limit: Number(formData.usage_limit),
+      start_date: new Date(formData.start_date).toISOString(), // Chuẩn hóa ISO String trước khi lưu
       expiry_date: new Date(formData.expiry_date).toISOString(),
       is_active: formData.is_active,
       description: formData.description?.trim() || "",
     };
 
-  try {
-    const res = await fetch(`/api/vouchers/${id}`, { // Thêm s ở đây
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updatePayload),
-    });
+    try {
+      const res = await fetch(`/api/vouchers/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (res.ok && data.success) {
-      alert("Cập nhật thông tin voucher thành công!");
-      router.push("/admin/voucher"); // Quay về trang không s
-      router.refresh();
-    } else {
-      alert(data.message || "Có lỗi xảy ra!");
+      if (res.ok && data.success) {
+        alert("Cập nhật thông tin voucher thành công!");
+        router.push("/admin/voucher");
+        router.refresh();
+      } else {
+        alert(data.message || "Có lỗi xảy ra!");
+      }
+    } catch (error) {
+      alert("Lỗi kết nối đến server.");
+    } finally {
+      setSubmitLoading(false);
     }
-  } catch (error) {
-    alert("Lỗi kết nối đến server.");
-  } finally {
-    setSubmitLoading(false);
-  }
-};
+  };
 
   if (loading) {
     return (
@@ -136,6 +172,7 @@ export default function EditVoucher() {
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
               
+              {/* Mã Voucher */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Mã giảm giá (Code)</label>
                 <input
@@ -148,6 +185,7 @@ export default function EditVoucher() {
                 />
               </div>
 
+              {/* Loại giảm giá */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Loại giảm giá</label>
                 <select
@@ -161,6 +199,7 @@ export default function EditVoucher() {
                 </select>
               </div>
 
+              {/* Giá trị giảm */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Mức giảm giá</label>
                 <div className="input-group">
@@ -170,6 +209,7 @@ export default function EditVoucher() {
                     className="form-control"
                     required
                     min="1"
+                    max={formData.discount_type === "percentage" ? "50" : undefined} // Khống chế giao diện tối đa 50 nếu chọn %
                     value={formData.discount_value}
                     onChange={handleChange}
                   />
@@ -179,6 +219,7 @@ export default function EditVoucher() {
                 </div>
               </div>
 
+              {/* Đơn hàng tối thiểu */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Giá trị đơn hàng tối thiểu</label>
                 <div className="input-group">
@@ -194,6 +235,7 @@ export default function EditVoucher() {
                 </div>
               </div>
 
+              {/* Giảm tối đa */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small text-secondary">
                   Mức giảm tối đa {formData.discount_type === "fixed" && "(Không áp dụng)"}
@@ -203,15 +245,17 @@ export default function EditVoucher() {
                     type="number"
                     name="max_discount_amount"
                     className="form-control"
+                    placeholder={formData.discount_type === "fixed" ? "Chỉ áp dụng cho loại %" : "Để trống nếu không giới hạn"}
                     disabled={formData.discount_type === "fixed"}
                     min="0"
-                    value={formData.max_discount_amount}
+                    value={formData.discount_type === "fixed" ? "" : formData.max_discount_amount}
                     onChange={handleChange}
                   />
                   <span className="input-group-text bg-light">đ</span>
                 </div>
               </div>
 
+              {/* Giới hạn lượt dùng */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Tổng số lượt sử dụng tối đa</label>
                 <input
@@ -225,6 +269,20 @@ export default function EditVoucher() {
                 />
               </div>
 
+              {/* 🌟 Ngày bắt đầu */}
+              <div className="col-md-6">
+                <label className="form-label fw-bold small">Ngày bắt đầu áp dụng</label>
+                <input
+                  type="datetime-local"
+                  name="start_date"
+                  className="form-control"
+                  required
+                  value={formData.start_date}
+                  onChange={handleChange}
+                />
+              </div>
+
+              {/* Ngày hết hạn */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Ngày hết hạn</label>
                 <input
@@ -237,7 +295,8 @@ export default function EditVoucher() {
                 />
               </div>
 
-              <div className="col-md-6 d-flex align-items-end shadow-none">
+              {/* Trạng thái hoạt động */}
+              <div className="col-md-12 d-flex align-items-end shadow-none">
                 <div className="form-check form-switch mb-2">
                   <input
                     className="form-check-input cursor-pointer"
@@ -254,6 +313,7 @@ export default function EditVoucher() {
                 </div>
               </div>
 
+              {/* Mô tả voucher */}
               <div className="col-12">
                 <label className="form-label fw-bold small">Mô tả hiển thị công khai</label>
                 <textarea
@@ -265,6 +325,7 @@ export default function EditVoucher() {
                 ></textarea>
               </div>
 
+              {/* Nút hành động */}
               <div className="col-12 text-end mt-4">
                 <Link href="/admin/voucher" className="btn btn-light border me-2">
                   Hủy bỏ
