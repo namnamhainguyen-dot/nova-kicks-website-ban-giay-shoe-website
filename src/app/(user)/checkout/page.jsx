@@ -105,6 +105,28 @@ export default function Checkout() {
       const result = await res.json();
 
       if (result.success || res.ok) {
+        // ── KHỞI TẠO KIỂM TRA NGÀY BẮT ĐẦU SỬ DỤNG VOUCHER ──
+        // Lấy trường ngày bắt đầu từ API (bạn kiểm tra lại xem API trả về start_date hay startDate nhé)
+        const startDateKey = result.start_date || result.startDate;
+        
+        if (startDateKey) {
+          const startDate = new Date(startDateKey);
+          const now = new Date();
+
+          // Nếu ngày hiện tại nhỏ hơn ngày bắt đầu hiệu lực
+          if (now < startDate) {
+            const formattedDate = startDate.toLocaleDateString("vi-VN", {
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            });
+            setVoucherError(`Mã giảm giá này chưa đến ngày sử dụng! (Có hiệu lực từ ngày ${formattedDate})`);
+            setAppliedVoucher(null);
+            return; // Dừng xử lý tiếp theo
+          }
+        }
+        // ──────────────────────────────────────────────────
+
         if (total < result.min_order_value) {
           setVoucherError(`Đơn hàng phải tối thiểu từ ${result.min_order_value.toLocaleString("vi-VN")}đ để dùng mã này!`);
           setAppliedVoucher(null);

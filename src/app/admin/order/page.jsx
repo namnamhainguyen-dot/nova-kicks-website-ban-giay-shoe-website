@@ -304,7 +304,6 @@ export default function AdminOrderPage() {
                     <td className="text-end pe-3">
                       <div className="d-flex gap-1 justify-content-end">
                         <Link href={`/admin/order/${order._id}`} className="btn btn-outline-dark btn-sm rounded-pill py-0 px-2" style={{ fontSize: "0.75rem" }}>Chi tiết</Link>
-                        <button onClick={() => deleteOrder(order._id)} className="btn btn-outline-danger btn-sm rounded-pill py-0 px-2" style={{ fontSize: "0.75rem" }}>Xóa</button>
                       </div>
                     </td>
                   </tr>
