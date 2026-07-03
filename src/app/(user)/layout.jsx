@@ -177,8 +177,8 @@ export default async function Layout({ children }) {
 
                 <ul className="nk-links">
                   <li><Link href="/">Trang chủ</Link></li>
-                  <li><Link href="/products" className="active">Bộ sưu tập</Link></li>
-                  <li><Link href="/about">Tin tức</Link></li>
+                  <li><Link href="/products">Bộ sưu tập</Link></li>
+                  <li><Link href="/new">Tin tức</Link></li>
                   <li><Link href="/contact">Liên hệ</Link></li>
                 </ul>
 
