@@ -110,7 +110,6 @@ export default async function Menu() {
                     </div>
                   </Link>
                   
-                  {/* 🔥 ĐÃ CẬP NHẬT: Thay nút Thêm vào giỏ hàng thành nút Xem chi tiết nhảy link chuẩn */}
                   <div className="card-body p-3 pt-0 text-start">
                     <Link href={`/products/${p._id}`} className="text-decoration-none">
                       <span className="btn btn-dark w-100 rounded-0 fw-bold btn-sm text-uppercase py-2">XEM CHI TIẾT</span>
@@ -259,7 +258,7 @@ export default async function Menu() {
         </div>
       </section>
 
-      {/* ================= TRẢI NGHIỆM TRỰC TIẾP ================= */}
+      {/* ================= TRẢI NGHIỆM TRỰC TIẾP (ĐÃ UPDATE GOOGLE MAPS) ================= */}
       <section className="py-5 my-5" style={{ backgroundColor: "var(--surface)" }}>
         <div className="container">
           <div className="row align-items-center g-4">
@@ -270,8 +269,24 @@ export default async function Menu() {
               <p className="small" style={{ color: "var(--text-secondary)" }}>Mở cửa: 09:00 AM - 10:00 PM</p>
             </div>
             <div className="col-md-7">
-              <div className="text-secondary d-flex align-items-center justify-content-center border" style={{ height: "250px", backgroundColor: "var(--surface-card)", borderColor: "var(--border-light)" }}>
-                <span className="small text-uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>[ Bản đồ Google Maps / Hình ảnh showroom ]</span>
+              {/* Thẻ iframe nhúng bản đồ trực tiếp có bo viền chuẩn UI */}
+              <div 
+                className="overflow-hidden shadow-sm border" 
+                style={{ 
+                  height: "300px", 
+                  backgroundColor: "var(--surface-card)", 
+                  borderColor: "var(--border-light)" 
+                }}
+              >
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.4436614833214!2d106.62524727573752!3d10.854920057758362!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752bee0b0cd9e5%3A0xa1dcd919199401f4!2zQ8O0bmcgdmnDqm4gcGjhuqduIG3hu4FtIFF1YW5nIFRydW5n!5e0!3m2!1svi!2s!4v1715000000000!5m2!1svi!2s"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen=""
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                ></iframe>
               </div>
             </div>
           </div>
