@@ -71,7 +71,7 @@ export default async function Layout({ children }) {
             --radius-lg:      20px;
             --shadow-sm:      0 2px 12px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.03);
             --shadow-md:      0 8px 24px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.02);
-            --shadow-hover:   0 16px 36px rgba(0,0,0,0.1), 0 4px 14px rgba(0,0,0,0.04);
+            --shadow-hover:   0 16px 36px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.02);
             --font-display:   'Barlow Condensed', sans-serif;
             --font-body:      'Space Grotesk', system-ui, sans-serif;
           }
@@ -116,6 +116,17 @@ export default async function Layout({ children }) {
           .nk-links { display: flex; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0; }
           .nk-links a { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; position: relative; }
           .nk-links a:hover, .nk-links a.active { color: var(--accent); }
+          
+          /* Hiệu ứng gạch chân mượt mà dưới Menu khi Hover */
+          .nk-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -4px; left: 0; width: 0; height: 2px;
+            background-color: var(--accent);
+            transition: width 0.3s ease;
+          }
+          .nk-links a:hover::after, .nk-links a.active::after { width: 100%; }
+
           .nk-actions { display: flex; align-items: center; gap: 1.25rem; list-style: none; margin: 0; padding: 0; }
           .nk-actions a { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; }
           
@@ -134,6 +145,7 @@ export default async function Layout({ children }) {
           .nk-categories-list { display: flex; align-items: center; justify-content: center; gap: 2.5rem; list-style: none; margin: 0 auto; padding: 0; }
           .nk-categories-list a { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); text-decoration: none; transition: color 0.2s; }
           .nk-categories-list a:hover { color: var(--text-primary); }
+          
           .nk-footer { background: #f8f9fa !important; border-top: 1px solid var(--border-light); padding: 3rem 0 2rem; margin-top: auto; }
           .nk-footer-brand {
             display: flex;
@@ -146,9 +158,60 @@ export default async function Layout({ children }) {
           .nk-footer-links a:hover { color: var(--accent); }
           .nk-footer-label { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; color: var(--text-primary); }
           .nk-footer-copy { margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-light); color: var(--text-muted); font-size: 0.82rem; }
-          .nav-item.dropdown:hover > .dropdown-menu {display: block; margin-top: 0; }
-          .dropdown-menu {display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease; }
-          @keyframes fadeIn {from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); }}
+          
+          .nav-item.dropdown:hover > .dropdown-menu { display: block; margin-top: 0; }
+          .dropdown-menu { display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease; }
+          
+          /* ================= NÂNG CẤP HIỆU ỨNG SINH ĐỘNG (HOVER CARD & BADGES) ================= */
+          
+          /* Hiệu ứng nổi bật bao quanh sản phẩm (Card) khi Hover */
+          .nk-card {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+          .nk-card:hover {
+            transform: translateY(-6px);
+            box-shadow: var(--shadow-hover) !important;
+          }
+
+          /* Định vị trí cho khung ảnh sản phẩm phục vụ đè Badge lên */
+          .card-product .overflow-hidden, .nk-card .p-3, .nk-card .p-4 {
+            position: relative;
+          }
+
+          /* Tự động chèn nhãn (Badge) động bằng CSS cho các khu vực đặc biệt */
+          /* 1. Nhãn Hot cho sản phẩm thuộc khu vực Đang Hot */
+          section:nth-of-type(4) .nk-card .p-4::before {
+            content: 'HOT';
+            position: absolute;
+            top: 12px; left: 12px; z-index: 10;
+            background: #111111; color: #ffffff;
+            font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+            padding: 3px 8px; font-family: var(--font-body);
+          }
+
+          
+
+          /* Hiệu ứng zoom ảnh mượt và sâu hơn */
+          .img-hover-scale {
+            transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          }
+          .nk-card:hover .img-hover-scale {
+            transform: scale(1.06);
+          }
+
+          /* Kiểu dáng cho các ô Banner phụ của trang chủ */
+          .glass-card {
+            transition: transform 0.4s ease, box-shadow 0.4s ease;
+          }
+          .glass-card:hover {
+            transform: scale(1.015);
+            box-shadow: var(--shadow-md);
+          }
+
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
         `}</style>
       </head>
       <body className="d-flex flex-column min-vh-100">
@@ -177,8 +240,13 @@ export default async function Layout({ children }) {
 
                 <ul className="nk-links">
                   <li><Link href="/">Trang chủ</Link></li>
-                  <li><Link href="/products" className="active">Bộ sưu tập</Link></li>
+<<<<<<< HEAD
+                  <li><Link href="/products" >Bộ sưu tập</Link></li>
                   <li><Link href="/about">Tin tức</Link></li>
+=======
+                  <li><Link href="/products">Bộ sưu tập</Link></li>
+                  <li><Link href="/new">Tin tức</Link></li>
+>>>>>>> d894398e8ccf71dbf1cd4d81e19f64bdc39c253e
                   <li><Link href="/contact">Liên hệ</Link></li>
                 </ul>
 
@@ -245,7 +313,7 @@ export default async function Layout({ children }) {
               <div className="col-6 col-md-4">
                 <p className="nk-footer-label">Liên hệ</p>
                 <ul className="nk-footer-links">
-                  <li><a href="tel:0123456789">0123 456 789</a></li>
+                  <li><a href="tel:0931839732">0931839732</a></li>
                   <li><a href="mailto:support@nova-kicks.com">support@nova-kicks.com</a></li>
                   <li style={{color:'var(--text-secondary)', fontSize:'0.82rem'}}>123 CVPM Quang Trung, Quận 12, TP.HCM</li>
                   <li style={{color:'var(--text-secondary)', fontSize:'0.82rem'}}>09:00 – 22:00 hàng ngày</li>

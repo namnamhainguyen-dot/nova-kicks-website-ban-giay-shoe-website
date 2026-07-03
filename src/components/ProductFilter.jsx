@@ -15,7 +15,7 @@ export default function ProductFilter({ products }) {
     return [...new Set(sizes)].sort();
   }, [products]);
 
-  // Logic lọc sản phẩm (Đã bỏ lọc theo Danh mục)
+  // Logic lọc sản phẩm
   const filtered = useMemo(() => {
     return products.filter((p) => {
       const price = Number(p.price) || 0;
@@ -269,7 +269,7 @@ export default function ProductFilter({ products }) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifycontent: "space-between", marginBottom: "16px" }}>
               <span style={{ fontWeight: 700, fontSize: "16px" }}>Bộ lọc</span>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -337,106 +337,139 @@ export default function ProductFilter({ products }) {
             </div>
           ) : (
             <div className="row g-4">
-              {filtered.map((p) => (
-                <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
-                  <div
-                    className="card h-100 border-0 shadow-sm"
-                    style={{ backgroundColor: "var(--surface-card)" }}
-                  >
-                    <Link
-                      href={`/products/${p._id?.$oid || p._id}`}
-                      style={{ textDecoration: "none", color: "inherit" }}
+              {filtered.map((p) => {
+                // Đảm bảo số lượng có fallback giống trang Admin
+                const stockQty = p.quantity ?? 12;
+                // Giả định mức tối đa để tính % cho progress bar (ví dụ: 100 hoặc 50)
+                const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
+
+                return (
+                  <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
+                    <div
+                      className="card h-100 border-0 shadow-sm"
+                      style={{ backgroundColor: "var(--surface-card)" }}
                     >
-                      <div
-                        className="d-flex align-items-center justify-content-center overflow-hidden"
-                        style={{ height: "250px", backgroundColor: "#f9f9f9" }}
+                      <Link
+                        href={`/products/${p._id?.$oid || p._id}`}
+                        style={{ textDecoration: "none", color: "inherit" }}
                       >
-                        <img
-                          src={p.image || "/img/no-image.png"}
-                          alt={p.name}
-                          className="img-fluid"
-                          style={{ maxHeight: "100%", objectFit: "contain" }}
-                        />
-                      </div>
-
-                      <div className="card-body pb-0">
-                        <h5 className="fw-bold text-truncate" title={p.name}>
-                          {p.name}
-                        </h5>
-
-                        {p.sizes?.length > 0 && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "6px" }}>
-                            {p.sizes.slice(0, 4).map((size) => (
-                              <span
-                                key={size}
-                                style={{
-                                  fontSize: "11px",
-                                  fontWeight: "600",
-                                  padding: "2px 7px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #d1d5db",
-                                  backgroundColor: "#f9fafb",
-                                  color: "#374151",
-                                }}
-                              >
-                                {size}
-                              </span>
-                            ))}
-                            {p.sizes.length > 4 && (
-                              <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                                +{p.sizes.length - 4}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {p.colors?.length > 0 && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
-                            {p.colors.slice(0, 4).map((color) => (
-                              <span
-                                key={color}
-                                style={{
-                                  fontSize: "11px",
-                                  fontWeight: "500",
-                                  padding: "2px 7px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #e5e7eb",
-                                  backgroundColor: "#fff",
-                                  color: "#6b7280",
-                                }}
-                              >
-                                {color}
-                              </span>
-                            ))}
-                            {p.colors.length > 4 && (
-                              <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                                +{p.colors.length - 4}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <p
-                          className="small text-secondary"
-                          style={{ minHeight: "48px", overflow: "hidden" }}
+                        <div
+                          className="d-flex align-items-center justify-content-center overflow-hidden"
+                          style={{ height: "250px", backgroundColor: "#f9f9f9" }}
                         >
-                          {p.description}
-                        </p>
-
-                        <div className="fw-bold text-danger fs-5 mb-3">
-                          {p.price ? Number(p.price).toLocaleString("vi-VN") : 0} VND
+                          <img
+                            src={p.image || "/img/no-image.png"}
+                            alt={p.name}
+                            className="img-fluid"
+                            style={{ maxHeight: "100%", objectFit: "contain" }}
+                          />
                         </div>
-                      </div>
-                    </Link>
 
-                    <div className="card-body pt-0">
-                      <Link href={`/products/${p._id?.$oid || p._id}`} style={{ textDecoration: "none" }}>
-                        <button className="btn btn-dark w-100">Xem chi tiết</button>
+                        <div className="card-body pb-0">
+                          <h5 className="fw-bold text-truncate" title={p.name}>
+                            {p.name}
+                          </h5>
+
+                          {p.sizes?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "6px" }}>
+                              {p.sizes.slice(0, 4).map((size) => (
+                                <span
+                                  key={size}
+                                  style={{
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                    padding: "2px 7px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #d1d5db",
+                                    backgroundColor: "#f9fafb",
+                                    color: "#374151",
+                                  }}
+                                >
+                                  {size}
+                                </span>
+                              ))}
+                              {p.sizes.length > 4 && (
+                                <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                                  +{p.sizes.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {p.colors?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                              {p.colors.slice(0, 4).map((color) => (
+                                <span
+                                  key={color}
+                                  style={{
+                                    fontSize: "11px",
+                                    fontWeight: "500",
+                                    padding: "2px 7px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#fff",
+                                    color: "#6b7280",
+                                  }}
+                                >
+                                  {color}
+                                </span>
+                              ))}
+                              {p.colors.length > 4 && (
+                                <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                                  +{p.colors.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <p
+                            className="small text-secondary mb-2 custom-scrollbar"
+                            style={{ 
+                              height: "72px",          /* Cố định chiều cao (khoảng 3 dòng chữ) */
+                              overflowY: "auto",       /* Hiện thanh cuộn khi nội dung vượt quá chiều cao */
+                              paddingRight: "4px",     /* Tạo khoảng trống nhỏ để thanh cuộn không đè vào chữ */
+                              textAlign: "justify",    /* Căn đều hai bên cho chữ đẹp hơn (tùy chọn) */
+                              fontSize: "13px",
+                              lineHeight: "1.4"
+                            }}
+                          >
+                            {p.description}
+                          </p>
+
+                          {/* 🌟 ĐOẠN CHÈN HIỂN THỊ SỐ LƯỢNG TỒN KHO */}
+                          <div className="mb-2" style={{ fontSize: "12px" }}>
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="text-muted">
+                                Còn lại: <strong style={{ color: "#111" }}>{stockQty}</strong> sản phẩm
+                              </span>
+                            </div>
+                            <div className="progress" style={{ height: "4px", backgroundColor: "#e5e7eb" }}>
+                              <div
+                                className="progress-bar bg-dark"
+                                role="progressbar"
+                                style={{ width: `${progressWidth}%` }}
+                                aria-valuenow={stockQty}
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="fw-bold text-danger fs-5 mb-3">
+                            {p.price ? Number(p.price).toLocaleString("vi-VN") : 0} VND
+                          </div>
+                        </div>
                       </Link>
+
+                      <div className="card-body pt-0">
+                        <Link href={`/products/${p._id?.$oid || p._id}`} style={{ textDecoration: "none" }}>
+                          <button className="btn btn-dark w-100">Xem chi tiết</button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

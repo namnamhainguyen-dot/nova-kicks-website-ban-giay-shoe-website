@@ -62,7 +62,7 @@ export default function Success() {
 
     <footer className="bg-dark text-white text-center py-3 mt-auto">
       <p>Nova-kicks - 123 Đường ABC, TP.HCM</p>
-      <p>Hotline: 0123 456 789 | Email: support@nova-kicks.com</p>
+      <p>Hotline: 0931839732 | Email: support@nova-kicks.com</p>
       <p>&copy; 2026 Nova-kicks. All rights reserved.</p>
     </footer>
 
