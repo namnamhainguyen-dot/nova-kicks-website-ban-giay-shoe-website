@@ -9,7 +9,7 @@ export async function GET(request, { params }) {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    // Next.js 16 bắt buộc phải await params
+    // Next.js bắt buộc phải await params
     const { id } = await params;
 
     if (!id || id.length !== 24) {
@@ -26,13 +26,12 @@ export async function GET(request, { params }) {
       return Response.json({ success: false, error: "Đơn hàng không tồn tại trong hệ thống" }, { status: 404 });
     }
 
-    // Chuẩn hóa cấu trúc trả về { success: true, data: order } để Front-end page.jsx đọc được luôn
+    // TRẢ VỀ TRỰC TIẾP ĐỐI TƯỢNG ĐƠN HÀNG Ở CẤP CAO NHẤT
+    // Giúp Frontend Client và Admin fetch xong là dùng được luôn không lo lỗi thuộc tính
     return Response.json({
-      success: true,
-      data: {
-        ...order,
-        _id: String(order._id),
-      }
+      ...order,
+      _id: String(order._id),
+      success: true // Giữ lại cờ này dự phòng kiểm tra logic
     });
   } catch (error) {
     console.error("Lỗi API GET chi tiết đơn hàng:", error);
@@ -89,14 +88,14 @@ export async function PATCH(request, { params }) {
 }
 
 // ==========================================
-// 🚀 3. BỔ SUNG HÀM DELETE (Xóa đơn hàng)
+// 🚀 3. HÀM DELETE (Xóa đơn hàng)
 // ==========================================
 export async function DELETE(request, { params }) {
   try {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    // Await params theo chuẩn Next.js 16
+    // Await params theo chuẩn Next.js
     const { id } = await params;
 
     // Kiểm tra định dạng ID MongoDB (24 ký tự hex)
@@ -114,7 +113,6 @@ export async function DELETE(request, { params }) {
       return Response.json({ success: false, error: "Không tìm thấy đơn hàng cần xóa" }, { status: 404 });
     }
 
-    // Trả về JSON thành công để frontend không bị lỗi "Unexpected end of JSON input"
     return Response.json({
       success: true,
       message: "Xóa đơn hàng thành công",
