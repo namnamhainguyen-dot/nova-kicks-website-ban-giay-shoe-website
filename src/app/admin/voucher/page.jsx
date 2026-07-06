@@ -119,7 +119,7 @@ export default function VoucherManagement() {
                 <th>Đã dùng / Giới hạn</th>
                 <th>Ngày Hết Hạn</th>
                 <th>Trạng Thái</th>
-                <th className="text-end pe-4">Hành Động</th>
+                {/* <th className="text-end pe-4">Hành Động</th> */}
               </tr>
             </thead>
             <tbody>
@@ -205,7 +205,7 @@ export default function VoucherManagement() {
                         </div>
                       </td>
 
-                      {/* Cột Hành Động */}
+                      {/* Cột Hành Động
                       <td className="text-end pe-4">
                         <Link
                           href={`/admin/voucher/edit/${v._id}`}
@@ -219,7 +219,7 @@ export default function VoucherManagement() {
                         >
                           <i className="bi bi-trash"></i> Xóa
                         </button>
-                      </td>
+                      </td> */}
                     </tr>
                   );
                 })
