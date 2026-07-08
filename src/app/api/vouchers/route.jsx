@@ -7,7 +7,11 @@ const VoucherSchema = new mongoose.Schema({
   discount_type: { type: String, required: true }, 
   discount_value: { type: Number, required: true },
   min_order_value: { type: Number, default: 0 },
-  is_active: { type: Boolean, default: true }
+  is_active: { type: Boolean, default: true },
+  expiry_date: { type: Date, required: true },
+  used_count: { type: Number, default: 0 },
+  usage_limit: { type: Number, default: 0 },
+  description: { type: String, required: true },
 }, { timestamps: true });
 
 const Voucher = mongoose.models.Voucher || mongoose.model("Voucher", VoucherSchema);
@@ -57,7 +61,10 @@ export async function POST(req) {
       code: formattedCode,
       discount_type,
       discount_value: Number(discount_value),
-      min_order_value: Number(body.min_order_value || body.minValue || 0)
+      min_order_value: Number(body.min_order_value || body.minValue || 0),
+      expiry_date: new Date(body.expiry_date),
+      usage_limit: Number(body.usage_limit),
+      description: body.description ? body.description.trim() : "Không có mô tả",
     });
 
     return NextResponse.json({ success: true, message: "Tạo voucher mới thành công!", data: newVoucher }, { status: 201 });

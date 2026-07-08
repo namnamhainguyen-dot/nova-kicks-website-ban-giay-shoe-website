@@ -24,20 +24,20 @@ export default function VoucherManagement() {
     fetchVouchers();
   }, []);
 
-  // 2. Xóa Voucher
-  const handleDelete = async (id) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa mã giảm giá này không?")) return;
+  // // 2. Xóa Voucher
+  // const handleDelete = async (id) => {
+  //   if (!confirm("Bạn có chắc chắn muốn xóa mã giảm giá này không?")) return;
 
-    try {
-      const res = await fetch(`/api/vouchers/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setVouchers(vouchers.filter((v) => v._id !== id));
-        alert("Đã xóa voucher thành công!");
-      }
-    } catch (error) {
-      alert("Lỗi khi xóa voucher.");
-    }
-  };
+  //   try {
+  //     const res = await fetch(`/api/vouchers/${id}`, { method: "DELETE" });
+  //     if (res.ok) {
+  //       setVouchers(vouchers.filter((v) => v._id !== id));
+  //       alert("Đã xóa voucher thành công!");
+  //     }
+  //   } catch (error) {
+  //     alert("Lỗi khi xóa voucher.");
+  //   }
+  // };
 
   // 3. Thay đổi trạng thái kích hoạt (is_active) nhanh bằng Switch
   const toggleStatus = async (id, currentStatus) => {
@@ -80,7 +80,7 @@ export default function VoucherManagement() {
       <div className="row align-items-center mb-4">
         <div className="col-md-6">
           <h3 className="fw-bold mb-1">Quản lý Voucher</h3>
-          <p className="text-muted small">Xem, thêm, sửa và theo dõi trạng thái các mã giảm giá của cửa hàng.</p>
+          <p className="text-muted small">Theo dõi trạng thái các mã giảm giá của cửa hàng.</p>
         </div>
         <div className="col-md-6 text-md-end">
           <Link href="/admin/voucher/add" className="btn btn-dark shadow-sm">
@@ -119,7 +119,7 @@ export default function VoucherManagement() {
                 <th>Đã dùng / Giới hạn</th>
                 <th>Ngày Hết Hạn</th>
                 <th>Trạng Thái</th>
-                {/* <th className="text-end pe-4">Hành Động</th> */}
+               {/* <th className="text-end pe-4">Hành Động</th>  */}
               </tr>
             </thead>
             <tbody>
@@ -167,12 +167,17 @@ export default function VoucherManagement() {
                       {/* Cột Số Lần Sử Dụng */}
                       <td>
                         <div className="d-flex align-items-center gap-2">
-                          <span className="fw-bold">{v.used_count ?? 0}</span>
+                          {/* Ép kiểu Number để tránh lỗi hiển thị */}
+                          <span className="fw-bold">
+                            {Number(v.used_count || 0)}
+                          </span>
                           <span className="text-muted">/</span>
-                          <span className="text-muted">{v.usage_limit}</span>
+                          <span className="text-muted">
+                            {Number(v.usage_limit || 0)}
+                          </span>
                         </div>
-                      </td>
-
+                      </td> 
+                      
                       {/* Cột Ngày Hết Hạn */}
                       <td>
                         <span className={`small ${isExpired ? "text-danger fw-bold" : "text-dark"}`}>
@@ -205,8 +210,8 @@ export default function VoucherManagement() {
                         </div>
                       </td>
 
-                      {/* Cột Hành Động
-                      <td className="text-end pe-4">
+                      {/* Cột Hành Động */}
+                      {/* <td className="text-end pe-4">
                         <Link
                           href={`/admin/voucher/edit/${v._id}`}
                           className="btn btn-sm btn-outline-primary me-2"
