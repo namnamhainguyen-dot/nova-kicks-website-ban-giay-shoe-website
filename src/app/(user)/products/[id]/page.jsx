@@ -19,9 +19,9 @@ export default function ProductDetailPage() {
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [quantity, setQuantity] = useState(1);
-    
-    // 🌟 STATE MỚI: Quản lý hình ảnh đang hiển thị hiện tại
     const [currentImage, setCurrentImage] = useState('');
+    
+    const [stockAvailable, setStockAvailable] = useState(0);
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user'));
@@ -31,45 +31,87 @@ export default function ProductDetailPage() {
 
         if (!id) return;
 
-        fetch(`/api/products/${id}`)
-            .then((res) => res.json())
+        // 🌟 THÊM { cache: 'no-store' } để ép trình duyệt không lấy cache cũ khi admin vừa update
+        fetch(`/api/products/${id}`, { cache: 'no-store' })
+            .then((res) => {
+                if (!res.ok) throw new Error("Không thể tải sản phẩm");
+                return res.json();
+            })
             .then((data) => {
                 setProduct(data);
                 setLoading(false);
-                setSelectedSize(data.sizes?.[0] ?? '');
-                
-                const defaultColor = data.colors?.[0] ?? '';
-                setSelectedColor(defaultColor);
-                
-                // 🌟 Thiết lập ảnh mặc định ban đầu khi tải trang
                 setCurrentImage(data.image || '/placeholder.png');
+
+                if (data.variants && data.variants.length > 0) {
+                    const firstVariant = data.variants[0];
+                    setSelectedColor(firstVariant.color);
+                    setStockAvailable(firstVariant.quantity ?? 0);
+                    
+                    if (firstVariant.image) {
+                        setCurrentImage(firstVariant.image);
+                    }
+
+                    if (firstVariant.sizes && firstVariant.sizes.length > 0) {
+                        setSelectedSize(firstVariant.sizes[0]);
+                    }
+                } else {
+                    setStockAvailable(data.quantity ?? 0);
+                    if (data.sizes && data.sizes.length > 0) {
+                        setSelectedSize(data.sizes[0]);
+                    }
+                }
             })
             .catch((err) => {
-                console.error(err);
+                console.error("Lỗi lấy chi tiết sản phẩm:", err);
                 setLoading(false);
             });
     }, [id]);
 
-    // 🌟 HÀM MỚI: Xử lý khi người dùng click chọn màu sắc
+    // XỬ LÝ KHI NGƯỜI DÙNG CHỌN MÀU
     const handleColorChange = (color) => {
         setSelectedColor(color);
+        setQuantity(1); 
 
-        // Kiểm tra xem trong dữ liệu sản phẩm có mảng ảnh theo màu cụ thể không
-        // Giả sử cấu trúc tương lai bạn lưu là: product.imagesByColor = { "Đen": "url_anh_den", "Trắng": "url_anh_trang" }
-        if (product?.imagesByColor && product.imagesByColor[color]) {
-            setCurrentImage(product.imagesByColor[color]);
-        } 
-        // HOẶC nếu bạn muốn hardcode test nhanh trực tiếp theo logic đổi ảnh ngẫu nhiên hoặc ảnh mẫu:
-        else if (product?.image) {
-            // Nếu không có cấu trúc riêng, tạm thời giữ nguyên ảnh gốc của JSON
-            setCurrentImage(product.image);
+        const matchedVariant = product?.variants?.find(v => v.color === color);
+        if (matchedVariant) {
+            if (matchedVariant.image) {
+                setCurrentImage(matchedVariant.image);
+            } else {
+                // Nếu màu này không có ảnh riêng, fallback về ảnh mặc định của sản phẩm
+                setCurrentImage(product.image || '/placeholder.png');
+            }
+            
+            setStockAvailable(matchedVariant.quantity ?? 0);
+            
+            if (matchedVariant.sizes && matchedVariant.sizes.length > 0) {
+                // Nếu size đang chọn nằm trong danh sách size của màu mới -> giữ nguyên, nếu không -> lấy size đầu tiên
+                if (!matchedVariant.sizes.includes(selectedSize)) {
+                    setSelectedSize(matchedVariant.sizes[0]);
+                }
+            } else {
+                setSelectedSize('');
+            }
         }
     };
 
-    // ─── Thêm vào giỏ hàng ───────────────────────────────────────────────────
-    const handleAddToCart = () => {
-        const newCart = [...cart];
+    const availableSizes = product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
 
+    const handleIncreaseQuantity = () => {
+        if (quantity < stockAvailable) {
+            setQuantity(quantity + 1);
+        }
+    };
+
+    const handleDecreaseQuantity = () => {
+        if (quantity > 1) {
+            setQuantity(quantity - 1);
+        }
+    };
+
+    const handleAddToCart = () => {
+        if (stockAvailable <= 0) return; 
+
+        const newCart = [...cart];
         const existingIndex = cart.findIndex(
             (item) =>
                 item._id === product._id &&
@@ -84,7 +126,6 @@ export default function ProductDetailPage() {
                 _id: product._id,
                 name: product.name,
                 price: product.price,
-                // 🌟 LƯU Ý: Giỏ hàng sẽ lưu đúng hình ảnh của màu đã chọn
                 image: currentImage, 
                 selectedSize,
                 selectedColor,
@@ -101,13 +142,12 @@ export default function ProductDetailPage() {
         setTimeout(() => setAddedToCart(false), 2000);
     };
 
-    // ─── Mua ngay ────────────────────────────────────────────────────────────
     const handleBuyNow = () => {
+        if (stockAvailable <= 0) return;
         handleAddToCart();
         router.push('/cart');
     };
 
-    // ─── Loading ─────────────────────────────────────────────────────────────
     if (loading) {
         return (
             <div style={{
@@ -132,7 +172,7 @@ export default function ProductDetailPage() {
         return (
             <div style={{ textAlign: 'center', padding: '80px 20px' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
-                    Không tìm thấy sản phẩm!
+                    Không tìm thấy sản phẩm hoặc sản phẩm đã bị xóa!
                 </h2>
                 <Link href="/products" style={{ color: '#2563eb', marginTop: '12px', display: 'inline-block' }}>
                     ← Quay lại danh sách sản phẩm
@@ -162,7 +202,6 @@ export default function ProductDetailPage() {
                         overflow: 'hidden', border: '1px solid #e5e7eb',
                         backgroundColor: '#f9fafb',
                     }}>
-                        {/* 🌟 THAY ĐỔI: Sử dụng src={currentImage} thay vì product.image để cập nhật linh hoạt */}
                         <img
                             src={currentImage}
                             alt={product.name}
@@ -173,15 +212,15 @@ export default function ProductDetailPage() {
 
                 <div style={{ flex: '1 1 50%', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
                     <h1 style={{
-                            fontSize: '28px', 
-                            fontWeight: '800', 
-                            color: '#030712',
-                            margin: '0 0 10px 0', 
-                            textTransform: 'uppercase',
-                            fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-                        }}>
-                            {product.name}
-                        </h1>
+                        fontSize: '28px', 
+                        fontWeight: '800', 
+                        color: '#030712',
+                        margin: '0 0 10px 0', 
+                        textTransform: 'uppercase',
+                        fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+                    }}>
+                        {product.name}
+                    </h1>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
                         <span style={{ color: '#fbbf24' }}>⭐⭐⭐⭐⭐</span>
@@ -195,39 +234,43 @@ export default function ProductDetailPage() {
                         </p>
                     </div>
 
-                    {product.colors?.length > 0 && (
+                    {/* Chọn màu sắc */}
+                    {product.variants?.length > 0 && (
                         <div style={{ marginBottom: '20px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
                                 Màu sắc: <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedColor}</span>
+                                <span style={{ fontSize: '13px', fontWeight: '500', color: stockAvailable > 0 ? '#16a34a' : '#dc2626', marginLeft: '8px', textTransform: 'none' }}>
+                                    ({stockAvailable > 0 ? `Còn ${stockAvailable} sản phẩm` : 'Hết hàng'})
+                                </span>
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                {product.colors.map((color) => (
+                                {product.variants.map((v) => (
                                     <button
-                                        key={color}
-                                        /* 🌟 THAY ĐỔI: Gọi hàm handleColorChange để vừa đổi màu vừa đổi ảnh */
-                                        onClick={() => handleColorChange(color)}
+                                        key={v.color}
+                                        onClick={() => handleColorChange(v.color)}
                                         style={{
                                             padding: '8px 16px', fontSize: '14px', fontWeight: '500',
-                                            border: selectedColor === color ? '2px solid #000' : '1px solid #e5e7eb',
+                                            border: selectedColor === v.color ? '2px solid #000' : '1px solid #e5e7eb',
                                             borderRadius: '12px', cursor: 'pointer',
-                                            backgroundColor: selectedColor === color ? '#000' : '#fff',
-                                            color: selectedColor === color ? '#fff' : '#374151',
+                                            backgroundColor: selectedColor === v.color ? '#000' : '#fff',
+                                            color: selectedColor === v.color ? '#fff' : '#374151',
                                         }}
                                     >
-                                        {color}
+                                        {v.color} <span style={{ fontSize: '11px', opacity: selectedColor === v.color ? 0.8 : 0.6 }}>({v.quantity})</span>
                                     </button>
                                 ))}
                             </div>
                         </div>
                     )}
 
-                    {product.sizes?.length > 0 && (
+                    {/* Kích thước */}
+                    {availableSizes.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
                                 Kích thước: <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedSize}</span>
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                {product.sizes.map((size) => (
+                                {availableSizes.map((size) => (
                                     <button
                                         key={size}
                                         onClick={() => setSelectedSize(size)}
@@ -247,16 +290,25 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
+                    {/* Số lượng chọn mua */}
                     <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>Số lượng</h3>
-                        <div style={{
-                            display: 'flex', alignItems: 'center', width: '112px',
-                            border: '1px solid #e5e7eb', borderRadius: '12px',
-                            backgroundColor: '#f9fafb', padding: '2px',
-                        }}>
-                            <button onClick={() => quantity > 1 && setQuantity(quantity - 1)} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>−</button>
-                            <span style={{ flex: 1, textAlign: 'center', fontWeight: '600', fontSize: '14px' }}>{quantity}</span>
-                            <button onClick={() => setQuantity(quantity + 1)} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>+</button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                display: 'flex', alignItems: 'center', width: '112px',
+                                border: '1px solid #e5e7eb', borderRadius: '12px',
+                                backgroundColor: '#f9fafb', padding: '2px',
+                            }}>
+                                <button onClick={handleDecreaseQuantity} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>−</button>
+                                <span style={{ flex: 1, textAlign: 'center', fontWeight: '600', fontSize: '14px' }}>{quantity}</span>
+                                <button onClick={handleIncreaseQuantity} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>+</button>
+                            </div>
+                            
+                            {quantity >= stockAvailable && stockAvailable > 0 && (
+                                <span style={{ fontSize: '12px', color: '#ea580c', fontWeight: '500' }}>
+                                    Đã đạt số lượng tối đa trong kho cho màu này
+                                </span>
+                            )}
                         </div>
                     </div>
 
@@ -266,32 +318,34 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
+                    {/* Nút thao tác */}
                     <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
                         <button
                             onClick={handleAddToCart}
-                            disabled={isAdmin}
+                            disabled={isAdmin || stockAvailable <= 0}
                             style={{
-                                flex: 1, backgroundColor: isAdmin ? '#d1d5db' : '#fff',
-                                border: '1.5px solid #111827', color: isAdmin ? '#fff' : '#111827',
+                                flex: 1, backgroundColor: (isAdmin || stockAvailable <= 0) ? '#e5e7eb' : '#fff',
+                                border: (isAdmin || stockAvailable <= 0) ? '1.5px solid #d1d5db' : '1.5px solid #111827', 
+                                color: (isAdmin || stockAvailable <= 0) ? '#9ca3af' : '#111827',
                                 fontWeight: '600', padding: '13px 0',
-                                borderRadius: '12px', cursor: isAdmin ? 'not-allowed' : 'pointer',
+                                borderRadius: '12px', cursor: (isAdmin || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
                                 fontSize: '14px',
                             }}
                         >
-                            Thêm vào giỏ hàng
+                            {stockAvailable <= 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
                         </button>
                         <button
                             onClick={handleBuyNow}
-                            disabled={isAdmin}
+                            disabled={isAdmin || stockAvailable <= 0}
                             style={{
-                                flex: 1, backgroundColor: isAdmin ? '#9ca3af' : '#111827',
+                                flex: 1, backgroundColor: (isAdmin || stockAvailable <= 0) ? '#d1d5db' : '#111827',
                                 border: 'none', color: '#fff',
                                 fontWeight: '600', padding: '13px 0',
-                                borderRadius: '12px', cursor: isAdmin ? 'not-allowed' : 'pointer',
+                                borderRadius: '12px', cursor: (isAdmin || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
                                 fontSize: '14px',
                             }}
                         >
-                            {isAdmin ? 'Admin không thể mua' : 'Mua ngay'}
+                            {isAdmin ? 'Admin không thể mua' : stockAvailable <= 0 ? 'Tạm hết hàng' : 'Mua ngay'}
                         </button>
                     </div>
 

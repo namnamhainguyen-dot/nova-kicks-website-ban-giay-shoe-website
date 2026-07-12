@@ -1,6 +1,6 @@
 import ProductFilter from "@/components/ProductFilter";
 
-// 1. Đưa về chuẩn JavaScript (xóa bỏ định nghĩa kiểu dữ liệu TypeScript)
+// 1. Hàm lấy danh sách sản phẩm từ API
 async function getProducts(categoryID) {
   // Tạo URL động: Nếu có categoryID thì nối thêm query string, ngược lại gọi tất cả
   const url = categoryID 
@@ -8,7 +8,7 @@ async function getProducts(categoryID) {
     : "http://localhost:3000/api/products";
 
   const res = await fetch(url, {
-    cache: "no-store",
+    cache: "no-store", // Đảm bảo luôn lấy dữ liệu mới nhất, không bị cache cũ
   });
 
   if (!res.ok) {
@@ -22,8 +22,27 @@ export default async function ProductsPage({ searchParams }) {
   // Giải nén categoryID từ searchParams
   const { categoryID } = await searchParams;
 
-  // Lấy danh sách sản phẩm đã lọc từ API
-  const products = await getProducts(categoryID);
+  // Lấy danh sách sản phẩm gốc từ API
+  const rawProducts = await getProducts(categoryID);
+
+  // 🌟 CHUẨN HÓA DỮ LIỆU: Đảm bảo các trường màu sắc, size, mô tả luôn tồn tại trước khi truyền xuống Component Con
+  const products = (rawProducts || []).map(product => {
+    // 1. Trích xuất danh sách màu và số lượng tương ứng từ biến thể (variants)
+    const availableColors = product.variants?.map(v => ({
+      color: v.color,
+      quantity: v.quantity ?? 0
+    })) || [];
+
+    // 2. Trích xuất danh sách kích thước (size) khả dụng
+    const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
+
+    return {
+      ...product,
+      availableColors, // Mảng chứa các object { color, quantity }
+      availableSizes,  // Mảng chứa các kích thước [38, 39, 40...]
+      description: product.description || "Chưa có mô tả cho sản phẩm này."
+    };
+  });
 
   return (
     <main
@@ -83,7 +102,7 @@ export default async function ProductsPage({ searchParams }) {
         <span className="text-secondary fw-semibold">{products.length} sản phẩm</span>
       </div>
 
-      {/* Mỗi khi đổi categoryID, ProductFilter sẽ tự remount và nhận dữ liệu mới */}
+      {/* Mỗi khi đổi categoryID, ProductFilter sẽ tự remount và nhận dữ liệu cấu trúc chuẩn mới */}
       <ProductFilter key={categoryID || "all"} products={products} />
     </main>
   );

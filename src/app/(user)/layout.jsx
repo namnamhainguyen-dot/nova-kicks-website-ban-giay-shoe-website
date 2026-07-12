@@ -240,19 +240,16 @@ export default async function Layout({ children }) {
 
                 <ul className="nk-links">
                   <li><Link href="/">Trang chủ</Link></li>
-<<<<<<< HEAD
+
 
 
 
                   <li><Link href="/products">Bộ sưu tập</Link></li>
                   <li><Link href="/new">Tin tức</Link></li>
 
-=======
-                  <li><Link href="/products" >Bộ sưu tập</Link></li>
-                  <li><Link href="/about">Tin tức</Link></li>
-                  <li><Link href="/products">Bộ sưu tập</Link></li>
-                  <li><Link href="/new">Tin tức</Link></li>
->>>>>>> bd14ebe681d5a49789d1d5d9018a72fb0eee4ad7
+
+
+
                   <li><Link href="/contact">Liên hệ</Link></li>
                 </ul>
 
@@ -306,16 +303,7 @@ export default async function Layout({ children }) {
                   Nền tảng phân phối giày Streetwear cao cấp — nơi văn hóa đường phố gặp gỡ thiết kế đương đại.
                 </p>
               </div>
-              <div className="col-6 col-md-3">
-                <p className="nk-footer-label">Khám phá</p>
-                <ul className="nk-footer-links">
-                  <li><Link href="/products">Bộ sưu tập</Link></li>
-                  <li><Link href="/">Hàng mới về</Link></li>
-                  <li><Link href="/">Flash Sale</Link></li>
-                  <li><Link href="/">Tin tức & biên tập</Link></li>
-                  <li><Link href="/about">Thương hiệu</Link></li>
-                </ul>
-              </div>
+ 
               <div className="col-6 col-md-4">
                 <p className="nk-footer-label">Liên hệ</p>
                 <ul className="nk-footer-links">

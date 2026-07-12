@@ -13,20 +13,21 @@ export default function UpdateProductClient({ id }) {
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(0); // Số lượng tổng
   const [status, setStatus] = useState("active");
 
-  // 🌟 STATE MỚI: Quản lý danh mục
-  const [categoryId, setCategoryId] = useState(""); 
-  const [categories, setCategories] = useState([]); // Chứa danh sách danh mục từ API
+  // Quản lý danh mục
+  const [categoryID, setCategoryID] = useState(""); 
+  const [categories, setCategories] = useState([]); 
 
   // ----- Biến thể: size & màu -----
-  const [sizes, setSizes] = useState([]); // ví dụ: [39, 40, 41]
-  const [colors, setColors] = useState([]); // ví dụ: ["Đen", "Trắng"]
+  const [sizes, setSizes] = useState([]); 
+  const [colors, setColors] = useState([]); 
   const [colorInput, setColorInput] = useState("");
-
-  // 🌟 STATE MỚI: Quản lý object ảnh theo màu { "Đen": "url_anh_den", "Trắng": "url_anh_trang" }
   const [imagesByColor, setImagesByColor] = useState({});
+  
+  // State quản lý số lượng riêng cho từng màu
+  const [quantitiesByColor, setQuantitiesByColor] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,19 +38,19 @@ export default function UpdateProductClient({ id }) {
     const loadData = async () => {
       if (!id) {
         setError("ID sản phẩm không hợp lệ.");
-        setLoading(false);
+        loading(false); 
         return;
       }
 
       try {
-        // 🌟 1. Tải danh sách danh mục phục vụ cho thẻ select option
+        // 1. Tải danh sách danh mục
         const resCategories = await fetch("/api/categories");
         if (resCategories.ok) {
           const categoriesData = await resCategories.json();
           setCategories(Array.isArray(categoriesData) ? categoriesData : []);
         }
 
-        // 🌟 2. Tải thông tin chi tiết sản phẩm cần cập nhật
+        // 2. Tải thông tin chi tiết sản phẩm cần cập nhật
         const res = await fetch(`/api/products/${id}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -63,14 +64,42 @@ export default function UpdateProductClient({ id }) {
         setImage(product.image || "");
         setQuantity(product.quantity || 0);
         setStatus(product.status || "active");
-        setSizes(Array.isArray(product.sizes) ? product.sizes : []);
-        setColors(Array.isArray(product.colors) ? product.colors : []);
-        
-        // 🌟 Điền dữ liệu danh mục của sản phẩm (nếu có lưu categoryId hoặc category)
-        setCategoryId(product.categoryId || product.category?._id || "");
-        
-        // 🌟 Lấy dữ liệu imagesByColor từ database nếu có
-        setImagesByColor(product.imagesByColor && typeof product.imagesByColor === "object" ? product.imagesByColor : {});
+        setCategoryID(product.categoryID || product.categoryId || product.category?._id || "");
+
+        // Đổ dữ liệu từ mảng variants của DB vào các State ở Client
+        if (Array.isArray(product.variants) && product.variants.length > 0) {
+          const uniqueColors = new Set();
+          const loadedImagesMap = {};
+          const loadedQuantitiesMap = {}; 
+          let unionSizes = new Set();
+
+          product.variants.forEach((v) => {
+            if (v.color) {
+              uniqueColors.add(v.color);
+              if (v.image) loadedImagesMap[v.color] = v.image;
+              loadedQuantitiesMap[v.color] = v.quantity !== undefined ? v.quantity : 0;
+
+              if (Array.isArray(v.sizes)) {
+                v.sizes.forEach(s => unionSizes.add(Number(s)));
+              }
+            }
+          });
+
+          setColors(Array.from(uniqueColors));
+          setImagesByColor(loadedImagesMap);
+          setQuantitiesByColor(loadedQuantitiesMap); 
+          setSizes(Array.from(unionSizes).sort((a, b) => a - b));
+        } else {
+          // Fallback cũ
+          setSizes(Array.isArray(product.sizes) ? product.sizes.map(Number) : []);
+          setColors(Array.isArray(product.colors) ? product.colors : []);
+          setImagesByColor(product.imagesByColor && typeof product.imagesByColor === "object" ? product.imagesByColor : {});
+          
+          const initialQuantities = {};
+          (product.colors || []).forEach(c => { initialQuantities[c] = 0; });
+          setQuantitiesByColor(initialQuantities);
+        }
+
       } catch (err) {
         setError(err?.message || "Lỗi khi tải dữ liệu sản phẩm.");
       } finally {
@@ -81,7 +110,7 @@ export default function UpdateProductClient({ id }) {
     loadData();
   }, [id]);
 
-  // Bật/tắt 1 size trong danh sách đã chọn
+  // Bật/tắt 1 size
   const toggleSize = (size) => {
     setSizes((prev) =>
       prev.includes(size)
@@ -90,7 +119,7 @@ export default function UpdateProductClient({ id }) {
     );
   };
 
-  // Thêm 1 màu mới vào danh sách (từ ô input)
+  // Thêm 1 màu mới
   const addColor = () => {
     const value = colorInput.trim();
     if (!value) return;
@@ -99,6 +128,7 @@ export default function UpdateProductClient({ id }) {
       return;
     }
     setColors((prev) => [...prev, value]);
+    setQuantitiesByColor((prev) => ({ ...prev, [value]: 0 }));
     setColorInput("");
   };
 
@@ -111,26 +141,39 @@ export default function UpdateProductClient({ id }) {
 
   const removeColor = (color) => {
     setColors((prev) => prev.filter((c) => c !== color));
-    // 🌟 Đồng thời xóa cấu hình ảnh của màu đó ra khỏi object
     setImagesByColor((prev) => {
+      const updated = { ...prev };
+      delete updated[color];
+      return updated;
+    });
+    setQuantitiesByColor((prev) => {
       const updated = { ...prev };
       delete updated[color];
       return updated;
     });
   };
 
-  // 🌟 HÀM MỚI: Cập nhật URL ảnh cho từng màu cụ thể
   const handleColorImageUrlChange = (color, url) => {
-    setImagesByColor((prev) => ({
+    setImagesByColor((prev) => ({ ...prev, [color]: url }));
+  };
+
+  // Hàm cập nhật số lượng của từng màu đơn lẻ
+  const handleColorQuantityChange = (color, val) => {
+    const numValue = Math.max(0, parseInt(val) || 0); // Đảm bảo >= 0
+    setQuantitiesByColor((prev) => ({
       ...prev,
-      [color]: url
+      [color]: numValue
     }));
   };
+
+  // 🌟 Tiện ích hiển thị tính tổng nhanh giúp Admin đối chiếu dữ liệu số lượng
+  const totalVariantsQuantity = colors.reduce((sum, color) => sum + (quantitiesByColor[color] || 0), 0);
+  const remainingQuantity = Number(quantity) - totalVariantsQuantity;
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
-    if (!categoryId) {
+    if (!categoryID) {
       setError("Vui lòng chọn một danh mục sản phẩm.");
       return;
     }
@@ -143,8 +186,25 @@ export default function UpdateProductClient({ id }) {
       return;
     }
 
+    // 🌟 RÀNG BUỘC SỐ LƯỢNG CHẶT CHẼ KHI LƯU
+    if (totalVariantsQuantity !== Number(quantity)) {
+      if (totalVariantsQuantity > Number(quantity)) {
+        setError(`Không thể lưu! Tổng số lượng các màu (${totalVariantsQuantity}) đang vượt quá số lượng tổng của sản phẩm (${quantity}) là ${Math.abs(remainingQuantity)} sản phẩm.`);
+      } else {
+        setError(`Không thể lưu! Bạn chưa phân bổ hết số lượng. Vui lòng cấu hình thêm ${remainingQuantity} sản phẩm cho các màu để khớp với số lượng tổng (${quantity}).`);
+      }
+      return;
+    }
+
     setSaving(true);
     setError("");
+
+    const finalVariants = colors.map((color) => ({
+      color: color,
+      image: imagesByColor[color] || "",
+      quantity: quantitiesByColor[color] || 0,
+      sizes: sizes.map(Number) 
+    }));
 
     try {
       const response = await fetch(`/api/products/${id}`, {
@@ -157,10 +217,8 @@ export default function UpdateProductClient({ id }) {
           image,
           quantity: Number(quantity),
           status,
-          sizes,
-          colors,
-          imagesByColor, 
-          categoryId, // 🌟 Gửi kèm categoryId lên Server API
+          categoryID, 
+          variants: finalVariants 
         }),
       });
 
@@ -170,6 +228,7 @@ export default function UpdateProductClient({ id }) {
       }
 
       router.push("/admin/product");
+      router.refresh();
     } catch (err) {
       setError(err?.message || "Đã có lỗi xảy ra.");
     } finally {
@@ -217,13 +276,11 @@ export default function UpdateProductClient({ id }) {
         <div className="card-body">
           <h4 className="card-title mb-4">Sửa sản phẩm</h4>
 
-          {error && <div className="alert alert-danger">{error}</div>}
+          {error && <div className="alert alert-danger font-weight-bold">{error}</div>}
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="productName" className="form-label">
-                Tên sản phẩm
-              </label>
+              <label htmlFor="productName" className="form-label">Tên sản phẩm</label>
               <input
                 type="text"
                 className="form-control"
@@ -237,9 +294,7 @@ export default function UpdateProductClient({ id }) {
 
             <div className="row row-cols-2 g-3 mb-3">
               <div className="col">
-                <label htmlFor="price" className="form-label">
-                  Giá (VNĐ)
-                </label>
+                <label htmlFor="price" className="form-label">Giá (VNĐ)</label>
                 <input
                   type="number"
                   className="form-control"
@@ -251,9 +306,7 @@ export default function UpdateProductClient({ id }) {
                 />
               </div>
               <div className="col">
-                <label htmlFor="quantity" className="form-label">
-                  Số lượng
-                </label>
+                <label htmlFor="quantity" className="form-label">Số lượng tổng</label>
                 <input
                   type="number"
                   className="form-control"
@@ -264,18 +317,26 @@ export default function UpdateProductClient({ id }) {
                   required
                   min="0"
                 />
+                {/* 🌟 Phần hiển thị gợi ý trực quan số lượng còn lại cho Admin */}
+                <div className="form-text mt-1">
+                  Đã phân bổ: <strong className="text-primary">{totalVariantsQuantity}</strong> / {quantity} | 
+                  Trạng thái: {remainingQuantity === 0 ? (
+                    <span className="badge bg-success ms-1">Đã khớp dữ liệu</span>
+                  ) : remainingQuantity > 0 ? (
+                    <span className="badge bg-warning text-dark ms-1">Còn thiếu {remainingQuantity} sp</span>
+                  ) : (
+                    <span className="badge bg-danger ms-1">Vượt quá {Math.abs(remainingQuantity)} sp</span>
+                  )}
+                </div>
               </div>
               
-              {/* 🌟 CẤU HÌNH MỚI: Thêm dropdown Chọn danh mục */}
               <div className="col">
-                <label htmlFor="category" className="form-label">
-                  Danh mục sản phẩm
-                </label>
+                <label htmlFor="category" className="form-label">Danh mục sản phẩm</label>
                 <select
                   className="form-select"
                   id="category"
-                  value={categoryId}
-                  onChange={(e) => setCategoryId(e.target.value)}
+                  value={categoryID}
+                  onChange={(e) => setCategoryID(e.target.value)}
                   required
                 >
                   <option value="">-- Chọn danh mục --</option>
@@ -288,9 +349,7 @@ export default function UpdateProductClient({ id }) {
               </div>
 
               <div className="col">
-                <label htmlFor="status" className="form-label">
-                  Trạng thái
-                </label>
+                <label htmlFor="status" className="form-label">Trạng thái</label>
                 <select
                   className="form-select"
                   id="status"
@@ -319,9 +378,7 @@ export default function UpdateProductClient({ id }) {
             </div>
 
             <div className="mb-3">
-              <label htmlFor="description" className="form-label">
-                Mô tả
-              </label>
+              <label htmlFor="description" className="form-label">Mô tả</label>
               <textarea
                 className="form-control"
                 id="description"
@@ -334,7 +391,7 @@ export default function UpdateProductClient({ id }) {
 
             {/* ----- Chọn Size ----- */}
             <div className="mb-3">
-              <label className="form-label">Size</label>
+              <label className="form-label font-weight-bold">Size kích cỡ</label>
               <div className="d-flex flex-wrap gap-2">
                 {SIZE_OPTIONS.map((size) => {
                   const active = sizes.includes(size);
@@ -343,9 +400,7 @@ export default function UpdateProductClient({ id }) {
                       key={size}
                       type="button"
                       onClick={() => toggleSize(size)}
-                      className={`btn btn-sm ${
-                        active ? "btn-dark" : "btn-outline-secondary"
-                      }`}
+                      className={`btn btn-sm ${active ? "btn-dark" : "btn-outline-secondary"}`}
                       style={{ minWidth: 44 }}
                     >
                       {size}
@@ -354,17 +409,13 @@ export default function UpdateProductClient({ id }) {
                 })}
               </div>
               {sizes.length === 0 && (
-                <div className="form-text text-danger">
-                  Chưa chọn size nào.
-                </div>
+                <div className="form-text text-danger">Chưa chọn size nào.</div>
               )}
             </div>
 
             {/* ----- Chọn Màu ----- */}
             <div className="mb-3">
-              <label htmlFor="colorInput" className="form-label">
-                Màu sắc
-              </label>
+              <label htmlFor="colorInput" className="form-label font-weight-bold">Màu sắc</label>
               <div className="d-flex gap-2">
                 <input
                   type="text"
@@ -375,11 +426,7 @@ export default function UpdateProductClient({ id }) {
                   onChange={(e) => setColorInput(e.target.value)}
                   onKeyDown={handleColorKeyDown}
                 />
-                <button
-                  type="button"
-                  className="btn btn-outline-dark"
-                  onClick={addColor}
-                >
+                <button type="button" className="btn btn-outline-dark" onClick={addColor}>
                   Thêm màu
                 </button>
               </div>
@@ -393,56 +440,88 @@ export default function UpdateProductClient({ id }) {
                       style={{ fontSize: 14, padding: "8px 10px" }}
                     >
                       {color}
-                      <button
-                        type="button"
-                        onClick={() => removeColor(color)}
-                        className="btn-close btn-close-white"
-                        style={{ fontSize: 10 }}
-                        aria-label={`Xóa màu ${color}`}
-                      />
                     </span>
                   ))}
                 </div>
               )}
-
               {colors.length === 0 && (
-                <div className="form-text text-danger">
-                  Chưa thêm màu nào.
-                </div>
+                <div className="form-text text-danger">Chưa thêm màu nào.</div>
               )}
             </div>
 
-            {/* 🌟 KHU VỰC MỚI: Đường dẫn hình ảnh theo từng màu sắc */}
+            {/* ----- 📷 CẤU HÌNH CHI TIẾT ẢNH & SỐ LƯỢNG CHO TỪNG MÀU ----- */}
             {colors.length > 0 && (
               <div className="mb-4 p-3 border rounded bg-light">
                 <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">
-                  📷 Cấu hình đường dẫn ảnh cho từng màu sắc
+                  📷 Cấu hình đường dẫn ảnh & số lượng chi tiết theo màu sắc
                 </h6>
-                <div className="row g-3">
+                <div className="d-flex flex-column gap-3">
                   {colors.map((color) => (
-                    <div className="col-12" key={color}>
-                      <div className="input-group">
-                        <span className="input-group-text bg-dark text-white" style={{ minWidth: "110px", justifyContent: "center" }}>
+                    <div className="row g-2 align-items-center p-2 bg-white rounded border" key={color}>
+                      
+                      {/* Badge Màu sắc hiển thị và nút xóa */}
+                      <div className="col-md-2 col-12 d-flex justify-content-between align-items-center">
+                        <span className="badge bg-dark px-3 py-2 text-wrap w-100 text-center">
                           {color}
                         </span>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder={`Nhập URL hình ảnh dành riêng cho màu ${color}`}
-                          value={imagesByColor[color] || ""}
-                          onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
-                        />
-                        {imagesByColor[color] && (
-                          <span className="input-group-text p-1 bg-white">
-                            <img 
-                              src={imagesByColor[color]} 
-                              alt={`Preview ${color}`} 
-                              style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "4px" }}
-                              onError={(e) => { e.currentTarget.style.display = 'none'; }} // Sửa lỗi cú pháp nhỏ onError
-                            />
-                          </span>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeColor(color)}
+                          className="btn btn-sm btn-outline-danger ms-2 d-md-none"
+                        >
+                          Xóa
+                        </button>
                       </div>
+
+                      {/* Ô nhập ảnh sản phẩm */}
+                      <div className="col-md-6 col-12">
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">Link Ảnh</span>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="URL hình ảnh"
+                            value={imagesByColor[color] || ""}
+                            onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
+                          />
+                          {imagesByColor[color] && (
+                            <span className="input-group-text p-1 bg-white">
+                              <img 
+                                src={imagesByColor[color]} 
+                                alt="Preview" 
+                                style={{ width: "24px", height: "24px", objectFit: "cover" }}
+                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                              />
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Ô nhập số lượng chi tiết cho từng màu */}
+                      <div className="col-md-3 col-9">
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">Số lượng</span>
+                          <input
+                            type="number"
+                            className="form-control"
+                            min="0"
+                            placeholder="0"
+                            value={quantitiesByColor[color] || 0}
+                            onChange={(e) => handleColorQuantityChange(color, e.target.value)}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Nút xóa màu ở màn hình máy tính desktop */}
+                      <div className="col-md-1 col-3 text-end d-none d-md-block">
+                        <button
+                          type="button"
+                          onClick={() => removeColor(color)}
+                          className="btn btn-sm btn-close"
+                          aria-label="Delete"
+                        />
+                      </div>
+
                     </div>
                   ))}
                 </div>

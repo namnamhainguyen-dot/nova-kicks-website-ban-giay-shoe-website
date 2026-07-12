@@ -9,26 +9,45 @@ export default function ProductFilter({ products }) {
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Lấy danh sách các size duy nhất có trong sản phẩm
-  const allSizes = useMemo(() => {
-    const sizes = products.flatMap((p) => p.sizes || []);
-    return [...new Set(sizes)].sort();
+  // 🌟 ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants nếu dữ liệu gốc bị thiếu
+  const processedProducts = useMemo(() => {
+    return (products || []).map((p) => {
+      // Gom toàn bộ màu sắc từ variants
+      const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
+      const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
+
+      // Gom toàn bộ kích cỡ từ tất cả variants
+      const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
+      const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
+
+      return {
+        ...p,
+        displayColors: uniqueColors,
+        displaySizes: uniqueSizes,
+      };
+    });
   }, [products]);
 
-  // Logic lọc sản phẩm
+  // Lấy danh sách tổng hợp các size duy nhất để hiển thị lên thanh Bộ lọc bên trái
+  const allSizes = useMemo(() => {
+    const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
+    return [...new Set(sizes)].sort((a, b) => a - b);
+  }, [processedProducts]);
+
+  // Logic lọc sản phẩm theo khoảng giá và kích cỡ được chọn
   const filtered = useMemo(() => {
-    return products.filter((p) => {
+    return processedProducts.filter((p) => {
       const price = Number(p.price) || 0;
       const minOk = priceRange.min === "" || price >= Number(priceRange.min);
       const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
         
       const sizeOk =
         selectedSizes.length === 0 ||
-        selectedSizes.some((s) => (p.sizes || []).includes(s));
+        selectedSizes.some((s) => (p.displaySizes || []).includes(Number(s)));
         
       return minOk && maxOk && sizeOk;
     });
-  }, [products, priceRange, selectedSizes]);
+  }, [processedProducts, priceRange, selectedSizes]);
 
   const activeCount =
     selectedSizes.length +
@@ -269,7 +288,7 @@ export default function ProductFilter({ products }) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: "flex", justifycontent: "space-between", marginBottom: "16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px" }}>
               <span style={{ fontWeight: 700, fontSize: "16px" }}>Bộ lọc</span>
               <button
                 onClick={() => setSidebarOpen(false)}
@@ -338,16 +357,14 @@ export default function ProductFilter({ products }) {
           ) : (
             <div className="row g-4">
               {filtered.map((p) => {
-                // Đảm bảo số lượng có fallback giống trang Admin
                 const stockQty = p.quantity ?? 12;
-                // Giả định mức tối đa để tính % cho progress bar (ví dụ: 100 hoặc 50)
                 const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
 
                 return (
                   <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
                     <div
-                      className="card h-100 border-0 shadow-sm"
-                      style={{ backgroundColor: "var(--surface-card)" }}
+                      className="card h-100 border-0 shadow-sm card-product nk-card"
+                      style={{ backgroundColor: "var(--surface-card)", borderRadius: "12px", overflow: "hidden" }}
                     >
                       <Link
                         href={`/products/${p._id?.$oid || p._id}`}
@@ -360,19 +377,20 @@ export default function ProductFilter({ products }) {
                           <img
                             src={p.image || "/img/no-image.png"}
                             alt={p.name}
-                            className="img-fluid"
+                            className="img-fluid img-hover-scale"
                             style={{ maxHeight: "100%", objectFit: "contain" }}
                           />
                         </div>
 
                         <div className="card-body pb-0">
-                          <h5 className="fw-bold text-truncate" title={p.name}>
+                          <h5 className="fw-bold text-truncate card-title" title={p.name}>
                             {p.name}
                           </h5>
 
-                          {p.sizes?.length > 0 && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "6px" }}>
-                              {p.sizes.slice(0, 4).map((size) => (
+                          {/* 🌟 HIỂN THỊ KÍCH THƯỚC (SIZE) */}
+                          {p.displaySizes?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                              {p.displaySizes.slice(0, 4).map((size) => (
                                 <span
                                   key={size}
                                   style={{
@@ -388,17 +406,18 @@ export default function ProductFilter({ products }) {
                                   {size}
                                 </span>
                               ))}
-                              {p.sizes.length > 4 && (
+                              {p.displaySizes.length > 4 && (
                                 <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                                  +{p.sizes.length - 4}
+                                  +{p.displaySizes.length - 4}
                                 </span>
                               )}
                             </div>
                           )}
 
-                          {p.colors?.length > 0 && (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
-                              {p.colors.slice(0, 4).map((color) => (
+                          {/* 🌟 HIỂN THỊ MÀU SẮC */}
+                          {p.displayColors?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "10px" }}>
+                              {p.displayColors.slice(0, 4).map((color) => (
                                 <span
                                   key={color}
                                   style={{
@@ -414,9 +433,9 @@ export default function ProductFilter({ products }) {
                                   {color}
                                 </span>
                               ))}
-                              {p.colors.length > 4 && (
+                              {p.displayColors.length > 4 && (
                                 <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                                  +{p.colors.length - 4}
+                                  +{p.displayColors.length - 4}
                                 </span>
                               )}
                             </div>
@@ -425,10 +444,10 @@ export default function ProductFilter({ products }) {
                           <p
                             className="small text-secondary mb-2 custom-scrollbar"
                             style={{ 
-                              height: "72px",          /* Cố định chiều cao (khoảng 3 dòng chữ) */
-                              overflowY: "auto",       /* Hiện thanh cuộn khi nội dung vượt quá chiều cao */
-                              paddingRight: "4px",     /* Tạo khoảng trống nhỏ để thanh cuộn không đè vào chữ */
-                              textAlign: "justify",    /* Căn đều hai bên cho chữ đẹp hơn (tùy chọn) */
+                              height: "72px",
+                              overflowY: "auto",
+                              paddingRight: "4px",
+                              textAlign: "justify",
                               fontSize: "13px",
                               lineHeight: "1.4"
                             }}
@@ -436,7 +455,7 @@ export default function ProductFilter({ products }) {
                             {p.description}
                           </p>
 
-                          {/* 🌟 ĐOẠN CHÈN HIỂN THỊ SỐ LƯỢNG TỒN KHO */}
+                          {/* THANH SỐ LƯỢNG TỒN KHO */}
                           <div className="mb-2" style={{ fontSize: "12px" }}>
                             <div className="d-flex justify-content-between align-items-center mb-1">
                               <span className="text-muted">
