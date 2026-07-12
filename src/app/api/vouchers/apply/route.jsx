@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 
-const Voucher = mongoose.models.Voucher || mongoose.model("Voucher", new mongoose.Schema({
-  code: String, discount_type: String, discount_value: Number, min_order_value: Number, is_active: Boolean
-}));
+// ĐỒNG BỘ: Định nghĩa Schema giống hệt với file Admin
+const VoucherSchema = new mongoose.Schema({
+  code: { type: String, required: true },
+  discount_type: String,
+  discount_value: Number,
+  min_order_value: Number,
+  is_active: Boolean,
+  expiry_date: Date,
+  used_count: { type: Number, default: 0 },
+  usage_limit: { type: Number, default: 0 },
+  description: String
+}, { timestamps: true });
+
+// Sử dụng model 'Voucher' từ mongoose.models để tránh xung đột
+const Voucher = mongoose.models.Voucher || mongoose.model("Voucher", VoucherSchema);
 
 export async function POST(req) {
   try {
@@ -18,18 +30,22 @@ export async function POST(req) {
       return NextResponse.json({ success: false, message: "Vui lòng nhập mã giảm giá!" }, { status: 400 });
     }
 
-    // Tìm voucher dựa trên mã khách nhập
     const voucher = await Voucher.findOne({ code: code.trim().toUpperCase() });
 
     if (!voucher) {
-      return NextResponse.json({ success: false, message: "Mã giảm giá không tồn tại hoặc đã nhập sai!" }, { status: 404 });
+      return NextResponse.json({ success: false, message: "Mã giảm giá không tồn tại!" }, { status: 404 });
     }
 
     if (voucher.is_active === false) {
-      return NextResponse.json({ success: false, message: "Mã giảm giá này hiện đã bị vô hiệu hóa!" }, { status: 400 });
+      return NextResponse.json({ success: false, message: "Mã giảm giá đã bị vô hiệu hóa!" }, { status: 400 });
     }
 
-    // Trả thẳng dữ liệu voucher về cho client
+    // THÊM: Kiểm tra số lần sử dụng ở đây
+    if (voucher.used_count >= voucher.usage_limit) {
+      return NextResponse.json({ success: false, message: "Mã giảm giá đã hết lượt sử dụng!" }, { status: 400 });
+    }
+
+    // Trả về đầy đủ dữ liệu
     return NextResponse.json({
       success: true,
       message: "Áp dụng mã giảm giá thành công!",
@@ -40,6 +56,6 @@ export async function POST(req) {
     }, { status: 200 });
 
   } catch (error) {
-    return NextResponse.json({ success: false, message: "Lỗi kết nối kiểm tra mã!" }, { status: 500 });
+    return NextResponse.json({ success: false, message: "Lỗi hệ thống!" }, { status: 500 });
   }
 }
