@@ -1,22 +1,25 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useContext } from "react";
 import Link from "next/link";
 import AddToCart from "@/components/AddToCart";
+import { WishlistContext } from "@/components/WishlistContext";
 
 export default function ProductFilter({ products }) {
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // 🌟 State mới để lọc sản phẩm yêu thích
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  // 🌟 ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants nếu dữ liệu gốc bị thiếu
+  const { toggleWishlist, isFavorite } = useContext(WishlistContext);
+
+  // ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants
   const processedProducts = useMemo(() => {
     return (products || []).map((p) => {
-      // Gom toàn bộ màu sắc từ variants
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
-      // Gom toàn bộ kích cỡ từ tất cả variants
       const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
       const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
 
@@ -28,15 +31,22 @@ export default function ProductFilter({ products }) {
     });
   }, [products]);
 
-  // Lấy danh sách tổng hợp các size duy nhất để hiển thị lên thanh Bộ lọc bên trái
+  // Lấy danh sách tổng hợp các size duy nhất
   const allSizes = useMemo(() => {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
     return [...new Set(sizes)].sort((a, b) => a - b);
   }, [processedProducts]);
 
-  // Logic lọc sản phẩm theo khoảng giá và kích cỡ được chọn
+  // Logic lọc sản phẩm theo khoảng giá, kích cỡ và YÊU THÍCH
   const filtered = useMemo(() => {
     return processedProducts.filter((p) => {
+      const productId = p._id?.$oid || p._id;
+      
+      // Lọc theo trạng thái yêu thích nếu được bật
+      if (showFavoritesOnly && !isFavorite(productId)) {
+        return false;
+      }
+
       const price = Number(p.price) || 0;
       const minOk = priceRange.min === "" || price >= Number(priceRange.min);
       const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
@@ -47,11 +57,13 @@ export default function ProductFilter({ products }) {
         
       return minOk && maxOk && sizeOk;
     });
-  }, [processedProducts, priceRange, selectedSizes]);
+  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite]);
 
+  // Đếm số lượng bộ lọc đang hoạt động (bao gồm cả lọc yêu thích)
   const activeCount =
     selectedSizes.length +
-    (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0);
+    (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0) +
+    (showFavoritesOnly ? 1 : 0);
 
   function toggleItem(list, setList, value) {
     setList((prev) =>
@@ -62,6 +74,7 @@ export default function ProductFilter({ products }) {
   function clearAll() {
     setSelectedSizes([]);
     setPriceRange({ min: "", max: "" });
+    setShowFavoritesOnly(false); // Reset cả lọc yêu thích
   }
 
   const FilterPanel = () => (
@@ -100,6 +113,53 @@ export default function ProductFilter({ products }) {
             Xóa tất cả ({activeCount})
           </button>
         )}
+      </div>
+
+      {/* 🌟 MỤC LỌC SẢN PHẨM YÊU THÍCH */}
+      <div style={{ marginBottom: "24px" }}>
+        <p
+          style={{
+            fontWeight: 600,
+            fontSize: "13px",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "#6b7280",
+            marginBottom: "10px",
+          }}
+        >
+          Tùy chọn
+        </p>
+        <button
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            width: "100%",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: showFavoritesOnly ? "1.5px solid #ef4444" : "1px solid #e5e7eb",
+            background: showFavoritesOnly ? "#fef2f2" : "#f9fafb",
+            color: showFavoritesOnly ? "#ef4444" : "#374151",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill={showFavoritesOnly ? "#ef4444" : "none"}
+            stroke={showFavoritesOnly ? "#ef4444" : "#4b5563"}
+            strokeWidth="2.5"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          Chỉ hiện sản phẩm yêu thích
+        </button>
       </div>
 
       {/* Bộ lọc Giá (VND) */}
@@ -202,8 +262,8 @@ export default function ProductFilter({ products }) {
               letterSpacing: "0.05em",
               color: "#6b7280",
               marginBottom: "10px",
-            }}
-          >
+          }}
+        >
             Kích thước
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -335,9 +395,20 @@ export default function ProductFilter({ products }) {
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
-              <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
-              <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
+              {/* 🌟 THAY ĐỔI ĐIỀU KIỆN HIỂN THỊ KHI TRỐNG */}
+              {showFavoritesOnly ? (
+                <>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>❤️</div>
+                  <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Chưa thêm sản phẩm vào mục yêu thích</p>
+                  <p style={{ fontSize: "14px" }}>Hãy nhấn nút trái tim ở sản phẩm bạn thích để xem lại tại đây.</p>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
+                  <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
+                  <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
+                </>
+              )}
               <button
                 onClick={clearAll}
                 style={{
@@ -359,13 +430,53 @@ export default function ProductFilter({ products }) {
               {filtered.map((p) => {
                 const stockQty = p.quantity ?? 12;
                 const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
+                const isFav = isFavorite(p._id?.$oid || p._id);
 
                 return (
                   <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
                     <div
                       className="card h-100 border-0 shadow-sm card-product nk-card"
-                      style={{ backgroundColor: "var(--surface-card)", borderRadius: "12px", overflow: "hidden" }}
+                      style={{ backgroundColor: "var(--surface-card)", borderRadius: "12px", overflow: "hidden", position: "relative" }}
                     >
+                      {/* NÚT TRÁI TIM WISHLIST */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleWishlist(p);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: "12px",
+                          right: "12px",
+                          zIndex: 10,
+                          background: "rgba(255, 255, 255, 0.8)",
+                          backdropFilter: "blur(4px)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "36px",
+                          height: "36px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          transition: "all 0.2s ease"
+                        }}
+                        title={isFav ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="18"
+                          height="18"
+                          fill={isFav ? "var(--danger, #c73a2b)" : "none"}
+                          stroke={isFav ? "var(--danger, #c73a2b)" : "#555"}
+                          strokeWidth="2.5"
+                          viewBox="0 0 24 24"
+                        >
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                      </button>
+
                       <Link
                         href={`/products/${p._id?.$oid || p._id}`}
                         style={{ textDecoration: "none", color: "inherit" }}
@@ -387,7 +498,7 @@ export default function ProductFilter({ products }) {
                             {p.name}
                           </h5>
 
-                          {/* 🌟 HIỂN THỊ KÍCH THƯỚC (SIZE) */}
+                          {/* HIỂN THỊ KÍCH THƯỚC */}
                           {p.displaySizes?.length > 0 && (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
                               {p.displaySizes.slice(0, 4).map((size) => (
@@ -414,7 +525,7 @@ export default function ProductFilter({ products }) {
                             </div>
                           )}
 
-                          {/* 🌟 HIỂN THỊ MÀU SẮC */}
+                          {/* HIỂN THỊ MÀU SẮC */}
                           {p.displayColors?.length > 0 && (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "10px" }}>
                               {p.displayColors.slice(0, 4).map((color) => (
