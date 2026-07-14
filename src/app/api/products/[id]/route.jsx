@@ -34,8 +34,8 @@ export async function PUT(request, { params }) {
     const { id } = await params; // ✅ await params
     const body = await request.json();
     
-    // Nhận thêm `categoryID` và mảng `variants` từ Client gửi lên
-    const { name, price, description, image, quantity, status, categoryID, variants } = body;
+    // 🌟 BỔ SUNG: Nhận thêm `isFlashSale` và `originalPrice` từ Client gửi lên
+    const { name, price, description, image, quantity, status, categoryID, variants, isFlashSale, originalPrice } = body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
@@ -45,6 +45,13 @@ export async function PUT(request, { params }) {
     if (quantity !== undefined) updateData.quantity = Number(quantity);
     if (status !== undefined) updateData.status = status;
     if (categoryID !== undefined) updateData.categoryID = categoryID;
+
+    // 🌟 BỔ SUNG: Xử lý cập nhật trạng thái Flash Sale xuống Database
+    if (isFlashSale !== undefined) {
+      updateData.isFlashSale = Boolean(isFlashSale);
+      // Nếu tắt Flash Sale, ép giá gốc về 0 luôn cho sạch dữ liệu
+      updateData.originalPrice = isFlashSale ? Number(originalPrice || 0) : 0;
+    }
 
     // 🌟 XỬ LÝ LƯU MẢNG VARIANTS CHI TIẾT SỐ LƯỢNG THEO MÀU
     if (variants !== undefined) {

@@ -16,6 +16,10 @@ export default function UpdateProductClient({ id }) {
   const [quantity, setQuantity] = useState(0); // Số lượng tổng
   const [status, setStatus] = useState("active");
 
+  // ----- 🌟 Cấu hình Flash Sale 🌟 -----
+  const [isFlashSale, setIsFlashSale] = useState(false);
+  const [originalPrice, setOriginalPrice] = useState(0);
+
   // Quản lý danh mục
   const [categoryID, setCategoryID] = useState(""); 
   const [categories, setCategories] = useState([]); 
@@ -38,7 +42,7 @@ export default function UpdateProductClient({ id }) {
     const loadData = async () => {
       if (!id) {
         setError("ID sản phẩm không hợp lệ.");
-        loading(false); 
+        setLoading(false); 
         return;
       }
 
@@ -65,6 +69,10 @@ export default function UpdateProductClient({ id }) {
         setQuantity(product.quantity || 0);
         setStatus(product.status || "active");
         setCategoryID(product.categoryID || product.categoryId || product.category?._id || "");
+
+        // Đổ dữ liệu cấu hình Flash Sale từ Database
+        setIsFlashSale(product.isFlashSale || false);
+        setOriginalPrice(product.originalPrice || 0);
 
         // Đổ dữ liệu từ mảng variants của DB vào các State ở Client
         if (Array.isArray(product.variants) && product.variants.length > 0) {
@@ -166,7 +174,7 @@ export default function UpdateProductClient({ id }) {
     }));
   };
 
-  // 🌟 Tiện ích hiển thị tính tổng nhanh giúp Admin đối chiếu dữ liệu số lượng
+  // Tiện ích hiển thị tính tổng nhanh giúp Admin đối chiếu dữ liệu số lượng
   const totalVariantsQuantity = colors.reduce((sum, color) => sum + (quantitiesByColor[color] || 0), 0);
   const remainingQuantity = Number(quantity) - totalVariantsQuantity;
 
@@ -186,7 +194,7 @@ export default function UpdateProductClient({ id }) {
       return;
     }
 
-    // 🌟 RÀNG BUỘC SỐ LƯỢNG CHẶT CHẼ KHI LƯU
+    // RÀNG BUỘC SỐ LƯỢNG CHẶT CHẼ KHI LƯU
     if (totalVariantsQuantity !== Number(quantity)) {
       if (totalVariantsQuantity > Number(quantity)) {
         setError(`Không thể lưu! Tổng số lượng các màu (${totalVariantsQuantity}) đang vượt quá số lượng tổng của sản phẩm (${quantity}) là ${Math.abs(remainingQuantity)} sản phẩm.`);
@@ -218,7 +226,10 @@ export default function UpdateProductClient({ id }) {
           quantity: Number(quantity),
           status,
           categoryID, 
-          variants: finalVariants 
+          variants: finalVariants,
+          // Gửi kèm dữ liệu Flash Sale lên API
+          isFlashSale: Boolean(isFlashSale),
+          originalPrice: isFlashSale ? Number(originalPrice) : 0 
         }),
       });
 
@@ -294,7 +305,7 @@ export default function UpdateProductClient({ id }) {
 
             <div className="row row-cols-2 g-3 mb-3">
               <div className="col">
-                <label htmlFor="price" className="form-label">Giá (VNĐ)</label>
+                <label htmlFor="price" className="form-label">Giá bán hiện tại (VNĐ)</label>
                 <input
                   type="number"
                   className="form-control"
@@ -317,7 +328,6 @@ export default function UpdateProductClient({ id }) {
                   required
                   min="0"
                 />
-                {/* 🌟 Phần hiển thị gợi ý trực quan số lượng còn lại cho Admin */}
                 <div className="form-text mt-1">
                   Đã phân bổ: <strong className="text-primary">{totalVariantsQuantity}</strong> / {quantity} | 
                   Trạng thái: {remainingQuantity === 0 ? (
@@ -362,6 +372,51 @@ export default function UpdateProductClient({ id }) {
                 </select>
               </div>
             </div>
+
+            {/* ==================== 🛠️ KHỐI CẤU HÌNH FLASH SALE (MỚI THÊM) ==================== */}
+            <div className="card p-3 mb-4 rounded bg-light border-warning">
+              <h6 className="form-label font-weight-bold text-danger text-uppercase mb-3">
+                🔥 Cấu hình Chương trình Flash Sale
+              </h6>
+              
+              <div className="form-check form-switch mb-3">
+                <input 
+                  className="form-check-input" 
+                  type="checkbox" 
+                  id="isFlashSaleToggle"
+                  checked={isFlashSale}
+                  onChange={(e) => setIsFlashSale(e.target.checked)}
+                  style={{ cursor: "pointer" }}
+                />
+                <label className="form-check-label font-weight-bold text-dark" htmlFor="isFlashSaleToggle" style={{ cursor: "pointer" }}>
+                  Kích hoạt trạng thái Flash Sale cho sản phẩm này
+                </label>
+              </div>
+
+              {isFlashSale && (
+                <div className="row g-3">
+                  <div className="col-md-6">
+                    <label htmlFor="originalPrice" className="form-label small text-uppercase font-weight-bold text-muted">
+                      Giá gốc ban đầu trước khi giảm (VNĐ)
+                    </label>
+                    <input 
+                      type="number" 
+                      className="form-control"
+                      id="originalPrice"
+                      placeholder="Ví dụ: 3500000"
+                      value={originalPrice}
+                      onChange={(e) => setOriginalPrice(e.target.value)}
+                      required={isFlashSale}
+                      min="0"
+                    />
+                    <small className="form-text text-muted">
+                      Giá gốc cũ dùng để gạch ngang trên trang chủ (Ô <span className="font-weight-bold">Giá bán hiện tại</span> ở trên sẽ là giá khuyến mãi chạy Flash sale).
+                    </small>
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* ============================================================================== */}
 
             <div className="mb-3">
               <label htmlFor="image" className="form-label font-weight-bold">
@@ -449,7 +504,7 @@ export default function UpdateProductClient({ id }) {
               )}
             </div>
 
-            {/* ----- 📷 CẤU HÌNH CHI TIẾT ẢNH & SỐ LƯỢNG CHO TỪNG MÀU ----- */}
+            {/* ----- 📷 CẤU HÌNH CHI TIẾT ẢNH & SỐ LƯỢNG KÈM THEO MÀU VÀ NÚT XÓA ----- */}
             {colors.length > 0 && (
               <div className="mb-4 p-3 border rounded bg-light">
                 <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">

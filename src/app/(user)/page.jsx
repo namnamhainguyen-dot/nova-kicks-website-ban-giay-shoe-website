@@ -8,17 +8,20 @@ export default async function Menu() {
   const productList = await res.json();
 
   const isArray = Array.isArray(productList);
-  
   const displayProducts = isArray ? productList : [];
 
   // Ảnh đại diện cho 2 ô banner phụ dựa trên dữ liệu thật
   const firstNewProductImage = displayProducts[0]?.image;
   const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
 
-  // PHÂN CHIA DỮ LIỆU ĐỘNG CHO TỪNG KHU VỰC ĐỂ KHÔNG BỊ TRÙNG LẶP
-  const newArrivalsData = displayProducts.slice(0, 4); 
-  const flashSaleData = displayProducts.slice(6, 10);
-  const hotProductsData = displayProducts.slice(10).concat(displayProducts.slice(0, 5)); // 8 sản phẩm tiếp theo
+  // PHÂN CHIA DỮ LIỆU ĐỘNG CHUẨN XÁC
+  // 1. Lọc các sản phẩm có cấu hình Flash Sale từ Database
+  const flashSaleData = displayProducts.filter(p => p.isFlashSale === true);
+  
+  // 2. Các khu vực khác lấy các sản phẩm thông thường (để giao diện phong phú và không trùng với Flash Sale)
+  const regularProducts = displayProducts.filter(p => !p.isFlashSale);
+  const newArrivalsData = regularProducts.slice(0, 4); 
+  const hotProductsData = regularProducts.slice(4, 12); // Lấy tối đa 8 sản phẩm tiếp theo
 
   return (
     <main className="min-vh-100" style={{ paddingTop: "70px", backgroundColor: "var(--background)" }}>
@@ -140,7 +143,8 @@ export default async function Menu() {
           <div className="row g-4">
             {flashSaleData.length > 0 ? (
               flashSaleData.map((p) => {
-                const originalPrice = Number(p.price) * 1.35; 
+                // Sử dụng originalPrice thực tế từ DB, nếu thiếu sẽ tự fallback để tránh lỗi giao diện
+                const oldPrice = p.originalPrice ? Number(p.originalPrice) : Number(p.price) * 1.35; 
                 return (
                   <div key={p._id} className="col-sm-6 col-md-3">
                     <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
@@ -151,7 +155,7 @@ export default async function Menu() {
                         <div className="card-body p-3 pb-0 text-start">
                           <h6 className="fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
                           <p className="text-danger fw-black m-0 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
-                          <del className="small" style={{ color: "var(--text-muted)" }}>{Math.round(originalPrice).toLocaleString('vi-VN')} VND</del>
+                          <del className="small" style={{ color: "var(--text-muted)" }}>{Math.round(oldPrice).toLocaleString('vi-VN')} VND</del>
                         </div>
                       </Link>
                     </div>
@@ -159,15 +163,16 @@ export default async function Menu() {
                 );
               })
             ) : (
+              /* Dữ liệu dự phòng (Placeholder) khi chưa bật sản phẩm nào làm Flash Sale */
               [1, 2, 3, 4].map((item, index) => (
                 <div key={index} className="col-sm-6 col-md-3">
-                  <Link href={`/products/${item}`} className="text-decoration-none d-block h-100">
+                  <Link href={`/products`} className="text-decoration-none d-block h-100">
                     <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
                       <div className="p-3" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
                         <img src={`https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-0${item}.jpg`} className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Flash Sale Fake" />
                       </div>
-                      <div className="card-body p-3">
-                        <h6 className="fw-bold text-uppercase m-0" style={{ color: "var(--text-primary)" }}>NOVA RUNNER V{item}</h6>
+                      <div className="card-body p-3 text-start">
+                        <h6 className="fw-bold text-uppercase m-0 text-truncate" style={{ color: "var(--text-primary)" }}>NOVA RUNNER V{item}</h6>
                         <p className="text-danger fw-bold m-0">2.450.000 VND</p>
                       </div>
                     </div>
@@ -206,14 +211,10 @@ export default async function Menu() {
               { id: 1, name: "Nike Air Max Plus", price: 4200000 },
               { id: 2, name: "Adidas Samba OG", price: 3100000 },
               { id: 3, name: "Puma Palermo Sneaker", price: 2600000 },
-              { id: 4, name: "New Balance 9060", price: 4800000 },
-              { id: 5, name: "Asics Gel-Kayano 14", price: 3900000 },
-              { id: 6, name: "Converse Chuck 70", price: 2100000 },
-              { id: 7, name: "Vans Old Skool Classic", price: 1850000 },
-              { id: 8, name: "Nike Dunk Low Panda", price: 3500000 }
+              { id: 4, name: "New Balance 9060", price: 4800000 }
             ].map((item) => (
               <div key={item.id} className="col-sm-6 col-md-4 col-lg-3">
-                <Link href={`/products/${item.id}`} className="text-decoration-none d-block h-100">
+                <Link href={`/products`} className="text-decoration-none d-block h-100">
                   <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
                     <div className="p-4" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
                       <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt={item.name} />
@@ -258,7 +259,7 @@ export default async function Menu() {
         </div>
       </section>
 
-      {/* ================= TRẢI NGHIỆM TRỰC TIẾP (ĐÃ UPDATE GOOGLE MAPS) ================= */}
+      {/* ================= TRẢI NGHIỆM TRỰC TIẾP ================= */}
       <section className="py-5 my-5" style={{ backgroundColor: "var(--surface)" }}>
         <div className="container">
           <div className="row align-items-center g-4">
@@ -269,7 +270,6 @@ export default async function Menu() {
               <p className="small" style={{ color: "var(--text-secondary)" }}>Mở cửa: 09:00 AM - 10:00 PM</p>
             </div>
             <div className="col-md-7">
-              {/* Thẻ iframe nhúng bản đồ trực tiếp có bo viền chuẩn UI */}
               <div 
                 className="overflow-hidden shadow-sm border" 
                 style={{ 
