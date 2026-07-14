@@ -10,6 +10,8 @@ export default function Checkout() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [orderNote, setOrderNote] = useState("");
+
+  const [paymentMethod, setPaymentMethod] = useState("cod");
   
   const [isOrdering, setIsOrdering] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
@@ -30,8 +32,43 @@ export default function Checkout() {
 
   const router = useRouter();
 
-  // Đọc danh sách sản phẩm mua từ sessionStorage và lấy thông tin User khi load trang
+// ── EFFECT 1: XỬ LÝ QUAY VỀ SAU KHI THANH TOÁN GIẢ LẬP THÀNH CÔNG ──
   useEffect(() => {
+    if (typeof window !== "undefined") {
+      const queryParams = new URLSearchParams(window.location.search);
+      const successSimulated = queryParams.get("success_simulated");
+      const urlOrderId = queryParams.get("orderId");
+
+      if (successSimulated === "true" && urlOrderId) {
+        setCreatedOrderId(urlOrderId);
+        setIsSuccess(true);
+        
+        // Tiến hành xóa giỏ hàng dựa trên các item đã thanh toán lưu trong sessionStorage
+        const storedItems = sessionStorage.getItem("checkout_items");
+        if (storedItems) {
+          try {
+            const parsedItems = JSON.parse(storedItems);
+            const remainingCart = cart.filter(cartItem =>
+              !parsedItems.some(checkoutItem =>
+                checkoutItem._id === cartItem._id &&
+                checkoutItem.selectedColor === cartItem.selectedColor &&
+                checkoutItem.selectedSize === cartItem.selectedSize
+              )
+            );
+            setCart(remainingCart);
+            localStorage.setItem("cart", JSON.stringify(remainingCart));
+          } catch (e) {
+            console.error("Lỗi xóa giỏ hàng sau thanh toán giả lập:", e);
+          }
+        }
+        sessionStorage.removeItem("checkout_items");
+      }
+    }
+  }, [cart, setCart]); // Chỉ phụ thuộc vào cart gốc để filter
+
+  // ── EFFECT 2: ĐỌC DATA BAN ĐẦU (CHECKOUT ITEMS & USER INFO) KHI MOUNT ──
+  useEffect(() => {
+    // 1. Đọc sản phẩm chờ thanh toán
     const storedItems = sessionStorage.getItem("checkout_items");
     if (storedItems) {
       try {
@@ -43,19 +80,16 @@ export default function Checkout() {
         console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
       }
     } else if (cart && cart.length > 0) {
-      // Dự phòng nếu user reload trang hoặc vào thẳng URL bằng tay
       setCheckoutItems(cart);
     }
 
-    // Lấy thông tin user đã đăng nhập từ localStorage để gắn danh tính vào đơn hàng
+    // 2. Lấy thông tin user đăng nhập điền vào Form
     if (typeof window !== "undefined") {
       const savedUser = localStorage.getItem("user");
       if (savedUser) {
         try {
           const parsedUser = JSON.parse(savedUser);
           setCurrentUser(parsedUser);
-          
-          // Tự động điền thông tin tài khoản có sẵn vào form để tăng trải nghiệm người dùng
           if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
           if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
           if (parsedUser.address) setDeliveryAddress(parsedUser.address);
@@ -64,7 +98,7 @@ export default function Checkout() {
         }
       }
     }
-  }, [cart]);
+  }, []); // Để mảng rỗng [] giúp code chỉ chạy DUY NHẤT 1 lần khi trang Checkout được mở lên
 
   // Tính tổng tiền CHỈ trên danh sách sản phẩm được chọn mua
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
@@ -175,67 +209,73 @@ export default function Checkout() {
   };
 
   // Gửi đơn hàng lên API
-  const handleOrder = async (e) => {
-    if (e) e.preventDefault(); 
+ const handleOrder = async (e) => {
+    if (e) e.preventDefault();
     if (!validateOrder()) return;
-    
-    setIsOrdering(true);
-    
-    const order = {
-      // ĐÃ THÊM: Gắn email và userId để trang Hồ sơ cá nhân (Profile) có căn cứ để truy vấn
-      email: currentUser?.email || "guest", 
-      userId: currentUser?._id || currentUser?.id || null,
 
+    setIsOrdering(true);
+
+    const orderData = {
+      email: currentUser?.email || "guest",
+      userId: currentUser?._id || currentUser?.id || null,
       name: customerName,
       phone: customerPhone,
-      location_id: deliveryAddress, 
+      location_id: deliveryAddress,
       note: orderNote,
       order_items: checkoutItems.map(item => ({
         product_id: item._id,
         name: item.name,
         quantity: item.quantity,
         price: item.price,
-        color: item.selectedColor || null, 
-        size: item.selectedSize || null    
+        color: item.selectedColor || null,
+        size: item.selectedSize || null
       })),
       total: total,
-      discount: discountAmount, 
-      final_total: finalTotal,  
-      applied_voucher: appliedVoucher ? voucherCode.toUpperCase() : null 
+      discount: discountAmount,
+      final_total: finalTotal,
+      applied_voucher: appliedVoucher ? voucherCode.toUpperCase() : null,
+      paymentMethod: paymentMethod
     };
 
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(order),
+        body: JSON.stringify(orderData),
       });
-      
+
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-      
+
       const result = await res.json();
 
+      // --- TÍCH HỢP LOGIC THANH TOÁN ---
+      if (result.paymentUrl) {
+        // Chuyển hướng người dùng sang trang thanh toán của ngân hàng/VNPay
+        window.location.href = result.paymentUrl;
+        return; // Dừng tại đây, không cần xóa giỏ hàng ngay vì khách chưa thanh toán xong
+      }
+
+      // --- LOGIC XỬ LÝ ĐƠN HÀNG THÀNH CÔNG (CHO COD HOẶC KHI ĐÃ TRẢ TIỀN) ---
       if (result.code === "success" || result.success || result._id || result.id) {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
-        
-        // CHỈ XÓA những sản phẩm vừa thanh toán thành công ra khỏi giỏ hàng chính
-        const remainingCart = cart.filter(cartItem => 
-          !checkoutItems.some(checkoutItem => 
+
+        // Xóa sản phẩm vừa thanh toán khỏi giỏ hàng
+        const remainingCart = cart.filter(cartItem =>
+          !checkoutItems.some(checkoutItem =>
             checkoutItem._id === cartItem._id &&
             checkoutItem.selectedColor === cartItem.selectedColor &&
             checkoutItem.selectedSize === cartItem.selectedSize
           )
         );
-        
+
         setCart(remainingCart);
         if (typeof window !== "undefined") {
           localStorage.setItem("cart", JSON.stringify(remainingCart));
         }
 
-        // Xóa vùng nhớ tạm sessionStorage
         sessionStorage.removeItem("checkout_items");
         setIsSuccess(true);
       } else {
@@ -334,6 +374,25 @@ export default function Checkout() {
                     value={deliveryAddress}
                     onChange={(e) => setDeliveryAddress(e.target.value)}
                   />
+                </div>
+
+                <div className="mb-4">
+                  <label className="form-label fw-semibold small">Chọn phương thức thanh toán <span className="text-danger">*</span></label>
+                  <div className="d-flex flex-column gap-2">
+                    {/* Option COD */}
+                    <div className={`p-3 border rounded cursor-pointer ${paymentMethod === 'cod' ? 'border-dark bg-light' : ''}`}
+                        onClick={() => setPaymentMethod('cod')}>
+                      <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
+                      <span className="ms-2 fw-medium">Thanh toán khi nhận hàng (COD)</span>
+                    </div>
+                    
+                    {/* Option VNPay */}
+                    <div className={`p-3 border rounded cursor-pointer ${paymentMethod === 'vnpay' ? 'border-dark bg-light' : ''}`}
+                        onClick={() => setPaymentMethod('vnpay')}>
+                      <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} />
+                      <span className="ms-2 fw-medium">Thanh toán qua VNPay (Thẻ/QR Code)</span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="mb-4">
