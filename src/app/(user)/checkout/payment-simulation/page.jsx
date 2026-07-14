@@ -20,7 +20,7 @@ export default function PaymentSimulation() {
 
   // Tạo mã QR VietQR giả lập
   const bankId = "MB"; // Ngân hàng MBBank
-  const accountNo = "99999999999"; // Số tài khoản giả lập
+  const accountNo = "0768696887"; // Số tài khoản 
   const accountName = "CONG TY TNHH NOVA KICKS";
   const description = `THANH TOAN DON HANG ${orderId}`;
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
