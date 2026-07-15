@@ -4,6 +4,82 @@ import { useEffect, useState, use } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
+// ==========================================
+// COMPONENT CON: TỰ ĐỘNG LẤY ẢNH TỪ API SẢN PHẨM NẾU TRONG ĐƠN HÀNG KHÔNG CÓ
+// ==========================================
+function OrderItemRow({ item, idx, isLast }) {
+  const [imgUrl, setImgUrl] = useState("https://placehold.co/100x100?text=Loading...");
+
+  useEffect(() => {
+    // 1. Nếu trong item của đơn hàng đã có sẵn ảnh (phòng trường hợp sau này bạn update API đặt hàng)
+    const existingImg = item.image || item.img || item.thumbnail || item.product_image;
+    if (existingImg) {
+      setImgUrl(existingImg);
+      return;
+    }
+
+    // 2. Nếu không có ảnh, tiến hành fetch thông tin từ API chi tiết sản phẩm bằng product_id
+    if (item.product_id) {
+      fetch(`/api/products/${item.product_id}`)
+        .then((res) => res.json())
+        .then((productData) => {
+          if (productData && productData.image) {
+            setImgUrl(productData.image);
+          } else {
+            setImgUrl("https://placehold.co/100x100?text=No+Image");
+          }
+        })
+        .catch((err) => {
+          console.error("Lỗi khi lấy ảnh sản phẩm:", err);
+          setImgUrl("https://placehold.co/100x100?text=No+Image");
+        });
+    } else {
+      setImgUrl("https://placehold.co/100x100?text=No+Image");
+    }
+  }, [item]);
+
+  const itemKey = `${item.product_id || idx}-${item.color || "none"}-${item.size || "none"}`;
+
+  return (
+    <div key={itemKey} className={`d-flex align-items-center justify-content-between py-2 ${isLast ? "" : "border-bottom"}`}>
+      <div className="d-flex align-items-center">
+        {/* Khung bao bọc ảnh cố định tỷ lệ */}
+        <div 
+          className="border rounded me-3 overflow-hidden bg-white d-flex align-items-center justify-content-center" 
+          style={{ width: "55px", height: "55px", flexShrink: 0 }}
+        >
+          <img 
+            src={imgUrl} 
+            alt={item.name} 
+            className="img-fluid object-fit-contain" 
+            style={{ maxHeight: "100%", maxWidth: "100%" }} 
+            onError={(e) => {
+              e.target.src = "https://placehold.co/100x100?text=No+Image";
+            }}
+          />
+        </div>
+        <div>
+          <span className="fw-bold d-block text-dark small">{item.name}</span>
+          
+          {(item.color || item.size) && (
+            <div className="text-muted small mb-1" style={{ fontSize: "0.75rem" }}>
+              {item.color && <span>Màu: {item.color}</span>}
+              {item.color && item.size && <span> | </span>}
+              {item.size && <span>Size: {item.size}</span>}
+            </div>
+          )}
+
+          <small className="text-muted">Số lượng: x{item.quantity}</small>
+        </div>
+      </div>
+      <span className="fw-bold small text-dark">{((item.price || 0) * (item.quantity || 1)).toLocaleString("vi-VN")}đ</span>
+    </div>
+  );
+}
+
+// ==========================================
+// COMPONENT CHÍNH: CHI TIẾT ĐƠN HÀNG
+// ==========================================
 export default function OrderDetailPage({ params }) {
   const unwrappedParams = use(params);
   const id = unwrappedParams?.id;
@@ -79,7 +155,7 @@ export default function OrderDetailPage({ params }) {
           </div>
         </div>
 
-        {/* 🌟 BANNER HIỂN THỊ TRẠNG THÁI THANH TOÁN */}
+        {/* BANNER HIỂN THỊ TRẠNG THÁI THANH TOÁN */}
         <div className={`p-3 text-center border-bottom ${isPaid ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning-emphasis"}`}>
           <div className="d-flex align-items-center justify-content-center gap-2 fw-bold">
             {isPaid ? (
@@ -114,7 +190,6 @@ export default function OrderDetailPage({ params }) {
               {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}
             </div>
 
-            {/* Trạng thái ví dụ phương thức chuyển khoản */}
             <div className="col-4 text-muted">Thanh toán:</div>
             <div className="col-8 fw-semibold text-dark">
               {isPaid ? "Đã chuyển khoản VietQR" : "Chưa thanh toán"}
@@ -126,34 +201,14 @@ export default function OrderDetailPage({ params }) {
         <div className="p-4 border-bottom">
           <h6 className="fw-bold mb-3 text-secondary">👟 Danh sách sản phẩm</h6>
           {order.order_items?.map((item, idx) => {
-            const itemKey = `${item.product_id || idx}-${item.color || "none"}-${item.size || "none"}`;
             const isLast = idx === (order.order_items.length - 1);
-
             return (
-              <div key={itemKey} className={`d-flex align-items-center justify-content-between py-2 ${isLast ? "" : "border-bottom"}`}>
-                <div className="d-flex align-items-center">
-                  <img 
-                    src={item.image || "https://via.placeholder.com/60"} 
-                    alt={item.name} 
-                    className="rounded border me-3 object-fit-cover" 
-                    style={{ width: "55px", height: "55px" }} 
-                  />
-                  <div>
-                    <span className="fw-bold d-block text-dark small">{item.name}</span>
-                    
-                    {(item.color || item.size) && (
-                      <div className="text-muted small mb-1" style={{ fontSize: "0.75rem" }}>
-                        {item.color && <span>Màu: {item.color}</span>}
-                        {item.color && item.size && <span> | </span>}
-                        {item.size && <span>Size: {item.size}</span>}
-                      </div>
-                    )}
-
-                    <small className="text-muted">Số lượng: x{item.quantity}</small>
-                  </div>
-                </div>
-                <span className="fw-bold small text-dark">{((item.price || 0) * (item.quantity || 1)).toLocaleString("vi-VN")}đ</span>
-              </div>
+              <OrderItemRow 
+                key={item.product_id || idx} 
+                item={item} 
+                idx={idx} 
+                isLast={isLast} 
+              />
             );
           })}
         </div>

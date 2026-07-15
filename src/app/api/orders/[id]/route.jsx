@@ -82,11 +82,8 @@ export async function GET(request, { params }) {
 
     // Chuẩn hóa cấu trúc trả về { success: true, data: order } để Front-end page.jsx đọc được luôn
     return Response.json({
-      success: true,
-      data: {
-        ...order,
-        _id: String(order._id),
-      }
+      ...order,
+      _id: String(order._id),
     });
   } catch (error) {
     console.error("Lỗi API GET:", error);
