@@ -10,13 +10,16 @@ export default function AdminOrderPage() {
   const [showDeadline, setShowDeadline] = useState(true);
 
   // ===== State phục vụ cho việc nhập lý do hủy đơn (Thay thế prompt) =====
-  const [cancelModal, setCancelModal] = useState({
-    isOpen: false,
-    orderId: "",
-    currentStatus: "",
-    nextStatus: "",
-    reason: "",
-  });
+  const [actionModal, setActionModal] = useState({
+  isOpen: false,
+  type: "",
+  orderId: "",
+  currentStatus: "",
+  nextStatus: "",
+  reason: "",
+  note: "",
+  image: "",
+});
 
   const statusOrder = ["pending", "preparing", "shipping", "completed"];
 
@@ -54,24 +57,76 @@ export default function AdminOrderPage() {
     }
 
     // 2. Nếu chọn trạng thái HỦY ĐƠN
-    if (nextStatus === "cancelled") {
-      // Chỉ cho phép hủy khi đang ở trạng thái: Chờ xác nhận (pending) HOẶC Đang đóng gói (preparing)
-      if (currentStatus === "pending" || currentStatus === "preparing") {
-        // Mở Custom Modal để nhập lý do (Không dùng prompt nữa)
-        setCancelModal({
-          isOpen: true,
-          orderId: id,
-          currentStatus,
-          nextStatus,
-          reason: "",
-        });
-        return;
-      } else {
-        alert("Đơn hàng đã được bàn giao cho đơn vị vận chuyển, không thể hủy!");
-        loadOrders();
-        return;
-      }
-    }
+    // Hủy đơn
+if (nextStatus === "cancelled") {
+  if (currentStatus === "pending" || currentStatus === "preparing") {
+    setActionModal({
+      isOpen: true,
+      type: "cancelled",
+      orderId: id,
+      currentStatus,
+      nextStatus,
+      reason: "",
+      note: "",
+      image: "",
+    });
+    return;
+  } else {
+    alert("Đơn hàng đã được bàn giao cho đơn vị vận chuyển, không thể hủy!");
+    loadOrders();
+    return;
+  }
+}
+
+// Boom hàng
+if (nextStatus === "boomed") {
+  setActionModal({
+    isOpen: true,
+    type: "boomed",
+    orderId: id,
+    currentStatus,
+    nextStatus,
+    reason: "",
+    note: "",
+    image: "",
+  });
+  return;
+}
+
+// Trả hàng
+if (nextStatus === "returned") {
+  setActionModal({
+    isOpen: true,
+    type: "returned",
+    orderId: id,
+    currentStatus,
+    nextStatus,
+    reason: "",
+    note: "",
+    image: "",
+  });
+  return;
+}
+      // // Chỉ cho phép hủy khi đang ở trạng thái: Chờ xác nhận (pending) HOẶC Đang đóng gói (preparing)
+      // if (currentStatus === "pending" || currentStatus === "preparing") {
+      //   // Mở Custom Modal để nhập lý do (Không dùng prompt nữa)
+      //   setActionModal({
+      // isOpen: true,
+      // type: "cancelled",
+      // orderId: id,
+      // currentStatus,
+      // nextStatus,
+      // reason: "",
+      // note: "",
+      // image: "",
+      // });
+      //   return;
+      // } else {
+      //   alert("Đơn hàng đã được bàn giao cho đơn vị vận chuyển, không thể hủy!");
+      //   loadOrders();
+      // return;
+      // }
+    
 
     // 3. Quy trình dịch chuyển trạng thái bình thường (không đi lùi, không nhảy cóc)
     const currentIndex = statusOrder.indexOf(currentStatus);
@@ -94,10 +149,34 @@ export default function AdminOrderPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ 
-          status: nextStatus,
-          cancelReason: reason || undefined
-        }),
+        body: JSON.stringify({
+  status: nextStatus,
+
+  cancelReason:
+    nextStatus === "cancelled"
+      ? reason
+      : undefined,
+
+  boomInfo:
+    nextStatus === "boomed"
+      ? {
+          reason,
+          note: actionModal.note,
+          image: actionModal.image,
+          createdAt: new Date(),
+        }
+      : undefined,
+
+  returnInfo:
+    nextStatus === "returned"
+      ? {
+          reason,
+          note: actionModal.note,
+          image: actionModal.image,
+          createdAt: new Date(),
+        }
+      : undefined,
+}),
       });
 
       const data = await res.json();
@@ -116,17 +195,29 @@ export default function AdminOrderPage() {
   };
 
   // Xác nhận hủy đơn từ Modal công cụ
-  const handleConfirmCancel = () => {
-    if (!cancelModal.reason.trim()) {
-      alert("Vui lòng nhập lý do hủy đơn hàng!");
-      return;
-    }
-    // Gửi dữ liệu đi
-    executeStatusUpdate(cancelModal.orderId, cancelModal.nextStatus, cancelModal.reason.trim());
-    // Đóng modal
-    setCancelModal({ isOpen: false, orderId: "", currentStatus: "", nextStatus: "", reason: "" });
-  };
+const handleConfirmAction = () => {
+  if (!actionModal.reason.trim()) {
+    alert("Vui lòng nhập lý do!");
+    return;
+  }
 
+  executeStatusUpdate(
+    actionModal.orderId,
+    actionModal.nextStatus,
+    actionModal.reason
+  );
+
+  setActionModal({
+    isOpen: false,
+    type: "",
+    orderId: "",
+    currentStatus: "",
+    nextStatus: "",
+    reason: "",
+    note: "",
+    image: "",
+  });
+};
   // const deleteOrder = async (id) => {
   //   if (!confirm("Bạn có chắc muốn xóa đơn hàng này?")) return;
 
@@ -152,6 +243,8 @@ export default function AdminOrderPage() {
     shipping: { text: "🚚 Đang giao", class: "bg-primary-subtle text-primary" },
     completed: { text: "✅ Hoàn thành", class: "bg-success-subtle text-success" },
     cancelled: { text: "❌ Đã hủy", class: "bg-danger-subtle text-danger" },
+    boomed: { text: "💥 Boom hàng", class: "bg-danger-subtle text-danger",},
+    returned: {text: "↩️ Trả hàng",class: "bg-warning-subtle text-warning",},
   };
 
   const filteredOrders = orders.filter((o) => activeTab === "all" ? true : o.status === activeTab);
@@ -174,28 +267,48 @@ export default function AdminOrderPage() {
     <div className="content admin-order-dashboard container-fluid px-4 py-3" style={{ position: "relative" }}>
       
       {/* ================= CUSTOM REACT MODAL (AN TOÀN TUYỆT ĐỐI CHO TURBOPACK) ================= */}
-      {cancelModal.isOpen && (
+      {actionModal.isOpen && (
         <div className="modal fade show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1050 }} tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content border-0 shadow-lg">
               <div className="modal-header bg-danger text-white">
-                <h5 className="modal-title fw-bold">⚠️ Lý do hủy đơn hàng</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => { setCancelModal({ ...cancelModal, isOpen: false }); loadOrders(); }}></button>
+                <h5 className="modal-title fw-bold">
+                {
+                actionModal.type==="cancelled"
+                ?"❌ Lý do hủy đơn"
+
+                :actionModal.type==="boomed"
+                ?"💥 Thông tin boom hàng"
+
+                :"↩️ Thông tin trả hàng"
+                }
+                </h5>                
+              <button type="button" className="btn-close btn-close-white" onClick={() => { setActionModal({ ...actionModal, isOpen: false }); loadOrders(); }}></button>
               </div>
               <div className="modal-body py-3">
-                <p className="text-muted small mb-2">Đơn hàng mã <span className="fw-bold">#{cancelModal.orderId.slice(-6)}</span> đang ở trạng thái đóng gói/chờ duyệt sẽ bị chuyển sang trạng thái hủy.</p>
-                <label className="form-label fw-semibold small text-secondary">Nhập lý do chi tiết:</label>
+              <p className="text-muted small mb-2">
+              {
+              actionModal.type==="cancelled"
+              ?"Nhập lý do hủy đơn."
+
+              :actionModal.type==="boomed"
+              ?"Nhập thông tin đơn bị boom."
+
+              :"Nhập thông tin trả hàng."
+              }
+              </p>                
+              <label className="form-label fw-semibold small text-secondary">Nhập lý do chi tiết:</label>
                 <textarea
                   className="form-control"
                   rows="3"
                   placeholder="Ví dụ: Khách đổi ý, Hết size hàng, Sai địa chỉ..."
-                  value={cancelModal.reason}
-                  onChange={(e) => setCancelModal({ ...cancelModal, reason: e.target.value })}
+                  value={actionModal.reason}
+                  onChange={(e) => setActionModal({ ...actionModal, reason: e.target.value })}
                 ></textarea>
               </div>
               <div className="modal-footer bg-light py-2">
-                <button type="button" className="btn btn-sm btn-secondary rounded-pill px-3" onClick={() => { setCancelModal({ ...cancelModal, isOpen: false }); loadOrders(); }}>Đóng</button>
-                <button type="button" className="btn btn-sm btn-danger rounded-pill px-3" onClick={handleConfirmCancel}>Xác nhận hủy</button>
+                <button type="button" className="btn btn-sm btn-secondary rounded-pill px-3" onClick={() => { setActionModal({ ...actionModal, isOpen: false }); loadOrders(); }}>Đóng</button>
+                <button type="button" className="btn btn-sm btn-danger rounded-pill px-3" onClick={handleConfirmAction}>Xác nhận hủy</button>
               </div>
             </div>
           </div>
@@ -220,7 +333,16 @@ export default function AdminOrderPage() {
       {/* Tabs & Utilities */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3 mb-3">
         <div className="d-flex gap-2 overflow-auto py-1 w-100 w-md-auto">
-          {["all", "pending", "preparing", "shipping", "completed", "cancelled"].map((tab) => (
+          {[
+          "all",
+          "pending",
+          "preparing",
+          "shipping",
+          "completed",
+          "boomed",
+          "returned",
+          "cancelled"
+          ].map((tab) => (
             <button
               key={tab}
               className={`btn btn-sm rounded-pill px-3 text-nowrap ${activeTab === tab ? "btn-dark" : "btn-light"}`}
@@ -294,6 +416,8 @@ export default function AdminOrderPage() {
                         <option value="shipping" className="bg-white text-dark">🚚 Đang giao hàng</option>
                         <option value="completed" className="bg-white text-dark">✅ Hoàn thành</option>
                         <option value="cancelled" className="bg-white text-dark">❌ Đã hủy</option>
+                        <option value="returned" className="bg-white text-dark">↩️ Trả hàng</option>
+                        <option value="boomed" className="bg-white text-dark">💥 Boom hàng</option>
                       </select>
                       {order.status === "cancelled" && order.cancelReason && (
                         <div className="text-danger fw-semibold mt-1" style={{ fontSize: "0.72rem", maxWidth: "145px", wordBreak: "break-word" }}>
