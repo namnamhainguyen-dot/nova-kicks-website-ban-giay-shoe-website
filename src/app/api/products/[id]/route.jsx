@@ -33,7 +33,9 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params; // ✅ await params
     const body = await request.json();
-    const { name, price, description, image, quantity, status, sizes, colors } = body;
+    
+    // 🌟 BỔ SUNG: Nhận thêm `isFlashSale` và `originalPrice` từ Client gửi lên
+    const { name, price, description, image, quantity, status, categoryID, variants, isFlashSale, originalPrice } = body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
@@ -42,13 +44,25 @@ export async function PUT(request, { params }) {
     if (image !== undefined) updateData.image = image;
     if (quantity !== undefined) updateData.quantity = Number(quantity);
     if (status !== undefined) updateData.status = status;
+    if (categoryID !== undefined) updateData.categoryID = categoryID;
 
-    // ✅ Thêm xử lý sizes & colors - trước đây bị thiếu nên không lưu xuống DB
-    if (sizes !== undefined) {
-      updateData.sizes = Array.isArray(sizes) ? sizes.map(Number) : [];
+    // 🌟 BỔ SUNG: Xử lý cập nhật trạng thái Flash Sale xuống Database
+    if (isFlashSale !== undefined) {
+      updateData.isFlashSale = Boolean(isFlashSale);
+      // Nếu tắt Flash Sale, ép giá gốc về 0 luôn cho sạch dữ liệu
+      updateData.originalPrice = isFlashSale ? Number(originalPrice || 0) : 0;
     }
-    if (colors !== undefined) {
-      updateData.colors = Array.isArray(colors) ? colors.map(String) : [];
+
+    // 🌟 XỬ LÝ LƯU MẢNG VARIANTS CHI TIẾT SỐ LƯỢNG THEO MÀU
+    if (variants !== undefined) {
+      updateData.variants = Array.isArray(variants) 
+        ? variants.map((v) => ({
+            color: v.color ? String(v.color).trim() : "",
+            image: v.image ? String(v.image).trim() : "",
+            quantity: Math.max(0, parseInt(v.quantity) || 0), // Đảm bảo số lượng >= 0
+            sizes: Array.isArray(v.sizes) ? v.sizes.map(Number) : [] // Đồng bộ mảng kích cỡ dạng số
+          }))
+        : [];
     }
 
     if (Object.keys(updateData).length === 0) {
@@ -70,8 +84,8 @@ export async function PUT(request, { params }) {
     console.error(error);
     return Response.json({ error: "Failed to update product" }, { status: 500 });
   }
-  
 }
+
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;

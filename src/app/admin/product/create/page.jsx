@@ -1,50 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
-// ─── helpers ───────────────────────────────────────────────
-const genId = () => Math.random().toString(36).slice(2, 8);
+const SIZE_OPTIONS = [36, 37, 38, 39, 40, 41, 42, 43, 44, 45];
 
-const emptyBatch = () => ({
-  id: genId(),
-  quantity: "",
-  costPrice: "",
-  supplier: "",
-});
-
-const emptyVariant = () => ({
-  id: genId(),
-  color: "",
-  size: "",
-  material: "",
-  batches: [emptyBatch()],
-});
-
-// ─── component ─────────────────────────────────────────────
 export default function ProductCreate() {
   const router = useRouter();
-
-  // Thông tin chung
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
+  const [quantity, setQuantity] = useState("");
   const [status, setStatus] = useState("active");
-  const [showOnHome, setShowOnHome] = useState(false);
 
-  // 🌟 State quản lý danh mục sản phẩm
-  const [categoryId, setCategoryId] = useState("");
-  const [categories, setCategories] = useState([]);
+  const [categoryId, setCategoryId] = useState(""); 
+  const [categories, setCategories] = useState([]); 
 
-  // Biến thể
-  const [variants, setVariants] = useState([emptyVariant()]);
+  const [sizes, setSizes] = useState([]); 
+  const [colors, setColors] = useState([]); 
+  const [colorInput, setColorInput] = useState("");
+
+  const [imagesByColor, setImagesByColor] = useState({});
+  const [quantitiesByColor, setQuantitiesByColor] = useState({});
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  // 🌟 Fetch danh sách danh mục từ API khi trang load
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -60,108 +43,115 @@ export default function ProductCreate() {
     fetchCategories();
   }, []);
 
-  // ── variant helpers ──
-  const updateVariant = (vIdx, field, value) =>
-    setVariants((prev) =>
-      prev.map((v, i) => (i === vIdx ? { ...v, [field]: value } : v))
+  const toggleSize = (size) => {
+    setSizes((prev) =>
+      prev.includes(size)
+        ? prev.filter((s) => s !== size)
+        : [...prev, size].sort((a, b) => a - b)
     );
+  };
 
-  const addVariant = () =>
-    setVariants((prev) => [...prev, emptyVariant()]);
+  const addColor = () => {
+    const value = colorInput.trim();
+    if (!value) return;
+    if (colors.includes(value)) {
+      setColorInput("");
+      return;
+    }
+    setColors((prev) => [...prev, value]);
+    setQuantitiesByColor((prev) => ({ ...prev, [value]: 0 }));
+    setColorInput("");
+  };
 
-  const removeVariant = (vIdx) =>
-    setVariants((prev) => prev.filter((_, i) => i !== vIdx));
+  const handleColorKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addColor();
+    }
+  };
 
-  // ── batch helpers ──
-  const updateBatch = (vIdx, bIdx, field, value) =>
-    setVariants((prev) =>
-      prev.map((v, i) =>
-        i !== vIdx
-          ? v
-          : {
-              ...v,
-              batches: v.batches.map((b, j) =>
-                j === bIdx ? { ...b, [field]: value } : b
-              ),
-            }
-      )
-    );
+  const removeColor = (color) => {
+    setColors((prev) => prev.filter((c) => c !== color));
+    setImagesByColor((prev) => {
+      const updated = { ...prev };
+      delete updated[color];
+      return updated;
+    });
+    setQuantitiesByColor((prev) => {
+      const updated = { ...prev };
+      delete updated[color];
+      return updated;
+    });
+  };
 
-  const addBatch = (vIdx) =>
-    setVariants((prev) =>
-      prev.map((v, i) =>
-        i !== vIdx ? v : { ...v, batches: [...v.batches, emptyBatch()] }
-      )
-    );
+  const handleColorImageUrlChange = (color, url) => {
+    setImagesByColor((prev) => ({ ...prev, [color]: url }));
+  };
 
-  const removeBatch = (vIdx, bIdx) =>
-    setVariants((prev) =>
-      prev.map((v, i) =>
-        i !== vIdx
-          ? v
-          : { ...v, batches: v.batches.filter((_, j) => j !== bIdx) }
-      )
-    );
+  const handleColorQuantityChange = (color, val) => {
+    const numValue = Math.max(0, parseInt(val) || 0);
+    setQuantitiesByColor((prev) => ({ ...prev, [color]: numValue }));
+  };
 
-  // ── submit ──
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const totalVariantsQuantity = colors.reduce((sum, color) => sum + (quantitiesByColor[color] || 0), 0);
+  const remainingQuantity = (Number(quantity) || 0) - totalVariantsQuantity;
 
-    // Validate danh mục
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
     if (!categoryId) {
       setError("Vui lòng chọn một danh mục sản phẩm.");
+      return;
+    }
+    if (sizes.length === 0) {
+      setError("Vui lòng chọn ít nhất 1 size.");
+      return;
+    }
+    if (colors.length === 0) {
+      setError("Vui lòng thêm ít nhất 1 màu.");
+      return;
+    }
+
+    const targetQty = Number(quantity) || 0;
+    if (totalVariantsQuantity !== targetQty) {
+      if (totalVariantsQuantity > targetQty) {
+        setError(`Tổng số lượng các màu (${totalVariantsQuantity}) vượt quá kho tổng (${targetQty}).`);
+      } else {
+        setError(`Chưa phân bổ hết! Vui lòng thêm ${remainingQuantity} sản phẩm cho các màu để khớp với kho tổng.`);
+      }
       return;
     }
 
     setSaving(true);
     setError("");
 
-    // Validate: mỗi biến thể phải có ít nhất 1 lô với số lượng > 0
-    for (const v of variants) {
-      if (!v.color && !v.size && !v.material) {
-        setError("Mỗi biến thể cần có ít nhất một thuộc tính (màu / size / chất liệu).");
-        setSaving(false);
-        return;
-      }
-      for (const b of v.batches) {
-        if (!b.quantity || Number(b.quantity) <= 0) {
-          setError("Số lượng mỗi lô phải lớn hơn 0.");
-          setSaving(false);
-          return;
-        }
-      }
-    }
+    // Cấu trúc mảng variants để lưu trực tiếp vào database
+    const finalVariants = colors.map((color) => ({
+      color: color,
+      image: imagesByColor[color] || image, // Nếu màu không có ảnh riêng, lấy ảnh chính làm mặc định
+      quantity: quantitiesByColor[color] || 0,
+      sizes: sizes.map(Number) 
+    }));
 
     try {
-      const payload = {
-        name,
-        price: Number(price),
-        description,
-        image,
-        status,
-        showOnHome,
-        categoryId, // Gửi chuẩn chuỗi hex ID lên server
-        variants: variants.map((v) => ({
-          color: v.color,
-          size: v.size,
-          material: v.material,
-          batches: v.batches.map((b) => ({
-            quantity: Number(b.quantity),
-            costPrice: Number(b.costPrice) || 0,
-            supplier: b.supplier,
-          })),
-        })),
-      };
-
-      const res = await fetch("/api/products", {
+      const response = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          name,
+          price: Number(price),
+          description,
+          image,
+          quantity: Number(quantity),
+          status,
+          categoryId,
+          variants: finalVariants // Gửi mảng variants chuẩn lên server
+        }),
       });
 
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body?.error || "Lưu sản phẩm thất bại");
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body?.error || "Thêm sản phẩm thất bại");
       }
 
       router.refresh();
@@ -174,322 +164,216 @@ export default function ProductCreate() {
   };
 
   return (
-    <div className="content">
-      {error && <div className="alert alert-danger">{error}</div>}
+    <div className="content admin-product-form py-4">
+      <div className="card shadow">
+        <div className="card-body">
+          <h4 className="card-title mb-4">Thêm sản phẩm mới</h4>
 
-      <form onSubmit={handleSubmit}>
+          {error && <div className="alert alert-danger font-weight-bold">{error}</div>}
 
-        {/* ══════════════════════════════════════
-            SECTION 1 — Thông tin sản phẩm
-        ══════════════════════════════════════ */}
-        <div className="card shadow-sm border-0 mb-4">
-          <div className="card-body">
-            <h5 className="fw-bold mb-4">① Thông tin sản phẩm</h5>
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label htmlFor="productName" className="form-label font-weight-bold">Tên sản phẩm</label>
+              <input
+                type="text"
+                className="form-control"
+                id="productName"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+            </div>
 
-            <div className="row g-3 mb-3">
-              <div className="col-md-8">
-                <label className="form-label">Tên sản phẩm</label>
+            <div className="row row-cols-1 row-cols-md-2 g-3 mb-3">
+              <div className="col">
+                <label htmlFor="price" className="form-label">Giá (VNĐ)</label>
                 <input
-                  type="text"
+                  type="number"
                   className="form-control"
-                  placeholder="Ví dụ: Nike Air Force 1"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  id="price"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
                   required
+                  min="0"
                 />
               </div>
+              <div className="col">
+                <label htmlFor="quantity" className="form-label">Số lượng tổng kho</label>
+                <input
+                  type="number"
+                  className="form-control"
+                  id="quantity"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  required
+                  min="0"
+                />
+                <div className="form-text mt-1">
+                  Đã phân bổ: <strong className="text-primary">{totalVariantsQuantity}</strong> / {quantity || 0} | 
+                  {quantity && totalVariantsQuantity === Number(quantity) ? (
+                    <span className="badge bg-success ms-1">Đã khớp dữ liệu</span>
+                  ) : (quantity && remainingQuantity > 0) ? (
+                    <span className="badge bg-warning text-dark ms-1">Còn thiếu {remainingQuantity} sp</span>
+                  ) : quantity ? (
+                    <span className="badge bg-danger ms-1">Vượt quá {Math.abs(remainingQuantity)} sp</span>
+                  ) : (
+                    <span className="badge bg-secondary ms-1">Chưa có kho tổng</span>
+                  )}
+                </div>
+              </div>
               
-              {/* 🌟 ĐÃ SỬA: Hàm chọn danh mục trích xuất chính xác chuỗi hex string */}
-              <div className="col-md-4">
-                <label className="form-label">Danh mục sản phẩm</label>
+              <div className="col">
+                <label htmlFor="category" className="form-label">Danh mục sản phẩm</label>
                 <select
                   className="form-select"
+                  id="category"
                   value={categoryId}
                   onChange={(e) => setCategoryId(e.target.value)}
                   required
                 >
                   <option value="">-- Chọn danh mục --</option>
                   {categories.map((cat) => {
-                    // Trích xuất chuỗi ID từ đối tượng DB bọc bằng $oid hoặc giữ nguyên nếu là chuỗi
-                    const actualId = typeof cat._id === "object" && cat._id?.$oid 
-                      ? cat._id.$oid 
-                      : cat._id;
-
+                    const actualId = typeof cat._id === "object" && cat._id?.$oid ? cat._id.$oid : cat._id;
                     return (
-                      <option key={actualId} value={actualId}>
-                        {cat.name}
-                      </option>
+                      <option key={actualId} value={actualId}>{cat.name}</option>
                     );
                   })}
                 </select>
               </div>
-            </div>
 
-            <div className="row g-3 mb-3">
-              <div className="col-md-4">
-                <label className="form-label">Giá bán (VNĐ)</label>
-                <input
-                  type="number"
-                  className="form-control"
-                  placeholder="0"
-                  min={0}
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label">Trạng thái</label>
-                <select
-                  className="form-select"
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                >
+              <div className="col">
+                <label htmlFor="status" className="form-label">Trạng thái</label>
+                <select className="form-select" id="status" value={status} onChange={(e) => setStatus(e.target.value)} required>
                   <option value="active">Đang bán</option>
                   <option value="inactive">Ngừng bán</option>
                 </select>
               </div>
-              <div className="col-md-4">
-                <label className="form-label">Link ảnh</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="https://..."
-                  value={image}
-                  onChange={(e) => setImage(e.target.value)}
-                />
-              </div>
             </div>
 
             <div className="mb-3">
-              <label className="form-label">Mô tả</label>
+              <label htmlFor="image" className="form-label font-weight-bold">Link ảnh chính mặc định</label>
+              <input
+                type="text"
+                className="form-control"
+                id="image"
+                value={image}
+                onChange={(e) => setImage(e.target.value)}
+              />
+            </div>
+
+            <div className="mb-3">
+              <label htmlFor="description" className="form-label">Mô tả sản phẩm</label>
               <textarea
                 className="form-control"
-                rows={3}
-                placeholder="Nhập mô tả sản phẩm"
+                id="description"
+                rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
 
-            <div className="form-check">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                id="showOnHome"
-                checked={showOnHome}
-                onChange={(e) => setShowOnHome(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="showOnHome">
-                Hiển thị trên trang chủ
-              </label>
-            </div>
-          </div>
-        </div>
+            <hr className="my-4" />
 
-        {/* ══════════════════════════════════════
-            SECTION 2 & 3 — Biến thể + Lô hàng
-        ══════════════════════════════════════ */}
-        <div className="mb-2 d-flex justify-content-between align-items-center">
-          <div>
-            <h5 className="fw-bold mb-0">② Biến thể &amp; Lô hàng</h5>
-            <small className="text-muted">
-              Mỗi biến thể (màu / size / chất liệu) có thể có nhiều lô nhập kho.
-            </small>
-          </div>
-          <button
-            type="button"
-            className="btn btn-outline-dark btn-sm"
-            onClick={addVariant}
-          >
-            + Thêm biến thể
-          </button>
-        </div>
-
-        {variants.map((variant, vIdx) => (
-          <div key={variant.id} className="card shadow-sm border-0 mb-3">
-            <div className="card-body">
-
-              {/* Header biến thể */}
-              <div className="d-flex justify-content-between align-items-center mb-3">
-                <span className="fw-semibold text-secondary small text-uppercase">
-                  Biến thể #{vIdx + 1}
-                </span>
-                {variants.length > 1 && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-danger btn-sm"
-                    onClick={() => removeVariant(vIdx)}
-                  >
-                    ✕ Xóa biến thể
-                  </button>
-                )}
-              </div>
-
-              {/* Thuộc tính biến thể */}
-              <div className="row g-3 mb-4">
-                <div className="col-md-4">
-                  <label className="form-label">Màu sắc</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Ví dụ: Trắng, Đen..."
-                    value={variant.color}
-                    onChange={(e) => updateVariant(vIdx, "color", e.target.value)}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Size / Kích cỡ</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Ví dụ: 40, 41, 42..."
-                    value={variant.size}
-                    onChange={(e) => updateVariant(vIdx, "size", e.target.value)}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label">Chất liệu</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Ví dụ: Da, Canvas..."
-                    value={variant.material}
-                    onChange={(e) => updateVariant(vIdx, "material", e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Lô hàng */}
-              <div className="d-flex justify-content-between align-items-center mb-2">
-                <span className="small fw-semibold">Lô hàng nhập kho</span>
-                <button
-                  type="button"
-                  className="btn btn-outline-secondary btn-sm"
-                  onClick={() => addBatch(vIdx)}
-                >
-                  + Thêm lô
-                </button>
-              </div>
-
-              {/* Header cột lô hàng */}
-              <div className="row g-2 mb-1 px-1">
-                <div className="col-1">
-                  <span className="small text-muted">Lô</span>
-                </div>
-                <div className="col-3">
-                  <span className="small text-muted">Số lượng <span className="text-danger">*</span></span>
-                </div>
-                <div className="col-3">
-                  <span className="small text-muted">Giá nhập (đ)</span>
-                </div>
-                <div className="col-4">
-                  <span className="small text-muted">Nhà cung cấp</span>
-                </div>
-                <div className="col-1" />
-              </div>
-
-              {variant.batches.map((batch, bIdx) => (
-                <div key={batch.id} className="row g-2 mb-2 align-items-center">
-                  {/* Số thứ tự lô */}
-                  <div className="col-1">
-                    <span
-                      className="badge bg-secondary"
-                      title={`Lô ${String(bIdx + 1).padStart(3, "0")}`}
+            {/* Chọn Size */}
+            <div className="mb-4">
+              <label className="form-label fw-bold">⚙️ Chọn các Size hiện có</label>
+              <div className="d-flex flex-wrap gap-2">
+                {SIZE_OPTIONS.map((size) => {
+                  const active = sizes.includes(size);
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => toggleSize(size)}
+                      className={`btn btn-sm ${active ? "btn-dark" : "btn-outline-secondary"}`}
+                      style={{ minWidth: 44 }}
                     >
-                      {String(bIdx + 1).padStart(3, "0")}
-                    </span>
-                  </div>
-
-                  {/* Số lượng */}
-                  <div className="col-3">
-                    <input
-                      type="number"
-                      className="form-control form-control-sm"
-                      placeholder="0"
-                      min={1}
-                      value={batch.quantity}
-                      onChange={(e) => updateBatch(vIdx, bIdx, "quantity", e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  {/* Giá nhập */}
-                  <div className="col-3">
-                    <input
-                      type="number"
-                      className="form-control form-control-sm"
-                      placeholder="0"
-                      min={0}
-                      value={batch.costPrice}
-                      onChange={(e) => updateBatch(vIdx, bIdx, "costPrice", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Nhà cung cấp */}
-                  <div className="col-4">
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      placeholder="Tên NCC..."
-                      value={batch.supplier}
-                      onChange={(e) => updateBatch(vIdx, bIdx, "supplier", e.target.value)}
-                    />
-                  </div>
-
-                  {/* Xóa lô */}
-                  <div className="col-1 text-end">
-                    {variant.batches.length > 1 && (
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger btn-sm p-1 lh-1"
-                        onClick={() => removeBatch(vIdx, bIdx)}
-                        title="Xóa lô này"
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {/* Tổng lô */}
-              <div className="mt-2 text-end">
-                <small className="text-muted">
-                  Tổng nhập:{" "}
-                  <strong>
-                    {variant.batches
-                      .reduce((sum, b) => sum + (Number(b.quantity) || 0), 0)
-                      .toLocaleString("vi-VN")}
-                  </strong>{" "}
-                  sản phẩm /{" "}
-                  <strong>
-                    {variant.batches
-                      .reduce(
-                        (sum, b) =>
-                          sum + (Number(b.quantity) || 0) * (Number(b.costPrice) || 0),
-                        0
-                      )
-                      .toLocaleString("vi-VN")}
-                    đ
-                  </strong>{" "}
-                  vốn
-                </small>
+                      {size}
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          </div>
-        ))}
 
-        {/* ── Actions ── */}
-        <div className="d-flex gap-2 mt-2">
-          <button type="submit" className="btn btn-dark px-4" disabled={saving}>
-            {saving ? "Đang lưu..." : "Lưu sản phẩm"}
-          </button>
-          <Link href="/admin/product" className="btn btn-outline-secondary">
-            Hủy
-          </Link>
+            {/* Thiết lập màu */}
+            <div className="mb-4">
+              <label htmlFor="colorInput" className="form-label fw-bold">🎨 Thiết lập màu sắc</label>
+              <div className="d-flex gap-2">
+                <input
+                  type="text"
+                  className="form-control"
+                  id="colorInput"
+                  placeholder="Nhập tên màu rồi ấn Enter"
+                  value={colorInput}
+                  onChange={(e) => setColorInput(e.target.value)}
+                  onKeyDown={handleColorKeyDown}
+                />
+                <button type="button" className="btn btn-outline-dark" onClick={addColor}>Thêm màu</button>
+              </div>
+
+              {colors.length > 0 && (
+                <div className="d-flex flex-wrap gap-2 mt-2">
+                  {colors.map((color) => (
+                    <span key={color} className="badge bg-secondary d-flex align-items-center gap-2" style={{ fontSize: 14, padding: "8px 10px" }}>
+                      {color}
+                      <button type="button" onClick={() => removeColor(color)} className="btn-close btn-close-white" style={{ fontSize: 10 }} />
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Cấu hình chi tiết từng màu */}
+            {colors.length > 0 && (
+              <div className="mb-4 p-3 border rounded bg-light">
+                <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">📷 Cấu hình chi tiết theo màu</h6>
+                <div className="d-flex flex-column gap-3">
+                  {colors.map((color) => (
+                    <div className="row g-2 align-items-center p-2 bg-white rounded border" key={color}>
+                      <div className="col-md-2 col-12">
+                        <span className="badge bg-dark px-3 py-2 w-100 text-center">{color}</span>
+                      </div>
+                      <div className="col-md-6 col-12">
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">Link Ảnh</span>
+                          <input
+                            type="text"
+                            className="form-control"
+                            value={imagesByColor[color] || ""}
+                            onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-3 col-9">
+                        <div className="input-group input-group-sm">
+                          <span className="input-group-text">Số lượng</span>
+                          <input
+                            type="number"
+                            className="form-control"
+                            min="0"
+                            value={quantitiesByColor[color] || 0}
+                            onChange={(e) => handleColorQuantityChange(color, e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <div className="col-md-1 d-none d-md-block text-end">
+                        <button type="button" onClick={() => removeColor(color)} className="btn-close" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="d-flex gap-2 pt-2">
+              <button type="submit" className="btn btn-dark px-4" disabled={saving}>
+                {saving ? "Đang tạo..." : "Tạo sản phẩm"}
+              </button>
+              <Link href="/admin/product" className="btn btn-outline-secondary">Hủy</Link>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }

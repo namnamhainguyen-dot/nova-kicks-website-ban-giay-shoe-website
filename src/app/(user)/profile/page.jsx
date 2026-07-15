@@ -232,7 +232,7 @@ export default function Profile() {
       <footer className="bg-white border-top text-muted py-4 mt-auto">
         <div className="container text-center">
           <p className="fw-bold text-dark mb-1">Nova-kicks</p>
-          <p className="small mb-2">123 CVPM Quang Trung, Quận 12, TP.HCM | Hotline: 0123 456 789</p>
+          <p className="small mb-2">123 CVPM Quang Trung, Quận 12, TP.HCM | Hotline: 0931839732</p>
           <p className="small mb-0 text-light-emphasis">&copy; 2026 Nova-kicks. All rights reserved.</p>
         </div>
       </footer>

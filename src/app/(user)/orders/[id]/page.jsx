@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState, use } from "react"; // 🌟 FIX: Import thêm hook 'use' từ React
+import { useEffect, useState, use } from "react"; 
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
 export default function OrderDetailPage({ params }) {
-  // 🌟 FIX CHUẨN NEXT.JS 16: Giải nén Object params dạng Promise từ Props của trang
   const unwrappedParams = use(params);
   const id = unwrappedParams?.id;
 
@@ -52,6 +51,9 @@ export default function OrderDetailPage({ params }) {
   const displayDiscount = order.discount || 0;
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
 
+  // Kiểm tra trạng thái thanh toán từ Database
+  const isPaid = order.isPaid === true;
+
   return (
     <div className="container my-5" style={{ maxWidth: "700px" }}>
       <div className="mb-3">
@@ -77,6 +79,23 @@ export default function OrderDetailPage({ params }) {
           </div>
         </div>
 
+        {/* 🌟 BANNER HIỂN THỊ TRẠNG THÁI THANH TOÁN */}
+        <div className={`p-3 text-center border-bottom ${isPaid ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning-emphasis"}`}>
+          <div className="d-flex align-items-center justify-content-center gap-2 fw-bold">
+            {isPaid ? (
+              <>
+                <span className="fs-5">✓</span>
+                <span>ĐÃ THANH TOÁN THÀNH CÔNG ({displayFinalTotal.toLocaleString("vi-VN")}đ)</span>
+              </>
+            ) : (
+              <>
+                <span className="spinner-grow spinner-grow-sm text-warning" role="status"></span>
+                <span>CHỜ THANH TOÁN CHUYỂN KHOẢN</span>
+              </>
+            )}
+          </div>
+        </div>
+
         {/* Informational Section */}
         <div className="p-4 border-bottom bg-light-subtle">
           <h6 className="fw-bold mb-3 text-secondary">📍 Thông tin nhận hàng</h6>
@@ -94,6 +113,12 @@ export default function OrderDetailPage({ params }) {
             <div className="col-8 text-dark">
               {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}
             </div>
+
+            {/* Trạng thái ví dụ phương thức chuyển khoản */}
+            <div className="col-4 text-muted">Thanh toán:</div>
+            <div className="col-8 fw-semibold text-dark">
+              {isPaid ? "Đã chuyển khoản VietQR" : "Chưa thanh toán"}
+            </div>
           </div>
         </div>
 
@@ -105,7 +130,6 @@ export default function OrderDetailPage({ params }) {
             const isLast = idx === (order.order_items.length - 1);
 
             return (
-              // 🌟 FIX: Dùng class điều kiện của Bootstrap thay thế cho thẻ <style jsx> không chuẩn
               <div key={itemKey} className={`d-flex align-items-center justify-content-between py-2 ${isLast ? "" : "border-bottom"}`}>
                 <div className="d-flex align-items-center">
                   <img 

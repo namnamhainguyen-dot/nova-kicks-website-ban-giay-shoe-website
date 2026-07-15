@@ -1,38 +1,69 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useContext } from "react";
 import Link from "next/link";
 import AddToCart from "@/components/AddToCart";
+import { WishlistContext } from "@/components/WishlistContext";
 
 export default function ProductFilter({ products }) {
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // 🌟 State mới để lọc sản phẩm yêu thích
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
-  // Lấy danh sách các size duy nhất có trong sản phẩm
-  const allSizes = useMemo(() => {
-    const sizes = products.flatMap((p) => p.sizes || []);
-    return [...new Set(sizes)].sort();
+  const { toggleWishlist, isFavorite } = useContext(WishlistContext);
+
+  // ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants
+  const processedProducts = useMemo(() => {
+    return (products || []).map((p) => {
+      const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
+      const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
+
+      const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
+      const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
+
+      return {
+        ...p,
+        displayColors: uniqueColors,
+        displaySizes: uniqueSizes,
+      };
+    });
   }, [products]);
 
-  // Logic lọc sản phẩm (Đã bỏ lọc theo Danh mục)
+  // Lấy danh sách tổng hợp các size duy nhất
+  const allSizes = useMemo(() => {
+    const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
+    return [...new Set(sizes)].sort((a, b) => a - b);
+  }, [processedProducts]);
+
+  // Logic lọc sản phẩm theo khoảng giá, kích cỡ và YÊU THÍCH
   const filtered = useMemo(() => {
-    return products.filter((p) => {
+    return processedProducts.filter((p) => {
+      const productId = p._id?.$oid || p._id;
+      
+      // Lọc theo trạng thái yêu thích nếu được bật
+      if (showFavoritesOnly && !isFavorite(productId)) {
+        return false;
+      }
+
       const price = Number(p.price) || 0;
       const minOk = priceRange.min === "" || price >= Number(priceRange.min);
       const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
         
       const sizeOk =
         selectedSizes.length === 0 ||
-        selectedSizes.some((s) => (p.sizes || []).includes(s));
+        selectedSizes.some((s) => (p.displaySizes || []).includes(Number(s)));
         
       return minOk && maxOk && sizeOk;
     });
-  }, [products, priceRange, selectedSizes]);
+  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite]);
 
+  // Đếm số lượng bộ lọc đang hoạt động (bao gồm cả lọc yêu thích)
   const activeCount =
     selectedSizes.length +
-    (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0);
+    (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0) +
+    (showFavoritesOnly ? 1 : 0);
 
   function toggleItem(list, setList, value) {
     setList((prev) =>
@@ -43,6 +74,7 @@ export default function ProductFilter({ products }) {
   function clearAll() {
     setSelectedSizes([]);
     setPriceRange({ min: "", max: "" });
+    setShowFavoritesOnly(false); // Reset cả lọc yêu thích
   }
 
   const FilterPanel = () => (
@@ -81,6 +113,53 @@ export default function ProductFilter({ products }) {
             Xóa tất cả ({activeCount})
           </button>
         )}
+      </div>
+
+      {/* 🌟 MỤC LỌC SẢN PHẨM YÊU THÍCH */}
+      <div style={{ marginBottom: "24px" }}>
+        <p
+          style={{
+            fontWeight: 600,
+            fontSize: "13px",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "#6b7280",
+            marginBottom: "10px",
+          }}
+        >
+          Tùy chọn
+        </p>
+        <button
+          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            width: "100%",
+            padding: "10px 14px",
+            borderRadius: "8px",
+            border: showFavoritesOnly ? "1.5px solid #ef4444" : "1px solid #e5e7eb",
+            background: showFavoritesOnly ? "#fef2f2" : "#f9fafb",
+            color: showFavoritesOnly ? "#ef4444" : "#374151",
+            fontSize: "13px",
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            fill={showFavoritesOnly ? "#ef4444" : "none"}
+            stroke={showFavoritesOnly ? "#ef4444" : "#4b5563"}
+            strokeWidth="2.5"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+          Chỉ hiện sản phẩm yêu thích
+        </button>
       </div>
 
       {/* Bộ lọc Giá (VND) */}
@@ -183,8 +262,8 @@ export default function ProductFilter({ products }) {
               letterSpacing: "0.05em",
               color: "#6b7280",
               marginBottom: "10px",
-            }}
-          >
+          }}
+        >
             Kích thước
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -316,9 +395,20 @@ export default function ProductFilter({ products }) {
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
-              <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
-              <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
+              {/* 🌟 THAY ĐỔI ĐIỀU KIỆN HIỂN THỊ KHI TRỐNG */}
+              {showFavoritesOnly ? (
+                <>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>❤️</div>
+                  <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Chưa thêm sản phẩm vào mục yêu thích</p>
+                  <p style={{ fontSize: "14px" }}>Hãy nhấn nút trái tim ở sản phẩm bạn thích để xem lại tại đây.</p>
+                </>
+              ) : (
+                <>
+                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
+                  <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
+                  <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
+                </>
+              )}
               <button
                 onClick={clearAll}
                 style={{
@@ -337,106 +427,179 @@ export default function ProductFilter({ products }) {
             </div>
           ) : (
             <div className="row g-4">
-              {filtered.map((p) => (
-                <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
-                  <div
-                    className="card h-100 border-0 shadow-sm"
-                    style={{ backgroundColor: "var(--surface-card)" }}
-                  >
-                    <Link
-                      href={`/products/${p._id?.$oid || p._id}`}
-                      style={{ textDecoration: "none", color: "inherit" }}
+              {filtered.map((p) => {
+                const stockQty = p.quantity ?? 12;
+                const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
+                const isFav = isFavorite(p._id?.$oid || p._id);
+
+                return (
+                  <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
+                    <div
+                      className="card h-100 border-0 shadow-sm card-product nk-card"
+                      style={{ backgroundColor: "var(--surface-card)", borderRadius: "12px", overflow: "hidden", position: "relative" }}
                     >
-                      <div
-                        className="d-flex align-items-center justify-content-center overflow-hidden"
-                        style={{ height: "250px", backgroundColor: "#f9f9f9" }}
+                      {/* NÚT TRÁI TIM WISHLIST */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          toggleWishlist(p);
+                        }}
+                        style={{
+                          position: "absolute",
+                          top: "12px",
+                          right: "12px",
+                          zIndex: 10,
+                          background: "rgba(255, 255, 255, 0.8)",
+                          backdropFilter: "blur(4px)",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "36px",
+                          height: "36px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                          transition: "all 0.2s ease"
+                        }}
+                        title={isFav ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
                       >
-                        <img
-                          src={p.image || "/img/no-image.png"}
-                          alt={p.name}
-                          className="img-fluid"
-                          style={{ maxHeight: "100%", objectFit: "contain" }}
-                        />
-                      </div>
-
-                      <div className="card-body pb-0">
-                        <h5 className="fw-bold text-truncate" title={p.name}>
-                          {p.name}
-                        </h5>
-
-                        {p.sizes?.length > 0 && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "6px" }}>
-                            {p.sizes.slice(0, 4).map((size) => (
-                              <span
-                                key={size}
-                                style={{
-                                  fontSize: "11px",
-                                  fontWeight: "600",
-                                  padding: "2px 7px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #d1d5db",
-                                  backgroundColor: "#f9fafb",
-                                  color: "#374151",
-                                }}
-                              >
-                                {size}
-                              </span>
-                            ))}
-                            {p.sizes.length > 4 && (
-                              <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                                +{p.sizes.length - 4}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        {p.colors?.length > 0 && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
-                            {p.colors.slice(0, 4).map((color) => (
-                              <span
-                                key={color}
-                                style={{
-                                  fontSize: "11px",
-                                  fontWeight: "500",
-                                  padding: "2px 7px",
-                                  borderRadius: "6px",
-                                  border: "1px solid #e5e7eb",
-                                  backgroundColor: "#fff",
-                                  color: "#6b7280",
-                                }}
-                              >
-                                {color}
-                              </span>
-                            ))}
-                            {p.colors.length > 4 && (
-                              <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                                +{p.colors.length - 4}
-                              </span>
-                            )}
-                          </div>
-                        )}
-
-                        <p
-                          className="small text-secondary"
-                          style={{ minHeight: "48px", overflow: "hidden" }}
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="18"
+                          height="18"
+                          fill={isFav ? "var(--danger, #c73a2b)" : "none"}
+                          stroke={isFav ? "var(--danger, #c73a2b)" : "#555"}
+                          strokeWidth="2.5"
+                          viewBox="0 0 24 24"
                         >
-                          {p.description}
-                        </p>
+                          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                        </svg>
+                      </button>
 
-                        <div className="fw-bold text-danger fs-5 mb-3">
-                          {p.price ? Number(p.price).toLocaleString("vi-VN") : 0} VND
+                      <Link
+                        href={`/products/${p._id?.$oid || p._id}`}
+                        style={{ textDecoration: "none", color: "inherit" }}
+                      >
+                        <div
+                          className="d-flex align-items-center justify-content-center overflow-hidden"
+                          style={{ height: "250px", backgroundColor: "#f9f9f9" }}
+                        >
+                          <img
+                            src={p.image || "/img/no-image.png"}
+                            alt={p.name}
+                            className="img-fluid img-hover-scale"
+                            style={{ maxHeight: "100%", objectFit: "contain" }}
+                          />
                         </div>
-                      </div>
-                    </Link>
 
-                    <div className="card-body pt-0">
-                      <Link href={`/products/${p._id?.$oid || p._id}`} style={{ textDecoration: "none" }}>
-                        <button className="btn btn-dark w-100">Xem chi tiết</button>
+                        <div className="card-body pb-0">
+                          <h5 className="fw-bold text-truncate card-title" title={p.name}>
+                            {p.name}
+                          </h5>
+
+                          {/* HIỂN THỊ KÍCH THƯỚC */}
+                          {p.displaySizes?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                              {p.displaySizes.slice(0, 4).map((size) => (
+                                <span
+                                  key={size}
+                                  style={{
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                    padding: "2px 7px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #d1d5db",
+                                    backgroundColor: "#f9fafb",
+                                    color: "#374151",
+                                  }}
+                                >
+                                  {size}
+                                </span>
+                              ))}
+                              {p.displaySizes.length > 4 && (
+                                <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                                  +{p.displaySizes.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* HIỂN THỊ MÀU SẮC */}
+                          {p.displayColors?.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "10px" }}>
+                              {p.displayColors.slice(0, 4).map((color) => (
+                                <span
+                                  key={color}
+                                  style={{
+                                    fontSize: "11px",
+                                    fontWeight: "500",
+                                    padding: "2px 7px",
+                                    borderRadius: "6px",
+                                    border: "1px solid #e5e7eb",
+                                    backgroundColor: "#fff",
+                                    color: "#6b7280",
+                                  }}
+                                >
+                                  {color}
+                                </span>
+                              ))}
+                              {p.displayColors.length > 4 && (
+                                <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                                  +{p.displayColors.length - 4}
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          <p
+                            className="small text-secondary mb-2 custom-scrollbar"
+                            style={{ 
+                              height: "72px",
+                              overflowY: "auto",
+                              paddingRight: "4px",
+                              textAlign: "justify",
+                              fontSize: "13px",
+                              lineHeight: "1.4"
+                            }}
+                          >
+                            {p.description}
+                          </p>
+
+                          {/* THANH SỐ LƯỢNG TỒN KHO */}
+                          <div className="mb-2" style={{ fontSize: "12px" }}>
+                            <div className="d-flex justify-content-between align-items-center mb-1">
+                              <span className="text-muted">
+                                Còn lại: <strong style={{ color: "#111" }}>{stockQty}</strong> sản phẩm
+                              </span>
+                            </div>
+                            <div className="progress" style={{ height: "4px", backgroundColor: "#e5e7eb" }}>
+                              <div
+                                className="progress-bar bg-dark"
+                                role="progressbar"
+                                style={{ width: `${progressWidth}%` }}
+                                aria-valuenow={stockQty}
+                                aria-valuemin="0"
+                                aria-valuemax="100"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="fw-bold text-danger fs-5 mb-3">
+                            {p.price ? Number(p.price).toLocaleString("vi-VN") : 0} VND
+                          </div>
+                        </div>
                       </Link>
+
+                      <div className="card-body pt-0">
+                        <Link href={`/products/${p._id?.$oid || p._id}`} style={{ textDecoration: "none" }}>
+                          <button className="btn btn-dark w-100">Xem chi tiết</button>
+                        </Link>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

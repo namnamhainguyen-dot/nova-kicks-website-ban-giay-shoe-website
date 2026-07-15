@@ -211,7 +211,7 @@ export default function Login() {
               <input type="checkbox" className="form-check-input rounded-0 border-dark" id="remember" />
               <label className="form-check-label text-secondary fs-7" htmlFor="remember">Ghi nhớ</label>
             </div>
-            <a href="#" className="text-secondary text-decoration-none fs-7">Quên mật khẩu</a>
+            <a href="/forgot-password" className="text-secondary text-decoration-none fs-7">Quên mật khẩu</a>
           </div>
 
           <button 
