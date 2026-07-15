@@ -105,14 +105,23 @@ export async function PATCH(request, { params }) {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    // Tạo object cập nhật động
-    const updateFields = { status: body.status };
+    // 👉 ĐÃ SỬA: Khởi tạo object cập nhật động chứa cả status và isPaid (nếu có truyền lên)
+    const updateFields = {};
+    
+    if (body.status !== undefined) {
+      updateFields.status = body.status;
+    }
+    
+    if (body.isPaid !== undefined) {
+      updateFields.isPaid = body.isPaid; // Lưu trạng thái thanh toán true/false vào database
+    }
 
     // BỔ SUNG: Nếu trạng thái là hủy đơn và có lý do hủy từ client gửi lên
     if (body.status === "cancelled" && body.cancelReason) {
       updateFields.cancelReason = body.cancelReason;
     }
 
+    // Cập nhật dữ liệu mới vào MongoDB
     const result = await db.collection("orders").updateOne(
       { _id: new ObjectId(id) },
       { $set: updateFields }
@@ -123,6 +132,7 @@ export async function PATCH(request, { params }) {
     }
 
     // 🌟 LOGIC TỰ ĐỘNG GỬI MAIL KHI THANH TOÁN THÀNH CÔNG
+    // (Lúc này DB đã được cập nhật isPaid: true thành công ở bước trên)
     if (body.isPaid === true) {
       const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
       
@@ -132,7 +142,7 @@ export async function PATCH(request, { params }) {
           to: fullOrderDetails.email, // Gửi trực tiếp đến hòm thư của khách hàng
           
           // 🌟 BỔ SUNG BCC: Gửi một bản sao ẩn danh về hòm thư của bạn (Admin)
-          bcc: "luckhanh6677@gmail.com", // Bạn có thể thay đổi sang email quản trị khác nếu muốn
+          bcc: "luckhanh6677@gmail.com", 
           
           subject: `👟 [Nova Kicks] Xác nhận thanh toán đơn hàng #${fullOrderDetails._id.toString().toUpperCase()}`,
           html: generateOrderEmailHTML(fullOrderDetails), 
