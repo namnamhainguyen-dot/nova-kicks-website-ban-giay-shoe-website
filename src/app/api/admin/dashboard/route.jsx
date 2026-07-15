@@ -43,14 +43,14 @@ export async function GET(request) {
     // Lấy 3 đơn hàng mới nhất
     const latestOrders = await db.collection("orders")
       .find({})
-      .sort({ createdAt: -1, _id: -1 }) // Sắp xếp theo thời gian tạo đơn mới nhất
+      .sort({ createdAt: -1, _id: -1 }) 
       .limit(3)
       .toArray();
 
     // Lấy 3 người dùng đăng ký mới nhất
     const latestUsers = await db.collection("users")
       .find({})
-      .sort({ createdAt: -1, _id: -1 }) // Sắp xếp theo thời gian tạo user mới nhất
+      .sort({ createdAt: -1, _id: -1 }) 
       .limit(3)
       .toArray();
 
@@ -65,8 +65,7 @@ export async function GET(request) {
 
     // Map dữ liệu thành viên mới sang chuẩn hiển thị hoạt động
     const userActivities = latestUsers.map(user => {
-      // Phán đoán phương thức đăng nhập dựa trên email hoặc mật khẩu nếu có trong DB
-      const isGoogle = user.email && !user.password; // Không có password thường là login Google
+      const isGoogle = user.email && !user.password; 
       const loginMethod = isGoogle ? "bằng Google" : "bằng Tài khoản";
 
       return {
@@ -78,12 +77,44 @@ export async function GET(request) {
       };
     });
 
-    // Gộp chung cả hai mảng hoạt động lại, sắp xếp theo thời gian mới nhất lên đầu và lấy đúng 3 phần tử
     const recentActivities = [...orderActivities, ...userActivities]
-      .sort((a, b) => b.time - a.time) // Sắp xếp theo thời gian giảm dần
-      .slice(0, 3); // Lấy top 3 hoạt động mới nhất của toàn hệ thống
+      .sort((a, b) => b.time - a.time) 
+      .slice(0, 3); 
 
-    // Trả về cấu trúc JSON chuẩn cho Frontend
+    // ==========================================
+    // 📊 NÂNG CẤP: DỮ LIỆU PHÂN TÍCH CHUYÊN SÂU
+    // ==========================================
+
+    // Thống kê 1: Tỷ lệ trạng thái đơn hàng (Gom nhóm theo status)
+    const statusStats = await db.collection("orders").aggregate([
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]).toArray();
+
+    const orderStatusData = {
+      pending: statusStats.find(s => s._id === "pending")?.count || 0,
+      completed: statusStats.find(s => s._id === "completed" || s._id === "delivered")?.count || 0,
+      cancelled: statusStats.find(s => s._id === "cancelled")?.count || 0,
+    };
+
+    // Thống kê 2: Top 5 sản phẩm bán chạy nhất tách từ mảng order_items
+    const topProducts = await db.collection("orders").aggregate([
+      { $unwind: "$order_items" }, // Trải phẳng mảng sản phẩm trong các đơn hàng
+      { 
+        $group: { 
+          _id: "$order_items.name", // Gom nhóm theo tên sản phẩm
+          totalQty: { $sum: { $convert: { input: "$order_items.quantity", to: "int", onError: 0, onNull: 0 } } } // Tính tổng số lượng
+        } 
+      },
+      { $sort: { totalQty: -1 } }, // Sắp xếp giảm dần theo số lượng bán ra
+      { $limit: 5 } // Chỉ lấy 5 sản phẩm dẫn đầu
+    ]).toArray();
+
+    const topProductsData = {
+      labels: topProducts.map(p => p._id || "Sản phẩm không tên"),
+      values: topProducts.map(p => p.totalQty)
+    };
+
+    // Trả về cấu trúc JSON chuẩn bao gồm cả phần biểu đồ nâng cao mới
     return Response.json({
       stats: {
         totalRevenue: totalRevenue, 
@@ -99,7 +130,11 @@ export async function GET(request) {
       },
       recentActivities: recentActivities.length > 0 ? recentActivities : [
         { id: "init", title: "Hệ thống sẵn sàng", desc: "Chưa ghi nhận hoạt động nào phát sinh." }
-      ]
+      ],
+      advancedCharts: {
+        orderStatus: orderStatusData,
+        topProducts: topProductsData
+      }
     }, { status: 200 });
 
   } catch (error) {
