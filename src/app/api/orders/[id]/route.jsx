@@ -6,8 +6,8 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "luckhanh6677@gmail.com", // Gmail dùng để gửi đi
-    pass: "zainqffwrylcapry",       // Mật khẩu ứng dụng 16 ký tự của bạn
+    user: "namnamhainguyen@gmail.com", // Gmail dùng để gửi đi
+    pass: "xyfmsgxksokkjdlc",       // Mật khẩu ứng dụng 16 ký tự của bạn
   },
 });
 
@@ -138,11 +138,11 @@ export async function PATCH(request, { params }) {
       
       if (fullOrderDetails) {
         const mailOptions = {
-          from: '"Nova Kicks" <luckhanh6677@gmail.com>', // Gmail gửi đi
+          from: '"Nova Kicks" <namnamhainguyen@gmail.com>', // Gmail gửi đi
           to: fullOrderDetails.email, // Gửi trực tiếp đến hòm thư của khách hàng
           
           // 🌟 BỔ SUNG BCC: Gửi một bản sao ẩn danh về hòm thư của bạn (Admin)
-          bcc: "luckhanh6677@gmail.com", 
+          bcc: "namnamhainguyen@gmail.com", 
           
           subject: `👟 [Nova Kicks] Xác nhận thanh toán đơn hàng #${fullOrderDetails._id.toString().toUpperCase()}`,
           html: generateOrderEmailHTML(fullOrderDetails), 
