@@ -9,7 +9,7 @@ export default function ProductFilter({ products }) {
   const [selectedSizes, setSelectedSizes] = useState([]);
   const [priceRange, setPriceRange] = useState({ min: "", max: "" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // 🌟 State mới để lọc sản phẩm yêu thích
+  // 🌟 State lọc sản phẩm yêu thích
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const { toggleWishlist, isFavorite } = useContext(WishlistContext);
@@ -65,8 +65,9 @@ export default function ProductFilter({ products }) {
     (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0) +
     (showFavoritesOnly ? 1 : 0);
 
-  function toggleItem(list, setList, value) {
-    setList((prev) =>
+  // SỬA LỖI: Hàm toggle chọn/hủy chọn kích thước hoạt động chính xác hơn
+  function toggleItem(value) {
+    setSelectedSizes((prev) =>
       prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
     );
   }
@@ -262,8 +263,8 @@ export default function ProductFilter({ products }) {
               letterSpacing: "0.05em",
               color: "#6b7280",
               marginBottom: "10px",
-          }}
-        >
+            }}
+          >
             Kích thước
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
@@ -272,7 +273,7 @@ export default function ProductFilter({ products }) {
               return (
                 <button
                   key={size}
-                  onClick={() => toggleItem(selectedSizes, setSelectedSizes, size)}
+                  onClick={() => toggleItem(size)}
                   style={{
                     padding: "5px 12px",
                     borderRadius: "8px",
@@ -395,7 +396,6 @@ export default function ProductFilter({ products }) {
 
           {filtered.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
-              {/* 🌟 THAY ĐỔI ĐIỀU KIỆN HIỂN THỊ KHI TRỐNG */}
               {showFavoritesOnly ? (
                 <>
                   <div style={{ fontSize: "40px", marginBottom: "12px" }}>❤️</div>

@@ -1,14 +1,14 @@
 import ProductFilter from "@/components/ProductFilter";
+import ProductChatbox from "@/components/ProductChatbox"; // 1. IMPORT CHATBOX VÀO ĐÂY
 
 // 1. Hàm lấy danh sách sản phẩm từ API
 async function getProducts(categoryID) {
-  // Tạo URL động: Nếu có categoryID thì nối thêm query string, ngược lại gọi tất cả
   const url = categoryID 
     ? `http://localhost:3000/api/products?categoryID=${categoryID}`
     : "http://localhost:3000/api/products";
 
   const res = await fetch(url, {
-    cache: "no-store", // Đảm bảo luôn lấy dữ liệu mới nhất, không bị cache cũ
+    cache: "no-store",
   });
 
   if (!res.ok) {
@@ -19,27 +19,22 @@ async function getProducts(categoryID) {
 }
 
 export default async function ProductsPage({ searchParams }) {
-  // Giải nén categoryID từ searchParams
   const { categoryID } = await searchParams;
-
-  // Lấy danh sách sản phẩm gốc từ API
   const rawProducts = await getProducts(categoryID);
 
-  // 🌟 CHUẨN HÓA DỮ LIỆU: Đảm bảo các trường màu sắc, size, mô tả luôn tồn tại trước khi truyền xuống Component Con
+  // CHUẨN HÓA DỮ LIỆU
   const products = (rawProducts || []).map(product => {
-    // 1. Trích xuất danh sách màu và số lượng tương ứng từ biến thể (variants)
     const availableColors = product.variants?.map(v => ({
       color: v.color,
       quantity: v.quantity ?? 0
     })) || [];
 
-    // 2. Trích xuất danh sách kích thước (size) khả dụng
     const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
 
     return {
       ...product,
-      availableColors, // Mảng chứa các object { color, quantity }
-      availableSizes,  // Mảng chứa các kích thước [38, 39, 40...]
+      availableColors,
+      availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này."
     };
   });
@@ -49,41 +44,31 @@ export default async function ProductsPage({ searchParams }) {
       className="container py-5"
       style={{ paddingTop: "90px", minHeight: "100vh" }}
     >
-      {/* Tích hợp CSS Hover trực tiếp cho các item sản phẩm bên trong ProductFilter */}
       <style>{`
-        /* 1. Hiệu ứng trượt và đổ bóng mượt mà cho toàn bộ card sản phẩm */
         .nk-card, .card-product, [class*="card"] {
           transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
                       box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
           position: relative;
           overflow: hidden;
         }
-
         .nk-card:hover, .card-product:hover, [class*="card"]:hover {
           transform: translateY(-8px);
           box-shadow: 0 16px 36px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.02) !important;
         }
-
-        /* 2. Hiệu ứng phóng to hình ảnh giày một cách nghệ thuật */
         .img-hover-scale, [class*="card"] img {
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
         }
-
         .nk-card:hover .img-hover-scale, 
         .card-product:hover [class*="card"] img,
         [class*="card"]:hover img {
           transform: scale(1.07);
         }
-
-        /* 3. Hiệu ứng chuyển màu chữ tiêu đề sản phẩm sang màu cam thương hiệu khi hover */
         .nk-card:hover .card-title,
         .card-product:hover [class*="title"],
         [class*="card"]:hover h6, [class*="card"]:hover h5 {
           color: var(--accent, #d87c3c) !important;
           transition: color 0.3s ease;
         }
-
-        /* 4. Thêm một đường line mỏng tinh tế chạy dưới số lượng sản phẩm */
         .border-bottom {
           position: relative;
         }
@@ -102,8 +87,10 @@ export default async function ProductsPage({ searchParams }) {
         <span className="text-secondary fw-semibold">{products.length} sản phẩm</span>
       </div>
 
-      {/* Mỗi khi đổi categoryID, ProductFilter sẽ tự remount và nhận dữ liệu cấu trúc chuẩn mới */}
       <ProductFilter key={categoryID || "all"} products={products} />
+
+      {/* 2. CHÈN CHATBOX ĐỂ TỰ ĐỘNG TÌM KIẾM SẢN PHẨM */}
+      <ProductChatbox products={products} />
     </main>
   );
 }
