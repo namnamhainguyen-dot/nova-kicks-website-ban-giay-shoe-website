@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function ProductChatbox({ products }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: "bot", text: "Xin chào Nam! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá, hoặc kiểu dáng thoải mái...), mình tìm cho liền nhé! 🤖" }
+    { role: "bot", text: "Xin chào Nam! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá ), mình tìm cho liền nhé! 🤖" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false); // Trạng thái chờ AI phản hồi
@@ -81,7 +81,7 @@ export default function ProductChatbox({ products }) {
           <div className="card-header text-white d-flex justify-content-between align-items-center py-3" style={{ backgroundColor: "#d87c3c" }}>
             <div className="d-flex align-items-center gap-2">
               <span className="spinner-grow spinner-grow-sm text-light" role="status" style={{ display: isLoading ? "inline-block" : "none" }}></span>
-              <h6 className="m-0 fw-bold">Trợ Lý AI Tìm Giày Khách Hàng ⚡</h6>
+              <h6 className="m-0 fw-bold">Trợ Lý  Khách Hàng ⚡</h6>
             </div>
             <button onClick={() => setIsOpen(false)} className="btn-close btn-close-white"></button>
           </div>
