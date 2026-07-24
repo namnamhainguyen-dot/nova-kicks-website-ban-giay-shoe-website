@@ -49,7 +49,21 @@ export default function ProductDetailPage() {
         }
     }, []);
 
-    // Fetch dữ liệu sản phẩm & đánh giá
+    // Hàm riêng để fetch danh sách đánh giá
+    const fetchReviews = useCallback(async () => {
+        if (!id) return;
+        try {
+            const resReviews = await fetch(`/api/products/${id}/reviews`, { cache: 'no-store' });
+            if (resReviews.ok) {
+                const reviewsData = await resReviews.json();
+                setReviews(Array.isArray(reviewsData) ? reviewsData : []);
+            }
+        } catch (err) {
+            console.error("Lỗi tải danh sách đánh giá:", err);
+        }
+    }, [id]);
+
+    // Fetch dữ liệu sản phẩm & đánh giá lần đầu
     useEffect(() => {
         if (!id) return;
 
@@ -58,19 +72,16 @@ export default function ProductDetailPage() {
 
         const fetchProductData = async () => {
             try {
-                const [resProduct, resReviews] = await Promise.all([
+                const [resProduct] = await Promise.all([
                     fetch(`/api/products/${id}`, { cache: 'no-store' }),
-                    fetch(`/api/products/${id}/reviews`, { cache: 'no-store' })
                 ]);
 
                 if (!resProduct.ok) throw new Error("Không thể tải sản phẩm");
 
                 const productData = await resProduct.json();
-                const reviewsData = resReviews.ok ? await resReviews.json() : [];
 
                 if (isMounted) {
                     setProduct(productData);
-                    setReviews(reviewsData);
                     setCurrentImage(productData.image || '/placeholder.png');
 
                     if (productData.variants && productData.variants.length > 0) {
@@ -92,9 +103,10 @@ export default function ProductDetailPage() {
         };
 
         fetchProductData();
+        fetchReviews(); // Lấy bình luận từ API
 
         return () => { isMounted = false; };
-    }, [id]);
+    }, [id, fetchReviews]);
 
     // Đổi ảnh mượt
     const changeImageSmoothly = useCallback((newImageSrc) => {
@@ -213,27 +225,31 @@ export default function ProductDetailPage() {
         router.push('/cart');
     };
 
+    // Gửi bình luận mới
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !currentUser) return;
 
         setSubmittingReview(true);
         try {
+            const userName = currentUser?.name || currentUser?.fullName || currentUser?.email?.split('@')[0] || 'Khách hàng';
+            
             const res = await fetch(`/api/products/${id}/reviews`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     rating: newRating,
                     comment: newComment.trim(),
-                    userName: currentUser?.name || currentUser?.email?.split('@')[0] || 'Khách hàng',
+                    userName: userName,
+                    userId: currentUser?._id || currentUser?.id,
                 }),
             });
 
             if (res.ok) {
-                const addedReview = await res.json();
-                setReviews(prev => [addedReview, ...prev]);
                 setNewComment('');
                 setNewRating(5);
+                // Gọi lại API lấy tất cả bình luận để đồng bộ đánh giá mới từ Server
+                await fetchReviews();
             } else {
                 alert('Có lỗi xảy ra khi gửi bình luận.');
             }
@@ -246,7 +262,8 @@ export default function ProductDetailPage() {
 
     const averageRating = useMemo(() => {
         if (!reviews || reviews.length === 0) return "5.0";
-        return (reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1);
+        const sum = reviews.reduce((acc, r) => acc + (r.rating || 0), 0);
+        return (sum / reviews.length).toFixed(1);
     }, [reviews]);
 
     if (loading) {
@@ -573,44 +590,50 @@ export default function ProductDetailPage() {
                     </div>
                 </form>
 
-                {/* Danh sách bình luận */}
+                {/* Danh sách bình luận từ TẤT CẢ người dùng */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {reviews.length === 0 ? (
                         <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic' }}>
                             Chưa có bình luận nào cho sản phẩm này. Hãy là người đầu tiên đánh giá!
                         </p>
                     ) : (
-                        reviews.map((rev, idx) => (
-                            <div key={rev._id || idx} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '20px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                        <div style={{
-                                            width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#111827',
-                                            color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                            fontWeight: '700', fontSize: '14px', textTransform: 'uppercase'
-                                        }}>
-                                            {(rev.userName || 'U')[0]}
+                        reviews.map((rev, idx) => {
+                            // Xử lý lấy tên linh hoạt cho nhiều kiểu dữ liệu từ backend trả về
+                            const nameDisplay = rev.userName || rev.user?.name || rev.user?.email?.split('@')[0] || 'Khách hàng';
+                            const firstLetter = nameDisplay.charAt(0).toUpperCase();
+
+                            return (
+                                <div key={rev._id || idx} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '20px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                            <div style={{
+                                                width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#111827',
+                                                color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                                fontWeight: '700', fontSize: '14px', textTransform: 'uppercase'
+                                            }}>
+                                                {firstLetter}
+                                            </div>
+                                            <div>
+                                                <span style={{ fontWeight: '700', fontSize: '14px', color: '#111827', display: 'block' }}>
+                                                    {nameDisplay}
+                                                </span>
+                                                <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                                    {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('vi-VN') : 'Mới đây'}
+                                                </span>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <span style={{ fontWeight: '700', fontSize: '14px', color: '#111827', display: 'block' }}>
-                                                {rev.userName || 'Khách hàng'}
-                                            </span>
-                                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>
-                                                {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('vi-VN') : 'Mới đây'}
-                                            </span>
+
+                                        <div style={{ fontSize: '14px', color: '#fbbf24' }}>
+                                            {'⭐'.repeat(rev.rating || 5)}
                                         </div>
                                     </div>
 
-                                    <div style={{ fontSize: '14px', color: '#fbbf24' }}>
-                                        {'⭐'.repeat(rev.rating || 5)}
-                                    </div>
+                                    <p style={{ color: '#374151', fontSize: '14px', lineHeight: '1.6', margin: '8px 0 0 46px' }}>
+                                        {rev.comment}
+                                    </p>
                                 </div>
-
-                                <p style={{ color: '#374151', fontSize: '14px', lineHeight: '1.6', margin: '8px 0 0 46px' }}>
-                                    {rev.comment}
-                                </p>
-                            </div>
-                        ))
+                            );
+                        })
                     )}
                 </div>
             </div>

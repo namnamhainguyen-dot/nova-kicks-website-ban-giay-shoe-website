@@ -7,7 +7,7 @@ async function getDb() {
     return client.db("Nova-kicks");
 }
 
-// 1. GET: Lấy tất cả bình luận từ collection `reviews` theo productId
+// 1. GET: Lấy tất cả bình luận từ collection `reviews` riêng biệt theo productId
 export async function GET(req, { params }) {
     try {
         const { id } = await params;
@@ -17,10 +17,15 @@ export async function GET(req, { params }) {
 
         const db = await getDb();
 
-        // Tìm tất cả reviews có productId bằng với id của sản phẩm
-        // Sắp xếp giảm dần theo thời gian tạo (mới nhất lên đầu)
+        // Tìm tất cả reviews từ collection `reviews`
+        // Dùng $or để hỗ trợ quét cả dạng String lẫn ObjectId của productId
         const reviews = await db.collection('reviews')
-            .find({ productId: id })
+            .find({
+                $or: [
+                    { productId: id },
+                    { productId: new ObjectId(id) }
+                ]
+            })
             .sort({ createdAt: -1 })
             .toArray();
 
@@ -31,7 +36,7 @@ export async function GET(req, { params }) {
     }
 }
 
-// 2. POST: Lưu bình luận mới vào collection `reviews` riêng
+// 2. POST: Lưu bình luận mới vào collection `reviews` VÀ cập nhật rating tổng hợp sang `products`
 export async function POST(req, { params }) {
     try {
         const { id } = await params;
@@ -52,26 +57,49 @@ export async function POST(req, { params }) {
 
         const db = await getDb();
 
-        // Kiểm tra xem sản phẩm có tồn tại không
+        // 1. Kiểm tra sản phẩm có tồn tại trong bảng `products` không
         const productExists = await db.collection('products').findOne({ _id: new ObjectId(id) });
         if (!productExists) {
             return NextResponse.json({ error: 'Không tìm thấy sản phẩm' }, { status: 404 });
         }
 
-        // Tạo document review mới có liên kết với productId
+        // 2. Tạo document chứa nội dung chi tiết bài viết
         const newReview = {
-            productId: id, // Lưu ID sản phẩm dưới dạng String (hoặc new ObjectId(id) tùy dự án của bạn)
-            userId: userId || null,
+            productId: id,
+            userId: userId && ObjectId.isValid(userId) ? new ObjectId(userId) : userId || null,
             userName: userName?.trim() || 'Khách hàng',
             rating: numRating,
             comment: comment.trim(),
             createdAt: new Date(),
         };
 
-        // Chèn trực tiếp vào collection 'reviews'
+        // 3. Thêm bài viết mới trực tiếp vào collection `reviews` riêng
         const result = await db.collection('reviews').insertOne(newReview);
 
-        // Cập nhật lại _id trả về cho frontend
+        // 4. Lấy lại tất cả review của sản phẩm này trong `reviews` để tính điểm trung bình mới
+        const allReviews = await db.collection('reviews').find({
+            $or: [
+                { productId: id },
+                { productId: new ObjectId(id) }
+            ]
+        }).toArray();
+
+        const totalReviewsCount = allReviews.length;
+        const totalRatingSum = allReviews.reduce((sum, item) => sum + item.rating, 0);
+        const averageRating = Number((totalRatingSum / totalReviewsCount).toFixed(1));
+
+        // 5. Cập nhật số sao trung bình và tổng số lượt đánh giá sang bảng `products`
+        await db.collection('products').updateOne(
+            { _id: new ObjectId(id) },
+            { 
+                $set: { 
+                    rating: averageRating, 
+                    numReviews: totalReviewsCount 
+                } 
+            }
+        );
+
+        // 6. Trả về kết quả review vừa tạo cho Frontend
         const savedReview = {
             _id: result.insertedId,
             ...newReview
