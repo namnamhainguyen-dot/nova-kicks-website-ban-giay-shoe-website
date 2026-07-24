@@ -1,7 +1,7 @@
 "use client";
 import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
-import { useContext, useState, useEffect } from "react";
+import { useContext, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 
 export default function Checkout() {
@@ -31,50 +31,22 @@ export default function Checkout() {
   const [currentUser, setCurrentUser] = useState(null);
 
   const router = useRouter();
+  
+  // Dùng useRef để tránh việc thực thi dọn dẹp giỏ hàng nhiều lần khi render
+  const hasClearedCart = useRef(false);
 
-// ── EFFECT 1: XỬ LÝ QUAY VỀ SAU KHI THANH TOÁN GIẢ LẬP THÀNH CÔNG ──
+  // ── EFFECT GỘP: CHỈ CHẠY 1 LẦN DUY NHẤT KHI MOUNT ──
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const queryParams = new URLSearchParams(window.location.search);
-      const successSimulated = queryParams.get("success_simulated");
-      const urlOrderId = queryParams.get("orderId");
+    if (typeof window === "undefined") return;
 
-      if (successSimulated === "true" && urlOrderId) {
-        setCreatedOrderId(urlOrderId);
-        setIsSuccess(true);
-        
-        // Tiến hành xóa giỏ hàng dựa trên các item đã thanh toán lưu trong sessionStorage
-        const storedItems = sessionStorage.getItem("checkout_items");
-        if (storedItems) {
-          try {
-            const parsedItems = JSON.parse(storedItems);
-            const remainingCart = cart.filter(cartItem =>
-              !parsedItems.some(checkoutItem =>
-                checkoutItem._id === cartItem._id &&
-                checkoutItem.selectedColor === cartItem.selectedColor &&
-                checkoutItem.selectedSize === cartItem.selectedSize
-              )
-            );
-            setCart(remainingCart);
-            localStorage.setItem("cart", JSON.stringify(remainingCart));
-          } catch (e) {
-            console.error("Lỗi xóa giỏ hàng sau thanh toán giả lập:", e);
-          }
-        }
-        sessionStorage.removeItem("checkout_items");
-      }
-    }
-  }, [cart, setCart]); // Chỉ phụ thuộc vào cart gốc để filter
-
-  // ── EFFECT 2: ĐỌC DATA BAN ĐẦU (CHECKOUT ITEMS & USER INFO) KHI MOUNT ──
-  useEffect(() => {
-    // 1. Đọc sản phẩm chờ thanh toán
+    // 1. Đọc sản phẩm chờ thanh toán từ sessionStorage
     const storedItems = sessionStorage.getItem("checkout_items");
+    let parsedCheckoutItems = [];
     if (storedItems) {
       try {
-        const parsedItems = JSON.parse(storedItems);
-        if (Array.isArray(parsedItems) && parsedItems.length > 0) {
-          setCheckoutItems(parsedItems);
+        parsedCheckoutItems = JSON.parse(storedItems);
+        if (Array.isArray(parsedCheckoutItems) && parsedCheckoutItems.length > 0) {
+          setCheckoutItems(parsedCheckoutItems);
         }
       } catch (e) {
         console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
@@ -83,22 +55,47 @@ export default function Checkout() {
       setCheckoutItems(cart);
     }
 
-    // 2. Lấy thông tin user đăng nhập điền vào Form
-    if (typeof window !== "undefined") {
-      const savedUser = localStorage.getItem("user");
-      if (savedUser) {
-        try {
-          const parsedUser = JSON.parse(savedUser);
-          setCurrentUser(parsedUser);
-          if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
-          if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
-          if (parsedUser.address) setDeliveryAddress(parsedUser.address);
-        } catch (e) {
-          console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
-        }
+    // 2. XỬ LÝ QUAY VỀ SAU KHI THANH TOÁN GIẢ LẬP VIETQR THÀNH CÔNG
+    const queryParams = new URLSearchParams(window.location.search);
+    const successSimulated = queryParams.get("success_simulated");
+    const urlOrderId = queryParams.get("orderId");
+
+    if (successSimulated === "true" && urlOrderId && !hasClearedCart.current) {
+      hasClearedCart.current = true; // Đánh dấu đã xử lý xong
+      setCreatedOrderId(urlOrderId);
+      setIsSuccess(true);
+      
+      // Tiến hành xóa giỏ hàng dựa trên các item đã thanh toán lưu trong sessionStorage
+      if (parsedCheckoutItems.length > 0) {
+        setCart((prevCart) => {
+          const remainingCart = prevCart.filter(cartItem =>
+            !parsedCheckoutItems.some(checkoutItem =>
+              checkoutItem._id === cartItem._id &&
+              checkoutItem.selectedColor === cartItem.selectedColor &&
+              checkoutItem.selectedSize === cartItem.selectedSize
+            )
+          );
+          localStorage.setItem("cart", JSON.stringify(remainingCart));
+          return remainingCart;
+        });
+      }
+      sessionStorage.removeItem("checkout_items");
+    }
+
+    // 3. Lấy thông tin user đăng nhập điền vào Form
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setCurrentUser(parsedUser);
+        if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
+        if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
+        if (parsedUser.address) setDeliveryAddress(parsedUser.address);
+      } catch (e) {
+        console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
       }
     }
-  }, []); // Để mảng rỗng [] giúp code chỉ chạy DUY NHẤT 1 lần khi trang Checkout được mở lên
+  }, [setCart]); // Thêm setCart vào dependency an toàn vì nó không đổi giữa các lần render
 
   // Tính tổng tiền CHỈ trên danh sách sản phẩm được chọn mua
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
@@ -139,15 +136,12 @@ export default function Checkout() {
       const result = await res.json();
 
       if (result.success || res.ok) {
-        // ── KHỞI TẠO KIỂM TRA NGÀY BẮT ĐẦU SỬ DỤNG VOUCHER ──
-        // Lấy trường ngày bắt đầu từ API (bạn kiểm tra lại xem API trả về start_date hay startDate nhé)
         const startDateKey = result.start_date || result.startDate;
         
         if (startDateKey) {
           const startDate = new Date(startDateKey);
           const now = new Date();
 
-          // Nếu ngày hiện tại nhỏ hơn ngày bắt đầu hiệu lực
           if (now < startDate) {
             const formattedDate = startDate.toLocaleDateString("vi-VN", {
               day: "2-digit",
@@ -156,10 +150,9 @@ export default function Checkout() {
             });
             setVoucherError(`Mã giảm giá này chưa đến ngày sử dụng! (Có hiệu lực từ ngày ${formattedDate})`);
             setAppliedVoucher(null);
-            return; // Dừng xử lý tiếp theo
+            return;
           }
         }
-        // ──────────────────────────────────────────────────
 
         if (total < result.min_order_value) {
           setVoucherError(`Đơn hàng phải tối thiểu từ ${result.min_order_value.toLocaleString("vi-VN")}đ để dùng mã này!`);
@@ -209,7 +202,7 @@ export default function Checkout() {
   };
 
   // Gửi đơn hàng lên API
- const handleOrder = async (e) => {
+  const handleOrder = async (e) => {
     if (e) e.preventDefault();
     if (!validateOrder()) return;
 
@@ -250,19 +243,18 @@ export default function Checkout() {
 
       const result = await res.json();
 
-      // --- TÍCH HỢP LOGIC THANH TOÁN ---
+      // --- TÍCH HỢP LOGIC THANH TOÁN (VNPAY / NGÂN HÀNG) ---
       if (result.paymentUrl) {
-        // Chuyển hướng người dùng sang trang thanh toán của ngân hàng/VNPay
         window.location.href = result.paymentUrl;
-        return; // Dừng tại đây, không cần xóa giỏ hàng ngay vì khách chưa thanh toán xong
+        return; 
       }
 
-      // --- LOGIC XỬ LÝ ĐƠN HÀNG THÀNH CÔNG (CHO COD HOẶC KHI ĐÃ TRẢ TIỀN) ---
+      // --- LOGIC XỬ LÝ ĐƠN HÀNG THÀNH CÔNG (CHO COD / CHUYỂN KHOẢN GIẢ LẬP) ---
       if (result.code === "success" || result.success || result._id || result.id) {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
 
-        // Xóa sản phẩm vừa thanh toán khỏi giỏ hàng
+        // Xóa sản phẩm vừa thanh toán khỏi giỏ hàng ngay lập tức (Dành cho COD)
         const remainingCart = cart.filter(cartItem =>
           !checkoutItems.some(checkoutItem =>
             checkoutItem._id === cartItem._id &&
@@ -379,14 +371,12 @@ export default function Checkout() {
                 <div className="mb-4">
                   <label className="form-label fw-semibold small">Chọn phương thức thanh toán <span className="text-danger">*</span></label>
                   <div className="d-flex flex-column gap-2">
-                    {/* Option COD */}
                     <div className={`p-3 border rounded cursor-pointer ${paymentMethod === 'cod' ? 'border-dark bg-light' : ''}`}
                         onClick={() => setPaymentMethod('cod')}>
                       <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
                       <span className="ms-2 fw-medium">Thanh toán khi nhận hàng (COD)</span>
                     </div>
                     
-                    {/* Option VNPay */}
                     <div className={`p-3 border rounded cursor-pointer ${paymentMethod === 'vnpay' ? 'border-dark bg-light' : ''}`}
                         onClick={() => setPaymentMethod('vnpay')}>
                       <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} />

@@ -6,14 +6,15 @@ import {
   CategoryScale,
   LinearScale,
   BarElement,
+  ArcElement,
   Title,
   Tooltip,
   Legend
 } from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+import { Bar, Doughnut } from 'react-chartjs-2';
 
 // Đăng ký các thành phần bắt buộc của Chart.js
-ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, Title, Tooltip, Legend);
 
 export default function AdminDashboard() {
   // --- DASHBOARD LIVE DATA STATE ---
@@ -29,6 +30,11 @@ export default function AdminDashboard() {
     labels: ['Tuần 01', 'Tuần 02', 'Tuần 03', 'Tuần 04'], 
     datasets: [] 
   });
+  
+  // Các state biểu đồ nâng cao mới thêm
+  const [statusChartData, setStatusChartData] = useState({ labels: [], datasets: [] });
+  const [topProductsChartData, setTopProductsChartData] = useState({ labels: [], datasets: [] });
+  
   const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -114,6 +120,36 @@ export default function AdminDashboard() {
             categoryPercentage: 0.7
           }
         ]
+      });
+
+      // --- CẬP NHẬT DỮ LIỆU BIỂU ĐỒ PHÂN TÍCH CHUYÊN SÂU MỚI THÊM ---
+      
+      // A. Nạp dữ liệu cho biểu đồ tròn (Trạng thái đơn hàng)
+      const orderStatus = data?.advancedCharts?.orderStatus;
+      setStatusChartData({
+        labels: ['Chờ xử lý (Pending)', 'Thành công (Completed)', 'Đã hủy (Cancelled)'],
+        datasets: [{
+          data: [
+            orderStatus?.pending || 0, 
+            orderStatus?.completed || 0, 
+            orderStatus?.cancelled || 0
+          ],
+          backgroundColor: ['#f59e0b', '#10b981', '#ef4444'], // Vàng - Xanh - Đỏ
+          borderWidth: 1
+        }]
+      });
+
+      // B. Nạp dữ liệu cho biểu đồ thanh ngang (Top 5 sản phẩm bán chạy)
+      const topProducts = data?.advancedCharts?.topProducts;
+      setTopProductsChartData({
+        labels: topProducts?.labels || [],
+        datasets: [{
+          label: 'Số lượng bán ra',
+          data: topProducts?.values || [],
+          backgroundColor: '#3b82f6', // Màu xanh dương thương hiệu nổi bật
+          borderRadius: 4,
+          barPercentage: 0.6
+        }]
       });
 
       // 4. Cập nhật danh sách hoạt động vừa diễn ra trên web
@@ -238,6 +274,59 @@ export default function AdminDashboard() {
                         </li>
                       )}
                     </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* --- HÀNG BIỂU ĐỒ PHÂN TÍCH CHUYÊN SÂU MỚI THÊM --- */}
+            <div className="row g-4 mb-4">
+              {/* Biểu đồ tròn: Tỷ lệ trạng thái đơn hàng */}
+              <div className="col-xl-5">
+                <div className="card shadow-sm border-0 h-100">
+                  <div className="card-body d-flex flex-column align-items-center">
+                    <h6 className="fw-bold mb-3 w-100 text-start">Tỷ lệ trạng thái đơn hàng</h6>
+                    <div style={{ height: '250px', width: '100%', position: 'relative' }} className="d-flex justify-content-center">
+                      <Doughnut 
+                        data={statusChartData} 
+                        options={{ 
+                          responsive: true, 
+                          maintainAspectRatio: false,
+                          plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, usePointStyle: true } } }
+                        }} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Biểu đồ cột ngang: Top 5 sản phẩm bán chạy nhất */}
+              <div className="col-xl-7">
+                <div className="card shadow-sm border-0 h-100">
+                  <div className="card-body">
+                    <h6 className="fw-bold mb-3">Top 5 sản phẩm bán chạy nhất</h6>
+                    <div style={{ height: '250px', position: 'relative' }}>
+                      <Bar 
+                        data={topProductsChartData} 
+                        options={{ 
+                          indexAxis: 'y', // Xoay ngang thanh đồ thị cột
+                          responsive: true, 
+                          maintainAspectRatio: false,
+                          plugins: { 
+                            legend: { display: false },
+                            tooltip: {
+                              callbacks: {
+                                label: (context) => ` Số lượng: ${context.raw} sản phẩm`
+                              }
+                            }
+                          },
+                          scales: { 
+                            x: { beginAtZero: true, grid: { color: '#f1f5f9' }, ticks: { stepSize: 1 } }, 
+                            y: { grid: { display: false } } 
+                          }
+                        }} 
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

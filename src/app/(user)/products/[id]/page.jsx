@@ -18,6 +18,8 @@ export default function ProductDetailPage() {
 
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
+    const [hoveredColor, setHoveredColor] = useState(null);
+    const [isImageChanging, setIsImageChanging] = useState(false);
     const [quantity, setQuantity] = useState(1);
     const [currentImage, setCurrentImage] = useState('');
     
@@ -31,7 +33,6 @@ export default function ProductDetailPage() {
 
         if (!id) return;
 
-        // 🌟 THÊM { cache: 'no-store' } để ép trình duyệt không lấy cache cũ khi admin vừa update
         fetch(`/api/products/${id}`, { cache: 'no-store' })
             .then((res) => {
                 if (!res.ok) throw new Error("Không thể tải sản phẩm");
@@ -67,24 +68,44 @@ export default function ProductDetailPage() {
             });
     }, [id]);
 
-    // XỬ LÝ KHI NGƯỜI DÙNG CHỌN MÀU
+    // HÀM ĐỔI ẢNH MƯỢT MÀ
+    const changeImageSmoothly = (newImageSrc) => {
+        if (!newImageSrc || newImageSrc === currentImage) return;
+        setIsImageChanging(true);
+        setTimeout(() => {
+            setCurrentImage(newImageSrc);
+            setIsImageChanging(false);
+        }, 150);
+    };
+
+    // XỬ LÝ HOVER MÀU
+    const handleColorHover = (color) => {
+        setHoveredColor(color);
+        const matchedVariant = product?.variants?.find(v => v.color === color);
+        const targetImage = matchedVariant?.image || product?.image;
+        changeImageSmoothly(targetImage);
+    };
+
+    // XỬ LÝ RÊ CHUỘT RA NGOÀI
+    const handleColorMouseLeave = () => {
+        setHoveredColor(null);
+        const matchedVariant = product?.variants?.find(v => v.color === selectedColor);
+        const targetImage = matchedVariant?.image || product?.image;
+        changeImageSmoothly(targetImage);
+    };
+
+    // XỬ LÝ CLICK CHỌN MÀU
     const handleColorChange = (color) => {
         setSelectedColor(color);
         setQuantity(1); 
 
         const matchedVariant = product?.variants?.find(v => v.color === color);
         if (matchedVariant) {
-            if (matchedVariant.image) {
-                setCurrentImage(matchedVariant.image);
-            } else {
-                // Nếu màu này không có ảnh riêng, fallback về ảnh mặc định của sản phẩm
-                setCurrentImage(product.image || '/placeholder.png');
-            }
-            
+            const targetImage = matchedVariant.image || product?.image || '/placeholder.png';
+            changeImageSmoothly(targetImage);
             setStockAvailable(matchedVariant.quantity ?? 0);
             
             if (matchedVariant.sizes && matchedVariant.sizes.length > 0) {
-                // Nếu size đang chọn nằm trong danh sách size của màu mới -> giữ nguyên, nếu không -> lấy size đầu tiên
                 if (!matchedVariant.sizes.includes(selectedSize)) {
                     setSelectedSize(matchedVariant.sizes[0]);
                 }
@@ -96,20 +117,50 @@ export default function ProductDetailPage() {
 
     const availableSizes = product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
 
+    // XỬ LÝ SỐ LƯỢNG
     const handleIncreaseQuantity = () => {
         if (quantity < stockAvailable) {
-            setQuantity(quantity + 1);
+            setQuantity(prev => prev + 1);
         }
     };
 
     const handleDecreaseQuantity = () => {
         if (quantity > 1) {
-            setQuantity(quantity - 1);
+            setQuantity(prev => prev - 1);
+        }
+    };
+
+    // Khi người dùng gõ vào ô nhập số lượng
+    const handleQuantityChange = (e) => {
+        const value = e.target.value;
+        if (value === '') {
+            setQuantity('');
+            return;
+        }
+
+        const parsed = parseInt(value, 10);
+        if (!isNaN(parsed)) {
+            if (parsed > stockAvailable) {
+                setQuantity(stockAvailable);
+            } else {
+                setQuantity(parsed);
+            }
+        }
+    };
+
+    // Kiểm tra lại khi người dùng click ra ngoài ô input (onBlur)
+    const handleQuantityBlur = () => {
+        if (quantity === '' || quantity < 1) {
+            setQuantity(1);
+        } else if (quantity > stockAvailable) {
+            setQuantity(stockAvailable);
         }
     };
 
     const handleAddToCart = () => {
         if (stockAvailable <= 0) return; 
+
+        const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
 
         const newCart = [...cart];
         const existingIndex = cart.findIndex(
@@ -120,7 +171,7 @@ export default function ProductDetailPage() {
         );
 
         if (existingIndex !== -1) {
-            newCart[existingIndex].quantity += quantity;
+            newCart[existingIndex].quantity += buyQuantity;
         } else {
             newCart.push({
                 _id: product._id,
@@ -129,7 +180,7 @@ export default function ProductDetailPage() {
                 image: currentImage, 
                 selectedSize,
                 selectedColor,
-                quantity,
+                quantity: buyQuantity,
                 categoryID: product.categoryID || '',
             });
         }
@@ -196,17 +247,48 @@ export default function ProductDetailPage() {
             </nav>
 
             <div style={{ display: 'flex', gap: '50px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                <div style={{ flex: '1 1 45%', minWidth: '300px' }}>
+                {/* Khung Ảnh Sản Phẩm */}
+                <div style={{ flex: '1 1 45%', minWidth: '300px', position: 'sticky', top: '20px' }}>
                     <div style={{
-                        width: '100%', borderRadius: '16px',
+                        width: '100%', borderRadius: '20px',
                         overflow: 'hidden', border: '1px solid #e5e7eb',
                         backgroundColor: '#f9fafb',
+                        position: 'relative',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
                     }}>
                         <img
                             src={currentImage}
                             alt={product.name}
-                            style={{ width: '100%', height: 'auto', display: 'block', objectFit: 'cover', transition: 'all 0.3s ease' }}
+                            style={{
+                                width: '100%',
+                                height: 'auto',
+                                display: 'block',
+                                objectFit: 'cover',
+                                transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                                opacity: isImageChanging ? 0.3 : 1,
+                                transform: isImageChanging ? 'scale(0.97)' : (hoveredColor ? 'scale(1.02)' : 'scale(1)'),
+                            }}
                         />
+
+                        {hoveredColor && hoveredColor !== selectedColor && (
+                            <div style={{
+                                position: 'absolute',
+                                bottom: '16px',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                backgroundColor: 'rgba(17, 24, 39, 0.85)',
+                                color: '#fff',
+                                padding: '6px 14px',
+                                borderRadius: '20px',
+                                fontSize: '12px',
+                                fontWeight: '500',
+                                backdropFilter: 'blur(4px)',
+                                pointerEvents: 'none',
+                                animation: 'fadeIn 0.2s ease',
+                            }}>
+                                👀 Xem trước: <span style={{ fontWeight: '700' }}>{hoveredColor}</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -236,29 +318,56 @@ export default function ProductDetailPage() {
 
                     {/* Chọn màu sắc */}
                     {product.variants?.length > 0 && (
-                        <div style={{ marginBottom: '20px' }}>
-                            <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
-                                Màu sắc: <span style={{ fontWeight: '400', color: '#6b7280' }}>{selectedColor}</span>
+                        <div style={{ marginBottom: '24px' }}>
+                            <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '12px' }}>
+                                Màu sắc: <span style={{ fontWeight: '600', color: hoveredColor ? '#2563eb' : '#111827', transition: 'color 0.2s' }}>
+                                    {hoveredColor || selectedColor}
+                                </span>
                                 <span style={{ fontSize: '13px', fontWeight: '500', color: stockAvailable > 0 ? '#16a34a' : '#dc2626', marginLeft: '8px', textTransform: 'none' }}>
                                     ({stockAvailable > 0 ? `Còn ${stockAvailable} sản phẩm` : 'Hết hàng'})
                                 </span>
                             </h3>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                                {product.variants.map((v) => (
-                                    <button
-                                        key={v.color}
-                                        onClick={() => handleColorChange(v.color)}
-                                        style={{
-                                            padding: '8px 16px', fontSize: '14px', fontWeight: '500',
-                                            border: selectedColor === v.color ? '2px solid #000' : '1px solid #e5e7eb',
-                                            borderRadius: '12px', cursor: 'pointer',
-                                            backgroundColor: selectedColor === v.color ? '#000' : '#fff',
-                                            color: selectedColor === v.color ? '#fff' : '#374151',
-                                        }}
-                                    >
-                                        {v.color} <span style={{ fontSize: '11px', opacity: selectedColor === v.color ? 0.8 : 0.6 }}>({v.quantity})</span>
-                                    </button>
-                                ))}
+
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                                {product.variants.map((v) => {
+                                    const isSelected = selectedColor === v.color;
+                                    const isHovered = hoveredColor === v.color;
+
+                                    return (
+                                        <button
+                                            key={v.color}
+                                            onClick={() => handleColorChange(v.color)}
+                                            onMouseEnter={() => handleColorHover(v.color)}
+                                            onMouseLeave={handleColorMouseLeave}
+                                            style={{
+                                                padding: '9px 18px',
+                                                fontSize: '14px',
+                                                fontWeight: '600',
+                                                borderRadius: '12px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                border: isSelected 
+                                                    ? '2px solid #111827' 
+                                                    : isHovered ? '2px solid #2563eb' : '1.5px solid #e5e7eb',
+                                                backgroundColor: isSelected ? '#111827' : '#ffffff',
+                                                color: isSelected ? '#ffffff' : isHovered ? '#2563eb' : '#374151',
+                                                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                                                boxShadow: isHovered 
+                                                    ? '0 6px 12px -2px rgba(37, 99, 235, 0.25)' 
+                                                    : isSelected ? '0 4px 10px rgba(0,0,0,0.15)' : 'none',
+                                            }}
+                                        >
+                                            {v.color} 
+                                            <span style={{ 
+                                                fontSize: '11px', 
+                                                marginLeft: '4px',
+                                                opacity: isSelected ? 0.8 : 0.6 
+                                            }}>
+                                                ({v.quantity})
+                                            </span>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -281,6 +390,7 @@ export default function ProductDetailPage() {
                                             borderRadius: '12px', cursor: 'pointer',
                                             backgroundColor: selectedSize === size ? '#000' : '#fff',
                                             color: selectedSize === size ? '#fff' : '#374151',
+                                            transition: 'all 0.2s ease',
                                         }}
                                     >
                                         {size}
@@ -290,23 +400,77 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Số lượng chọn mua */}
+                    {/* Số lượng chọn mua (Có ô Input nhập + Nút -/+) */}
                     <div style={{ marginBottom: '24px' }}>
-                        <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>Số lượng</h3>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
+                            Số lượng
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
                             <div style={{
-                                display: 'flex', alignItems: 'center', width: '112px',
-                                border: '1px solid #e5e7eb', borderRadius: '12px',
-                                backgroundColor: '#f9fafb', padding: '2px',
+                                display: 'flex', alignItems: 'center',
+                                border: '1.5px solid #e5e7eb', borderRadius: '12px',
+                                backgroundColor: '#f9fafb', padding: '3px',
+                                width: '130px', overflow: 'hidden',
                             }}>
-                                <button onClick={handleDecreaseQuantity} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>−</button>
-                                <span style={{ flex: 1, textAlign: 'center', fontWeight: '600', fontSize: '14px' }}>{quantity}</span>
-                                <button onClick={handleIncreaseQuantity} style={{ width: '36px', height: '36px', border: 'none', background: 'none', fontWeight: 'bold', cursor: 'pointer' }}>+</button>
+                                <button 
+                                    type="button"
+                                    onClick={handleDecreaseQuantity}
+                                    disabled={quantity <= 1 || stockAvailable <= 0}
+                                    style={{
+                                        width: '36px', height: '36px',
+                                        border: 'none', background: 'none',
+                                        fontSize: '16px', fontWeight: 'bold',
+                                        cursor: (quantity <= 1 || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
+                                        color: (quantity <= 1 || stockAvailable <= 0) ? '#d1d5db' : '#111827',
+                                        borderRadius: '8px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}
+                                >
+                                    −
+                                </button>
+
+                                <input
+                                    type="number"
+                                    min="1"
+                                    max={stockAvailable}
+                                    value={quantity}
+                                    onChange={handleQuantityChange}
+                                    onBlur={handleQuantityBlur}
+                                    disabled={stockAvailable <= 0}
+                                    style={{
+                                        width: '100%',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        textAlign: 'center',
+                                        fontWeight: '700',
+                                        fontSize: '15px',
+                                        color: '#111827',
+                                        outline: 'none',
+                                        MozAppearance: 'textfield', // Ẩn nút mũi tên mặc định trên Firefox
+                                    }}
+                                />
+
+                                <button 
+                                    type="button"
+                                    onClick={handleIncreaseQuantity}
+                                    disabled={quantity >= stockAvailable || stockAvailable <= 0}
+                                    style={{
+                                        width: '36px', height: '36px',
+                                        border: 'none', background: 'none',
+                                        fontSize: '16px', fontWeight: 'bold',
+                                        cursor: (quantity >= stockAvailable || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
+                                        color: (quantity >= stockAvailable || stockAvailable <= 0) ? '#d1d5db' : '#111827',
+                                        borderRadius: '8px',
+                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    }}
+                                >
+                                    +
+                                </button>
                             </div>
-                            
+
                             {quantity >= stockAvailable && stockAvailable > 0 && (
                                 <span style={{ fontSize: '12px', color: '#ea580c', fontWeight: '500' }}>
-                                    Đã đạt số lượng tối đa trong kho cho màu này
+                                    Đã đạt số lượng tối đa trong kho
                                 </span>
                             )}
                         </div>
@@ -329,7 +493,7 @@ export default function ProductDetailPage() {
                                 color: (isAdmin || stockAvailable <= 0) ? '#9ca3af' : '#111827',
                                 fontWeight: '600', padding: '13px 0',
                                 borderRadius: '12px', cursor: (isAdmin || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
-                                fontSize: '14px',
+                                fontSize: '14px', transition: 'all 0.2s',
                             }}
                         >
                             {stockAvailable <= 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
@@ -342,7 +506,7 @@ export default function ProductDetailPage() {
                                 border: 'none', color: '#fff',
                                 fontWeight: '600', padding: '13px 0',
                                 borderRadius: '12px', cursor: (isAdmin || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
-                                fontSize: '14px',
+                                fontSize: '14px', transition: 'all 0.2s',
                             }}
                         >
                             {isAdmin ? 'Admin không thể mua' : stockAvailable <= 0 ? 'Tạm hết hàng' : 'Mua ngay'}
@@ -357,6 +521,19 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
             </div>
+
+            <style>{`
+                /* Ẩn nút mũi tên mặc định của input type="number" trên Chrome, Safari, Edge, Opera */
+                input[type=number]::-webkit-inner-spin-button, 
+                input[type=number]::-webkit-outer-spin-button { 
+                    -webkit-appearance: none; 
+                    margin: 0; 
+                }
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translate(-50%, 6px); }
+                    to { opacity: 1; transform: translate(-50%, 0); }
+                }
+            `}</style>
         </div>
     );
 }

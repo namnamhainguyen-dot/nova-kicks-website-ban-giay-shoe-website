@@ -6,8 +6,8 @@ import nodemailer from "nodemailer";
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "luckhanh6677@gmail.com", // Gmail dùng để gửi đi
-    pass: "zainqffwrylcapry",       // Mật khẩu ứng dụng 16 ký tự của bạn
+    user: "namnamhainguyen@gmail.com", // Gmail dùng để gửi đi
+    pass: "xyfmsgxksokkjdlc",       // Mật khẩu ứng dụng 16 ký tự của bạn
   },
 });
 
@@ -82,11 +82,8 @@ export async function GET(request, { params }) {
 
     // Chuẩn hóa cấu trúc trả về { success: true, data: order } để Front-end page.jsx đọc được luôn
     return Response.json({
-      success: true,
-      data: {
-        ...order,
-        _id: String(order._id),
-      }
+      ...order,
+      _id: String(order._id),
     });
   } catch (error) {
     console.error("Lỗi API GET:", error);
@@ -108,14 +105,23 @@ export async function PATCH(request, { params }) {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    // Tạo object cập nhật động
-    const updateFields = { status: body.status };
+    // 👉 ĐÃ SỬA: Khởi tạo object cập nhật động chứa cả status và isPaid (nếu có truyền lên)
+    const updateFields = {};
+    
+    if (body.status !== undefined) {
+      updateFields.status = body.status;
+    }
+    
+    if (body.isPaid !== undefined) {
+      updateFields.isPaid = body.isPaid; // Lưu trạng thái thanh toán true/false vào database
+    }
 
     // BỔ SUNG: Nếu trạng thái là hủy đơn và có lý do hủy từ client gửi lên
     if (body.status === "cancelled" && body.cancelReason) {
       updateFields.cancelReason = body.cancelReason;
     }
 
+    // Cập nhật dữ liệu mới vào MongoDB
     const result = await db.collection("orders").updateOne(
       { _id: new ObjectId(id) },
       { $set: updateFields }
@@ -126,16 +132,17 @@ export async function PATCH(request, { params }) {
     }
 
     // 🌟 LOGIC TỰ ĐỘNG GỬI MAIL KHI THANH TOÁN THÀNH CÔNG
+    // (Lúc này DB đã được cập nhật isPaid: true thành công ở bước trên)
     if (body.isPaid === true) {
       const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
       
       if (fullOrderDetails) {
         const mailOptions = {
-          from: '"Nova Kicks" <luckhanh6677@gmail.com>', // Gmail gửi đi
+          from: '"Nova Kicks" <namnamhainguyen@gmail.com>', // Gmail gửi đi
           to: fullOrderDetails.email, // Gửi trực tiếp đến hòm thư của khách hàng
           
           // 🌟 BỔ SUNG BCC: Gửi một bản sao ẩn danh về hòm thư của bạn (Admin)
-          bcc: "luckhanh6677@gmail.com", // Bạn có thể thay đổi sang email quản trị khác nếu muốn
+          bcc: "namnamhainguyen@gmail.com", 
           
           subject: `👟 [Nova Kicks] Xác nhận thanh toán đơn hàng #${fullOrderDetails._id.toString().toUpperCase()}`,
           html: generateOrderEmailHTML(fullOrderDetails), 
