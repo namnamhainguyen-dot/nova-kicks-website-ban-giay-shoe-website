@@ -1,81 +1,74 @@
 import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import clientPromise from '@/libs/mongodb'; // Import clientPromise từ libs/mongodb
+import clientPromise from '@/libs/mongodb'; // Check lại đường dẫn file mongodb của bạn
 
-// 1. GET: Lấy danh sách bình luận của sản phẩm từ MongoDB
-export async function GET(request, { params }) {
-  try {
+async function getDb() {
     const client = await clientPromise;
-    const db = client.db();
-
-    // Hỗ trợ params async cho Next.js 15+
-    const resolvedParams = await params;
-    const id = resolvedParams?.id || params?.id;
-
-    if (!id || !ObjectId.isValid(id)) {
-      return NextResponse.json({ message: "ID sản phẩm không hợp lệ" }, { status: 400 });
-    }
-
-    const product = await db.collection('products').findOne(
-      { _id: new ObjectId(id) },
-      { projection: { reviews: 1 } }
-    );
-
-    if (!product) {
-      return NextResponse.json({ message: "Không tìm thấy sản phẩm" }, { status: 404 });
-    }
-
-    // Lấy mảng reviews và đảo ngược để bình luận mới nhất lên đầu
-    const reviews = (product.reviews || []).reverse();
-
-    return NextResponse.json(reviews, { status: 200 });
-  } catch (error) {
-    console.error("Lỗi GET reviews:", error);
-    return NextResponse.json({ message: error.message || "Lỗi lấy bình luận" }, { status: 500 });
-  }
+    return client.db("Nova-kicks"); // Tên database của bạn trong Compass
 }
 
-// 2. POST: Thêm bình luận mới vào mảng `reviews` của sản phẩm
-export async function POST(request, { params }) {
-  try {
-    const client = await clientPromise;
-    const db = client.db();
+// 1. GET: Lấy bình luận
+export async function GET(req, { params }) {
+    try {
+        const { id } = await params;
+        if (!ObjectId.isValid(id)) {
+            return NextResponse.json({ error: 'ID không hợp lệ' }, { status: 400 });
+        }
 
-    const resolvedParams = await params;
-    const id = resolvedParams?.id || params?.id;
+        const db = await getDb();
+        const product = await db.collection('products').findOne(
+            { _id: new ObjectId(id) },
+            { projection: { reviews: 1 } }
+        );
 
-    if (!id || !ObjectId.isValid(id)) {
-      return NextResponse.json({ message: "ID sản phẩm không hợp lệ" }, { status: 400 });
+        if (!product) {
+            return NextResponse.json({ error: 'Không tìm thấy sản phẩm' }, { status: 404 });
+        }
+
+        const reviews = (product.reviews || []).reverse();
+        return NextResponse.json(reviews, { status: 200 });
+    } catch (error) {
+        console.error('Lỗi khi lấy đánh giá:', error);
+        return NextResponse.json({ error: 'Lỗi server' }, { status: 500 });
     }
+}
 
-    const body = await request.json();
-    const { rating, comment, userName, userEmail } = body;
+// 2. POST: Lưu bình luận mới
+export async function POST(req, { params }) {
+    try {
+        const { id } = await params;
+        if (!ObjectId.isValid(id)) {
+            return NextResponse.json({ error: 'ID không hợp lệ' }, { status: 400 });
+        }
 
-    if (!comment || !comment.trim()) {
-      return NextResponse.json({ message: "Nội dung bình luận không được để trống" }, { status: 400 });
+        const body = await req.json();
+        const { rating, comment, userName } = body;
+
+        if (!comment || !rating) {
+            return NextResponse.json({ error: 'Nội dung và đánh giá không được để trống' }, { status: 400 });
+        }
+
+        const newReview = {
+            _id: new ObjectId(),
+            userName: userName || 'Khách hàng',
+            rating: Number(rating),
+            comment: comment.trim(),
+            createdAt: new Date(),
+        };
+
+        const db = await getDb();
+        const result = await db.collection('products').updateOne(
+            { _id: new ObjectId(id) },
+            { $push: { reviews: newReview } }
+        );
+
+        if (result.matchedCount === 0) {
+            return NextResponse.json({ error: 'Không tìm thấy sản phẩm' }, { status: 404 });
+        }
+
+        return NextResponse.json(newReview, { status: 201 });
+    } catch (error) {
+        console.error('Lỗi khi lưu đánh giá:', error);
+        return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    const newReview = {
-      _id: new ObjectId(),
-      userName: userName || 'Khách hàng',
-      userEmail: userEmail || '',
-      rating: Number(rating) || 5,
-      comment: comment.trim(),
-      createdAt: new Date(),
-    };
-
-    const result = await db.collection('products').updateOne(
-      { _id: new ObjectId(id) },
-      { $push: { reviews: newReview } }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ message: "Không tìm thấy sản phẩm" }, { status: 404 });
-    }
-
-    return NextResponse.json(newReview, { status: 201 });
-  } catch (error) {
-    console.error("Lỗi POST review:", error);
-    return NextResponse.json({ message: error.message || "Lỗi lưu bình luận" }, { status: 500 });
-  }
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState, useContext, useMemo } from 'react';
 import Link from 'next/link';
 import { CartContext } from "@/components/CartContext";
 
@@ -25,11 +25,11 @@ export default function ProductDetailPage() {
     const [currentImage, setCurrentImage] = useState('');
     const [stockAvailable, setStockAvailable] = useState(0);
 
-    // STATE CHO PHẦN BÌNH LUẬN & ĐÁNH GIÁ
-    const [reviews, setReviews] = useState([]);
-    const [newRating, setNewRating] = useState(5);
-    const [newComment, setNewComment] = useState('');
-    const [submittingReview, setSubmittingReview] = useState(false);
+    // STATE BÌNH LUẬN & ĐÁNH GIÁ
+        const [reviews, setReviews] = useState([]);
+        const [newRating, setNewRating] = useState(5);
+        const [newComment, setNewComment] = useState('');
+        const [submittingReview, setSubmittingReview] = useState(false);
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user'));
@@ -190,10 +190,10 @@ export default function ProductDetailPage() {
         router.push('/cart');
     };
 
-    // HÀM GỬI ĐÁNH GIÁ MỚI
+    // GỬI ĐÁNH GIÁ MỚI
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim()) return;
+        if (!newComment.trim() || !currentUser) return;
 
         setSubmittingReview(true);
         try {
@@ -222,10 +222,11 @@ export default function ProductDetailPage() {
         }
     };
 
-    // TÍNH ĐÁNH GIÁ TRUNG BÌNH
-    const averageRating = reviews.length > 0 
-        ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) 
-        : "5.0";
+    // TÍNH ĐÁNH GIÁ TRUNG BÌNH (Tối ưu hiệu năng với useMemo)
+    const averageRating = useMemo(() => {
+        if (!reviews || reviews.length === 0) return "5.0";
+        return (reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1);
+    }, [reviews]);
 
     if (loading) {
         return (
@@ -493,7 +494,7 @@ export default function ProductDetailPage() {
                 </div>
             </div>
 
-            {/* --- KHU VỰC ĐÁNH GIÁ VÀ BÌNH LUẬN --- */}
+            {/* KHU VỰC ĐÁNH GIÁ VÀ BÌNH LUẬN */}
             <div style={{ marginTop: '60px', paddingTop: '40px', borderTop: '1px solid #e5e7eb' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '24px' }}>
                     Đánh giá & Bình luận ({reviews.length})
@@ -505,10 +506,9 @@ export default function ProductDetailPage() {
                         Viết đánh giá của bạn
                     </h3>
 
-                    {/* Chọn số sao */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                         <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500' }}>Đánh giá:</span>
-                        <div style={{ display: 'flex', gap: '4px', cursor: 'pointer' }}>
+                        <div style={{ display: 'flex', gap: '4px' }}>
                             {[1, 2, 3, 4, 5].map((star) => (
                                 <button
                                     key={star}
@@ -522,7 +522,6 @@ export default function ProductDetailPage() {
                         </div>
                     </div>
 
-                    {/* Input nội dung */}
                     <textarea
                         rows={4}
                         placeholder={currentUser ? "Chia sẻ cảm nhận của bạn về sản phẩm này..." : "Vui lòng đăng nhập để để lại đánh giá..."}
@@ -581,7 +580,6 @@ export default function ProductDetailPage() {
                                         </div>
                                     </div>
 
-                                    {/* Số sao đánh giá */}
                                     <div style={{ fontSize: '14px', color: '#fbbf24' }}>
                                         {'⭐'.repeat(rev.rating || 5)}
                                     </div>
