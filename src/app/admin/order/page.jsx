@@ -107,27 +107,6 @@ if (nextStatus === "returned") {
   });
   return;
 }
-      // // Chỉ cho phép hủy khi đang ở trạng thái: Chờ xác nhận (pending) HOẶC Đang đóng gói (preparing)
-      // if (currentStatus === "pending" || currentStatus === "preparing") {
-      //   // Mở Custom Modal để nhập lý do (Không dùng prompt nữa)
-      //   setActionModal({
-      // isOpen: true,
-      // type: "cancelled",
-      // orderId: id,
-      // currentStatus,
-      // nextStatus,
-      // reason: "",
-      // note: "",
-      // image: "",
-      // });
-      //   return;
-      // } else {
-      //   alert("Đơn hàng đã được bàn giao cho đơn vị vận chuyển, không thể hủy!");
-      //   loadOrders();
-      // return;
-      // }
-    
-
     // 3. Quy trình dịch chuyển trạng thái bình thường (không đi lùi, không nhảy cóc)
     const currentIndex = statusOrder.indexOf(currentStatus);
     const optionIndex = statusOrder.indexOf(nextStatus);
@@ -218,18 +197,6 @@ const handleConfirmAction = () => {
     image: "",
   });
 };
-  // const deleteOrder = async (id) => {
-  //   if (!confirm("Bạn có chắc muốn xóa đơn hàng này?")) return;
-
-  //   try {
-  //     const res = await fetch(`/api/orders/${id}`, { method: "DELETE" });
-  //     const data = await res.json();
-  //     if (data.success) loadOrders();
-  //   } catch (error) {
-  //     console.error(error);
-  //     alert("Xóa đơn hàng thất bại");
-  //   }
-  // };
 
   // ===== Dashboard Logic =====
   const totalOrders = orders.length;
@@ -380,59 +347,112 @@ const handleConfirmAction = () => {
                   <th scope="col" className="text-end pe-3" style={{ width: "12%" }}>Hành động</th>
                 </tr>
               </thead>
-              <tbody>
-                {filteredOrders.map((order) => (
-                  <tr key={order._id}>
-                    <td className="ps-3 fw-bold text-uppercase small">#{order._id?.slice(-6)}</td>
-                    <td className="small text-muted">{order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}</td>
-                    <td>
-                      <div className="fw-semibold small">{order.name}</div>
-                      <small className="text-muted d-block" style={{ fontSize: "0.8rem" }}>{order.phone}</small>
-                    </td>
-                    <td>
-                      {order.order_items?.length > 0 ? (
-                        <div style={{ maxHeight: "75px", overflowY: "auto" }}>
-                          {order.order_items.map((item, idx) => (
-                            <div key={idx} className="small text-truncate" style={{ fontSize: "0.82rem text-muted" }} title={`${item.name} × ${item.quantity}`}>
-                              • {item.name} <span className="text-dark fw-bold">×{item.quantity}</span>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-muted small">Không có dữ liệu</span>
-                      )}
-                    </td>
-                    <td className="fw-bold text-danger small">{(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ</td>
-                    {showDeadline && <td className="small fw-semibold text-secondary" style={{ fontSize: "0.85rem" }}>{renderDeadline(order)}</td>}
-                    <td>
-                      <select
-                        className={`form-select form-select-sm border-0 fw-semibold rounded-2 ${statusBadges[order.status]?.class || "bg-secondary text-white"}`}
-                        style={{ width: "145px", fontSize: "0.82rem" }}
-                        value={order.status || "pending"}
-                        onChange={(e) => handleStatusChangeClick(order._id, order.status, e.target.value)}
-                      >
-                        <option value="pending" className="bg-white text-dark">⏳ Chờ xác nhận</option>
-                        <option value="preparing" className="bg-white text-dark">📦 Đang đóng gói</option>
-                        <option value="shipping" className="bg-white text-dark">🚚 Đang giao hàng</option>
-                        <option value="completed" className="bg-white text-dark">✅ Hoàn thành</option>
-                        <option value="cancelled" className="bg-white text-dark">❌ Đã hủy</option>
-                        <option value="returned" className="bg-white text-dark">↩️ Trả hàng</option>
-                        <option value="boomed" className="bg-white text-dark">💥 Boom hàng</option>
-                      </select>
-                      {order.status === "cancelled" && order.cancelReason && (
-                        <div className="text-danger fw-semibold mt-1" style={{ fontSize: "0.72rem", maxWidth: "145px", wordBreak: "break-word" }}>
-                          Lý do: {order.cancelReason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="text-end pe-3">
-                      <div className="d-flex gap-1 justify-content-end">
-                        <Link href={`/admin/order/${order._id}`} className="btn btn-outline-dark btn-sm rounded-pill py-0 px-2" style={{ fontSize: "0.75rem" }}>Chi tiết</Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+<tbody>
+  {filteredOrders.map((order) => (
+    <tr key={order._id}>
+      <td className="ps-3">
+        <div className="fw-bold text-dark">
+          #{order._id?.slice(-6).toUpperCase()}
+        </div>
+        <small className="text-muted">
+          {order.createdAt
+            ? new Date(order.createdAt).toLocaleDateString("vi-VN")
+            : "---"}
+        </small>
+      </td>
+
+      <td>
+        <div className="d-flex align-items-center gap-3">
+          <div className="customer-avatar">
+            {order.name?.charAt(0).toUpperCase()}
+          </div>
+
+          <div>
+            <div className="fw-semibold">{order.name}</div>
+            <small className="text-muted d-block">
+              {order.phone}
+            </small>
+            {order.email && (
+              <small className="text-muted">
+                {order.email}
+              </small>
+            )}
+          </div>
+        </div>
+      </td>
+
+      <td>
+        <div className="product-list">
+          {order.order_items?.slice(0,2).map((item,index)=>(
+            <div key={index}>
+              {item.name}
+              <span className="fw-bold ms-1">
+                ×{item.quantity}
+              </span>
+            </div>
+          ))}
+
+          {order.order_items?.length>2 && (
+            <small className="text-primary">
+              +{order.order_items.length-2} sản phẩm khác
+            </small>
+          )}
+        </div>
+      </td>
+
+      <td>
+        <div className="fw-bold text-danger fs-6">
+          {(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ
+        </div>
+
+        <small className="text-muted">
+          {order.paymentMethod === "cod"
+            ? "COD"
+            : "VNPay"}
+        </small>
+      </td>
+
+      {showDeadline && (
+        <td>
+          <span className="deadline-pill">
+            {renderDeadline(order)}
+          </span>
+        </td>
+      )}
+
+      <td>
+        <select
+          className={`form-select order-status ${statusBadges[order.status]?.class}`}
+          value={order.status}
+          onChange={(e)=>
+            handleStatusChangeClick(
+              order._id,
+              order.status,
+              e.target.value
+            )
+          }
+        >
+          <option value="pending">⏳ Chờ xác nhận</option>
+          <option value="preparing">📦 Đóng gói</option>
+          <option value="shipping">🚚 Đang giao</option>
+          <option value="completed">✅ Hoàn thành</option>
+          <option value="cancelled">❌ Hủy</option>
+          <option value="returned">↩️ Trả hàng</option>
+          <option value="boomed">💥 Boom</option>
+        </select>
+      </td>
+
+      <td className="text-end">
+        <Link
+          href={`/admin/order/${order._id}`}
+          className="btn btn-dark btn-sm px-3 rounded-pill"
+        >
+          Chi tiết
+        </Link>
+      </td>
+    </tr>
+  ))}
+</tbody>
             </table>
           </div>
         </div>
