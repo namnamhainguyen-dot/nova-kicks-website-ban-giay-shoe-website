@@ -2,23 +2,28 @@ import { NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import clientPromise from '@/libs/mongodb';
 
+export const dynamic = 'force-dynamic';
+
 async function getDb() {
     const client = await clientPromise;
     return client.db("Nova-kicks");
 }
 
-// 1. GET: Lấy tất cả bình luận từ collection `reviews` riêng biệt theo productId
+// ==========================================
+// 1. GET: Lấy danh sách đánh giá của sản phẩm
+// ==========================================
 export async function GET(req, { params }) {
     try {
         const { id } = await params;
-        if (!ObjectId.isValid(id)) {
+
+        // Kiểm tra ID sản phẩm hợp lệ
+        if (!id || !ObjectId.isValid(id)) {
             return NextResponse.json({ error: 'ID sản phẩm không hợp lệ' }, { status: 400 });
         }
 
         const db = await getDb();
 
-        // Tìm tất cả reviews từ collection `reviews`
-        // Dùng $or để hỗ trợ quét cả dạng String lẫn ObjectId của productId
+        // Lấy tất cả reviews theo productId (hỗ trợ cả kiểu String lẫn ObjectId)
         const reviews = await db.collection('reviews')
             .find({
                 $or: [
@@ -26,21 +31,29 @@ export async function GET(req, { params }) {
                     { productId: new ObjectId(id) }
                 ]
             })
-            .sort({ createdAt: -1 })
+            .sort({ createdAt: -1 }) // Đánh giá mới nhất lên đầu
             .toArray();
 
         return NextResponse.json(reviews, { status: 200 });
+
     } catch (error) {
-        console.error('Lỗi khi lấy đánh giá:', error);
-        return NextResponse.json({ error: 'Lỗi server' }, { status: 500 });
+        console.error('Lỗi khi lấy danh sách đánh giá:', error);
+        return NextResponse.json(
+            { error: error.message || 'Lỗi server khi tải đánh giá' }, 
+            { status: 500 }
+        );
     }
 }
 
-// 2. POST: Lưu bình luận mới vào collection `reviews` VÀ cập nhật rating tổng hợp sang `products`
+// ==========================================
+// 2. POST: Thêm đánh giá mới cho sản phẩm
+// ==========================================
 export async function POST(req, { params }) {
     try {
         const { id } = await params;
-        if (!ObjectId.isValid(id)) {
+
+        // 1. Kiểm tra ID sản phẩm
+        if (!id || !ObjectId.isValid(id)) {
             return NextResponse.json({ error: 'ID sản phẩm không hợp lệ' }, { status: 400 });
         }
 
@@ -48,47 +61,50 @@ export async function POST(req, { params }) {
         const { rating, comment, userName, userId } = body;
 
         const numRating = Number(rating);
-        if (!comment || !comment.trim() || isNaN(numRating) || numRating < 1 || numRating > 5) {
-            return NextResponse.json(
-                { error: 'Vui lòng nhập nội dung và đánh giá từ 1 đến 5 sao' },
-                { status: 400 }
-            );
+
+        // 2. Kiểm tra validation nội dung
+        if (!comment || typeof comment !== 'string' || !comment.trim()) {
+            return NextResponse.json({ error: 'Nội dung bình luận không được để trống' }, { status: 400 });
+        }
+
+        if (isNaN(numRating) || numRating < 1 || numRating > 5) {
+            return NextResponse.json({ error: 'Đánh giá phải từ 1 đến 5 sao' }, { status: 400 });
         }
 
         const db = await getDb();
 
-        // 1. Kiểm tra sản phẩm có tồn tại trong bảng `products` không
-        const productExists = await db.collection('products').findOne({ _id: new ObjectId(id) });
-        if (!productExists) {
+        // 3. Kiểm tra sản phẩm tồn tại
+        const product = await db.collection('products').findOne({ _id: new ObjectId(id) });
+        if (!product) {
             return NextResponse.json({ error: 'Không tìm thấy sản phẩm' }, { status: 404 });
         }
 
-        // 2. Tạo document chứa nội dung chi tiết bài viết
+        // 4. Tạo document review (Xử lý an toàn nếu userName/userId bị null)
+        const finalUserName = (userName && typeof userName === 'string' && userName.trim()) 
+            ? userName.trim() 
+            : 'Khách hàng ẩn danh';
+
         const newReview = {
             productId: id,
-            userId: userId && ObjectId.isValid(userId) ? new ObjectId(userId) : userId || null,
-            userName: userName?.trim() || 'Khách hàng',
+            userId: userId && ObjectId.isValid(userId) ? new ObjectId(userId) : (userId || null),
+            userName: finalUserName,
             rating: numRating,
             comment: comment.trim(),
             createdAt: new Date(),
         };
 
-        // 3. Thêm bài viết mới trực tiếp vào collection `reviews` riêng
+        // 5. Thêm vào collection reviews
         const result = await db.collection('reviews').insertOne(newReview);
 
-        // 4. Lấy lại tất cả review của sản phẩm này trong `reviews` để tính điểm trung bình mới
+        // 6. Tính toán lại số sao trung bình cho bảng products
         const allReviews = await db.collection('reviews').find({
-            $or: [
-                { productId: id },
-                { productId: new ObjectId(id) }
-            ]
+            $or: [{ productId: id }, { productId: new ObjectId(id) }]
         }).toArray();
 
         const totalReviewsCount = allReviews.length;
-        const totalRatingSum = allReviews.reduce((sum, item) => sum + item.rating, 0);
+        const totalRatingSum = allReviews.reduce((sum, item) => sum + (item.rating || 5), 0);
         const averageRating = Number((totalRatingSum / totalReviewsCount).toFixed(1));
 
-        // 5. Cập nhật số sao trung bình và tổng số lượt đánh giá sang bảng `products`
         await db.collection('products').updateOne(
             { _id: new ObjectId(id) },
             { 
@@ -99,15 +115,13 @@ export async function POST(req, { params }) {
             }
         );
 
-        // 6. Trả về kết quả review vừa tạo cho Frontend
-        const savedReview = {
+        return NextResponse.json({
             _id: result.insertedId,
             ...newReview
-        };
+        }, { status: 201 });
 
-        return NextResponse.json(savedReview, { status: 201 });
     } catch (error) {
         console.error('Lỗi khi lưu đánh giá:', error);
-        return NextResponse.json({ error: error.message || 'Lỗi server' }, { status: 500 });
+        return NextResponse.json({ error: error.message || 'Lỗi server nội bộ' }, { status: 500 });
     }
 }
