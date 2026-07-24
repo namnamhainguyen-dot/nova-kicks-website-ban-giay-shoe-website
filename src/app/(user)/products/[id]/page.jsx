@@ -1,22 +1,26 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useEffect, useState, useContext, useMemo } from 'react';
+import { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { CartContext } from "@/components/CartContext";
 
 export default function ProductDetailPage() {
     const { cart, setCart } = useContext(CartContext);
     const params = useParams();
     const router = useRouter();
-    const id = params.id;
+    const id = params?.id;
 
     const [product, setProduct] = useState(null);
     const [loading, setLoading] = useState(true);
     const [addedToCart, setAddedToCart] = useState(false);
+    
+    // Auth State
     const [isAdmin, setIsAdmin] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
 
+    // Product Variant State
     const [selectedSize, setSelectedSize] = useState('');
     const [selectedColor, setSelectedColor] = useState('');
     const [hoveredColor, setHoveredColor] = useState(null);
@@ -25,65 +29,82 @@ export default function ProductDetailPage() {
     const [currentImage, setCurrentImage] = useState('');
     const [stockAvailable, setStockAvailable] = useState(0);
 
-    // STATE BÌNH LUẬN & ĐÁNH GIÁ
-        const [reviews, setReviews] = useState([]);
-        const [newRating, setNewRating] = useState(5);
-        const [newComment, setNewComment] = useState('');
-        const [submittingReview, setSubmittingReview] = useState(false);
+    // Reviews State
+    const [reviews, setReviews] = useState([]);
+    const [newRating, setNewRating] = useState(5);
+    const [newComment, setNewComment] = useState('');
+    const [submittingReview, setSubmittingReview] = useState(false);
 
+    // Lấy thông tin User từ localStorage an toàn
     useEffect(() => {
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (user) {
-            setCurrentUser(user);
-            if (user.role === 'admin') setIsAdmin(true);
+        try {
+            const savedUser = localStorage.getItem('user');
+            if (savedUser) {
+                const user = JSON.parse(savedUser);
+                setCurrentUser(user);
+                if (user?.role === 'admin') setIsAdmin(true);
+            }
+        } catch (e) {
+            console.error("Lỗi đọc user từ localStorage:", e);
         }
+    }, []);
 
+    // Fetch dữ liệu sản phẩm & đánh giá
+    useEffect(() => {
         if (!id) return;
 
-        // Fetch thông tin sản phẩm
-        fetch(`/api/products/${id}`, { cache: 'no-store' })
-            .then((res) => {
-                if (!res.ok) throw new Error("Không thể tải sản phẩm");
-                return res.json();
-            })
-            .then((data) => {
-                setProduct(data);
-                setLoading(false);
-                setCurrentImage(data.image || '/placeholder.png');
+        let isMounted = true;
+        setLoading(true);
 
-                if (data.variants && data.variants.length > 0) {
-                    const firstVariant = data.variants[0];
-                    setSelectedColor(firstVariant.color);
-                    setStockAvailable(firstVariant.quantity ?? 0);
-                    
-                    if (firstVariant.image) setCurrentImage(firstVariant.image);
-                    if (firstVariant.sizes?.length > 0) setSelectedSize(firstVariant.sizes[0]);
-                } else {
-                    setStockAvailable(data.quantity ?? 0);
-                    if (data.sizes?.length > 0) setSelectedSize(data.sizes[0]);
+        const fetchProductData = async () => {
+            try {
+                const [resProduct, resReviews] = await Promise.all([
+                    fetch(`/api/products/${id}`, { cache: 'no-store' }),
+                    fetch(`/api/products/${id}/reviews`, { cache: 'no-store' })
+                ]);
+
+                if (!resProduct.ok) throw new Error("Không thể tải sản phẩm");
+
+                const productData = await resProduct.json();
+                const reviewsData = resReviews.ok ? await resReviews.json() : [];
+
+                if (isMounted) {
+                    setProduct(productData);
+                    setReviews(reviewsData);
+                    setCurrentImage(productData.image || '/placeholder.png');
+
+                    if (productData.variants && productData.variants.length > 0) {
+                        const firstVariant = productData.variants[0];
+                        setSelectedColor(firstVariant.color || '');
+                        setStockAvailable(firstVariant.quantity ?? 0);
+                        if (firstVariant.image) setCurrentImage(firstVariant.image);
+                        if (firstVariant.sizes?.length > 0) setSelectedSize(firstVariant.sizes[0]);
+                    } else {
+                        setStockAvailable(productData.quantity ?? 0);
+                        if (productData.sizes?.length > 0) setSelectedSize(productData.sizes[0]);
+                    }
                 }
-            })
-            .catch((err) => {
-                console.error("Lỗi lấy chi tiết sản phẩm:", err);
-                setLoading(false);
-            });
+            } catch (err) {
+                console.error("Lỗi tải chi tiết sản phẩm:", err);
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
 
-        // Fetch danh sách bình luận
-        fetch(`/api/products/${id}/reviews`, { cache: 'no-store' })
-            .then((res) => res.ok ? res.json() : [])
-            .then((data) => setReviews(data))
-            .catch((err) => console.error("Lỗi tải bình luận:", err));
+        fetchProductData();
+
+        return () => { isMounted = false; };
     }, [id]);
 
-    // HÀM ĐỔI ẢNH MƯỢT MÀ
-    const changeImageSmoothly = (newImageSrc) => {
+    // Đổi ảnh mượt
+    const changeImageSmoothly = useCallback((newImageSrc) => {
         if (!newImageSrc || newImageSrc === currentImage) return;
         setIsImageChanging(true);
         setTimeout(() => {
             setCurrentImage(newImageSrc);
             setIsImageChanging(false);
         }, 150);
-    };
+    }, [currentImage]);
 
     const handleColorHover = (color) => {
         setHoveredColor(color);
@@ -119,7 +140,9 @@ export default function ProductDetailPage() {
         }
     };
 
-    const availableSizes = product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
+    const availableSizes = useMemo(() => {
+        return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
+    }, [product, selectedColor]);
 
     const handleIncreaseQuantity = () => {
         if (quantity < stockAvailable) setQuantity(prev => prev + 1);
@@ -150,7 +173,7 @@ export default function ProductDetailPage() {
     };
 
     const handleAddToCart = () => {
-        if (stockAvailable <= 0) return; 
+        if (stockAvailable <= 0 || isAdmin) return; 
         const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
 
         const newCart = [...cart];
@@ -185,12 +208,11 @@ export default function ProductDetailPage() {
     };
 
     const handleBuyNow = () => {
-        if (stockAvailable <= 0) return;
+        if (stockAvailable <= 0 || isAdmin) return;
         handleAddToCart();
         router.push('/cart');
     };
 
-    // GỬI ĐÁNH GIÁ MỚI
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
         if (!newComment.trim() || !currentUser) return;
@@ -202,14 +224,14 @@ export default function ProductDetailPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     rating: newRating,
-                    comment: newComment,
+                    comment: newComment.trim(),
                     userName: currentUser?.name || currentUser?.email?.split('@')[0] || 'Khách hàng',
                 }),
             });
 
             if (res.ok) {
                 const addedReview = await res.json();
-                setReviews([addedReview, ...reviews]);
+                setReviews(prev => [addedReview, ...prev]);
                 setNewComment('');
                 setNewRating(5);
             } else {
@@ -222,7 +244,6 @@ export default function ProductDetailPage() {
         }
     };
 
-    // TÍNH ĐÁNH GIÁ TRUNG BÌNH (Tối ưu hiệu năng với useMemo)
     const averageRating = useMemo(() => {
         if (!reviews || reviews.length === 0) return "5.0";
         return (reviews.reduce((acc, r) => acc + (r.rating || 0), 0) / reviews.length).toFixed(1);
