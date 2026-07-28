@@ -10,7 +10,7 @@ export default function Checkout() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [orderNote, setOrderNote] = useState("");
 
-  // ── STATE ĐỊA CHỈ HÀNH CHÍNH ──
+  // ── STATE ĐỊA CHỈ HÀNH CHÍNH (DÙNG API CẬP NHẬT MỚI) ──
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
@@ -20,33 +20,39 @@ export default function Checkout() {
   const [selectedWard, setSelectedWard] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
 
+  // Cờ chặn useEffect reset state khi load địa chỉ đã lưu
+  const isAutoFilling = useRef(false);
+
+  // ── STATE QUẢN LÝ NHIỀU ĐỊA CHỈ & LƯU LẦN SAU ──
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("new");
+  const [saveThisAddress, setSaveThisAddress] = useState(true);
+
   const [paymentMethod, setPaymentMethod] = useState("cod");
-  
   const [isOrdering, setIsOrdering] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState("");
 
-  // Mảng chứa các sản phẩm thực tế được tick chọn mua chuyển từ Cart sang
   const [checkoutItems, setCheckoutItems] = useState([]);
 
-  // ── STATE DÀNH RIÊNG CHO VOUCHER ──
+  // ── STATE VOUCHER ──
   const [voucherCode, setVoucherCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null); 
   const [voucherError, setVoucherError] = useState("");
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
 
-  // STATE LƯU THÔNG TIN NGƯỜI DÙNG ĐĂNG NHẬP ĐỂ ĐỒNG BỘ ĐƠN HÀNG
   const [currentUser, setCurrentUser] = useState(null);
-
   const router = useRouter();
   const hasClearedCart = useRef(false);
 
-  // ── 1. LẤY DANH SÁCH TỈNH / THÀNH PHỐ KHI MOUNT ──
+  // ── 1. LẤY DANH SÁCH TỈNH / THÀNH PHỐ KHI MOUNT (API mới nhất) ──
   useEffect(() => {
     fetch("https://provinces.open-api.vn/api/p/")
       .then((res) => res.json())
-      .then((data) => setProvinces(data))
+      .then((data) => {
+        setProvinces(data || []);
+      })
       .catch((err) => console.error("Lỗi lấy danh sách tỉnh thành:", err));
   }, []);
 
@@ -59,6 +65,9 @@ export default function Checkout() {
       setSelectedWard("");
       return;
     }
+
+    if (isAutoFilling.current) return;
+
     fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=2`)
       .then((res) => res.json())
       .then((data) => {
@@ -70,13 +79,16 @@ export default function Checkout() {
       .catch((err) => console.error("Lỗi lấy danh sách quận huyện:", err));
   }, [selectedProvince]);
 
-  // ── 3. LẤY PHƯỜNG / XÃ KHI CHỌN QUẬN ──
+  // ── 3. LẤY PHƯỜNG / XÃ KHI CHỌN QUẬN (Đã cập nhật sáp nhập) ──
   useEffect(() => {
     if (!selectedDistrict) {
       setWards([]);
       setSelectedWard("");
       return;
     }
+
+    if (isAutoFilling.current) return;
+
     fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict}?depth=2`)
       .then((res) => res.json())
       .then((data) => {
@@ -86,11 +98,10 @@ export default function Checkout() {
       .catch((err) => console.error("Lỗi lấy danh sách phường xã:", err));
   }, [selectedDistrict]);
 
-  // ── EFFECT GỘP: DỌN ĐƠN HÀNG & USER DATA ──
+  // ── 4. TẢI DỮ LIỆU USER & DANH SÁCH ĐỊA CHỈ ĐÃ LƯU ──
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // Reading checkout_items
     const storedItems = sessionStorage.getItem("checkout_items");
     let parsedCheckoutItems = [];
     if (storedItems) {
@@ -100,13 +111,12 @@ export default function Checkout() {
           setCheckoutItems(parsedCheckoutItems);
         }
       } catch (e) {
-        console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
+        console.error("Lỗi đọc checkout_items:", e);
       }
     } else if (cart && cart.length > 0) {
       setCheckoutItems(cart);
     }
 
-    // VietQR simulated success handling
     const queryParams = new URLSearchParams(window.location.search);
     const successSimulated = queryParams.get("success_simulated");
     const urlOrderId = queryParams.get("orderId");
@@ -132,22 +142,91 @@ export default function Checkout() {
       sessionStorage.removeItem("checkout_items");
     }
 
-    // Current User data
     const savedUser = localStorage.getItem("user");
+    let userObj = null;
     if (savedUser) {
       try {
-        const parsedUser = JSON.parse(savedUser);
-        setCurrentUser(parsedUser);
-        if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
-        if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
-        if (parsedUser.address) setDetailAddress(parsedUser.address);
+        userObj = JSON.parse(savedUser);
+        setCurrentUser(userObj);
       } catch (e) {
-        console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
+        console.error("Lỗi đọc user:", e);
       }
+    }
+
+    const userStorageKey = userObj?._id || userObj?.email ? `addresses_${userObj._id || userObj.email}` : "guest_addresses";
+    const rawAddresses = localStorage.getItem(userStorageKey);
+    let addressList = [];
+
+    if (rawAddresses) {
+      try {
+        addressList = JSON.parse(rawAddresses);
+        setSavedAddresses(addressList);
+      } catch (e) {
+        console.error("Lỗi đọc địa chỉ:", e);
+      }
+    }
+
+    if (addressList.length > 0) {
+      const defaultAddr = addressList.find(a => a.isDefault) || addressList[0];
+      fillAddressForm(defaultAddr);
+      setSelectedAddressId(defaultAddr.id);
+    } else if (userObj) {
+      if (userObj.fullname) setCustomerName(userObj.fullname);
+      if (userObj.phone) setCustomerPhone(userObj.phone);
+      if (userObj.address) setDetailAddress(userObj.address);
     }
   }, [setCart]);
 
-  // Tính tổng tiền
+  // Điền nhanh form khi chọn địa chỉ đã lưu
+  const fillAddressForm = async (addrObj) => {
+    isAutoFilling.current = true;
+    setCustomerName(addrObj.name || "");
+    setCustomerPhone(addrObj.phone || "");
+    setDetailAddress(addrObj.detailAddress || "");
+
+    if (addrObj.provinceCode) {
+      setSelectedProvince(addrObj.provinceCode);
+      try {
+        const resD = await fetch(`https://provinces.open-api.vn/api/p/${addrObj.provinceCode}?depth=2`);
+        const dataD = await resD.json();
+        setDistricts(dataD.districts || []);
+
+        if (addrObj.districtCode) {
+          setSelectedDistrict(addrObj.districtCode);
+          const resW = await fetch(`https://provinces.open-api.vn/api/d/${addrObj.districtCode}?depth=2`);
+          const dataW = await resW.json();
+          setWards(dataW.wards || []);
+
+          if (addrObj.wardCode) {
+            setSelectedWard(addrObj.wardCode);
+          }
+        }
+      } catch (err) {
+        console.error("Lỗi tự động tải danh sách địa chỉ:", err);
+      }
+    }
+    isAutoFilling.current = false;
+  };
+
+  const handleSelectSavedAddress = (e) => {
+    const addrId = e.target.value;
+    setSelectedAddressId(addrId);
+
+    if (addrId === "new") {
+      setDetailAddress("");
+      setSelectedProvince("");
+      setSelectedDistrict("");
+      setSelectedWard("");
+      setDistricts([]);
+      setWards([]);
+    } else {
+      const found = savedAddresses.find(a => a.id === addrId);
+      if (found) {
+        fillAddressForm(found);
+      }
+    }
+  };
+
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
   let discountAmount = 0;
@@ -161,18 +240,15 @@ export default function Checkout() {
 
   const finalTotal = Math.max(0, total - discountAmount);
 
-  // ── XỬ LÝ NHẬP SỐ ĐIỆN THOẠI (Chỉ giữ chữ số, tối đa 10 số) ──
   const handlePhoneChange = (e) => {
-    const value = e.target.value.replace(/\D/g, ""); // Xóa toàn bộ ký tự không phải số
+    const value = e.target.value.replace(/\D/g, "");
     if (value.length <= 10) {
       setCustomerPhone(value);
     }
   };
 
-  // Xử lý áp dụng Voucher
   const handleApplyVoucher = async (e) => {
     if (e) e.preventDefault(); 
-
     if (!voucherCode.trim()) {
       setVoucherError("Vui lòng nhập mã code!");
       return;
@@ -193,11 +269,9 @@ export default function Checkout() {
 
       if (result.success || res.ok) {
         const startDateKey = result.start_date || result.startDate;
-        
         if (startDateKey) {
           const startDate = new Date(startDateKey);
           const now = new Date();
-
           if (now < startDate) {
             const formattedDate = startDate.toLocaleDateString("vi-VN", {
               day: "2-digit",
@@ -235,7 +309,6 @@ export default function Checkout() {
     setVoucherError("");
   };
 
-  // ── KIỂM TRA ĐIỀU KIỆN ĐẶT HÀNG ──
   const validateOrder = () => {
     if (checkoutItems.length === 0) {
       alert("Không tìm thấy sản phẩm nào để thanh toán!");
@@ -245,28 +318,22 @@ export default function Checkout() {
       alert("Vui lòng điền đầy đủ Họ và tên người nhận!");
       return false;
     }
-    
-    // Ràng buộc chính xác 10 chữ số
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(customerPhone)) {
       alert("Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số.");
       return false;
     }
-
     if (!detailAddress.trim()) {
       alert("Vui lòng nhập địa chỉ nhà chi tiết (số nhà, tên đường...)!");
       return false;
     }
-
     if (!selectedProvince || !selectedDistrict || !selectedWard) {
       alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
       return false;
     }
-
     return true;
   };
 
-  // ── GHÉP CHUỖI ĐỊA CHỈ HOÀN CHỈNH ──
   const getFullDeliveryAddress = () => {
     const provName = provinces.find((p) => p.code == selectedProvince)?.name || "";
     const distName = districts.find((d) => d.code == selectedDistrict)?.name || "";
@@ -274,13 +341,43 @@ export default function Checkout() {
     return `${detailAddress.trim()}, ${wardName}, ${distName}, ${provName}`;
   };
 
-  // Gửi đơn hàng lên API
+const saveAddressToAccount = () => {
+    // Nếu người dùng KHÔNG tích chọn lưu địa chỉ thì dừng lại luôn
+    if (!saveThisAddress) return;
+
+    const userKey = currentUser?._id || currentUser?.email ? `addresses_${currentUser._id || currentUser.email}` : "guest_addresses";
+    const currentList = [...savedAddresses];
+
+    const isExist = currentList.some(
+      (a) => a.detailAddress === detailAddress.trim() && a.provinceCode == selectedProvince && a.districtCode == selectedDistrict
+    );
+
+    if (!isExist) {
+      const newAddrItem = {
+        id: "addr_" + Date.now(),
+        name: customerName,
+        phone: customerPhone,
+        detailAddress: detailAddress.trim(),
+        provinceCode: selectedProvince,
+        districtCode: selectedDistrict,
+        wardCode: selectedWard,
+        fullText: getFullDeliveryAddress(),
+        isDefault: currentList.length === 0
+      };
+      const updatedList = [newAddrItem, ...currentList];
+      localStorage.setItem(userKey, JSON.stringify(updatedList));
+      setSavedAddresses(updatedList);
+    }
+  };
+
   const handleOrder = async (e) => {
     if (e) e.preventDefault();
     if (!validateOrder()) return;
 
     setIsOrdering(true);
     const fullAddress = getFullDeliveryAddress();
+
+    saveAddressToAccount();
 
     const orderData = {
       email: currentUser?.email || "guest",
@@ -352,7 +449,6 @@ export default function Checkout() {
     }
   };
 
-  // 1. GIAO DIỆN ĐẶT HÀNG THÀNH CÔNG
   if (isSuccess) {
     return (
       <main className="container mt-5 pt-5 text-center py-5">
@@ -370,7 +466,7 @@ export default function Checkout() {
               Xem đơn hàng ➔
             </Link>
             <Link href="/products" className="btn btn-outline-secondary rounded-pill btn-sm py-2">
-              Tiếp tục mua sắm Giày
+              Tiếp tục mua sắm
             </Link>
           </div>
         </div>
@@ -378,23 +474,21 @@ export default function Checkout() {
     );
   }
 
-  // 2. GIAO DIỆN GIỎ HÀNG TRỐNG
   if (cart.length === 0) {
     return (
       <main className="container mt-5 pt-5 text-center py-5">
         <h1 className="mb-4 text-secondary fw-bold">Trang Thanh Toán</h1>
         <div className="alert alert-warning d-inline-block p-4 shadow-sm rounded-3" style={{ maxWidth: "500px" }}>
           <h4 className="alert-heading fw-bold">🛒 Chưa có sản phẩm</h4>
-          <p className="mb-3 text-muted">Vui lòng chọn mẫu giày yêu thích vào giỏ trước khi thực hiện thanh toán nhé!</p>
+          <p className="mb-3 text-muted">Vui lòng chọn mẫu sản phẩm yêu thích vào giỏ trước khi thực hiện thanh toán nhé!</p>
           <Link href="/products" className="btn btn-dark px-4 rounded-pill fw-semibold">
-            Quay lại cửa hàng Giày
+            Quay lại cửa hàng
           </Link>
         </div>
       </main>
     );
   }
 
-  // 3. BIỂU MẪU ĐIỀN THÔNG TIN ĐẶT HÀNG CHÍNH THỨC
   return (
     <main className="container mt-5 pt-5 mb-5">
       <div className="row g-4">
@@ -406,6 +500,27 @@ export default function Checkout() {
               <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
               
               <form onSubmit={handleOrder}>
+
+                {savedAddresses.length > 0 && (
+                  <div className="mb-4 p-3 bg-light rounded border">
+                    <label className="form-label fw-bold text-primary small d-flex align-items-center gap-1">
+                      📍 Chọn địa chỉ đã lưu của bạn:
+                    </label>
+                    <select
+                      className="form-select form-select-sm fw-medium"
+                      value={selectedAddressId}
+                      onChange={handleSelectSavedAddress}
+                    >
+                      {savedAddresses.map((addr) => (
+                        <option key={addr.id} value={addr.id}>
+                          {addr.name} - {addr.phone} ({addr.fullText})
+                        </option>
+                      ))}
+                      <option value="new">+ Nhập địa chỉ mới...</option>
+                    </select>
+                  </div>
+                )}
+
                 <div className="mb-3">
                   <label className="form-label fw-semibold small">Họ và tên người nhận <span className="text-danger">*</span></label>
                   <input
@@ -430,24 +545,12 @@ export default function Checkout() {
                   />
                   {customerPhone && customerPhone.length !== 10 && (
                     <div className="text-danger small mt-1">
-                      ⚠️ Số điện thoại chưa đúng.
+                      ⚠️ Số điện thoại chưa đúng (yêu cầu đủ 10 chữ số).
                     </div>
                   )}
                 </div>
 
-                {/* ── ĐỊA CHỈ NHÀ CHI TIẾT (Lên trên) ── */}
-                <div className="mb-3">
-                  <label className="form-label fw-semibold small">Địa chỉ nhà chi tiết <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg fs-6"
-                    placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
-                    value={detailAddress}
-                    onChange={(e) => setDetailAddress(e.target.value)}
-                  />
-                </div>
-
-                {/* ── CÁC Ô CHỌN TỈNH / HUYỆN / XÃ (Xuống dưới) ── */}
+                {/* ── BỘ CHỌN ĐỊA CHỈ (PROVINCES OPEN-API mới nhất) ── */}
                 <div className="row g-2 mb-3">
                   <div className="col-md-4">
                     <label className="form-label fw-semibold small">Tỉnh / Thành phố <span className="text-danger">*</span></label>
@@ -466,7 +569,7 @@ export default function Checkout() {
                   </div>
 
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold small">Quận / Huyện <span className="text-danger">*</span></label>
+                    <label className="form-label fw-semibold small">Quận / Huyện / TP <span className="text-danger">*</span></label>
                     <select
                       className="form-select form-select-lg fs-6"
                       value={selectedDistrict}
@@ -483,7 +586,7 @@ export default function Checkout() {
                   </div>
 
                   <div className="col-md-4">
-                    <label className="form-label fw-semibold small">Phường / Xã <span className="text-danger">*</span></label>
+                    <label className="form-label fw-semibold small">Phường / Xã / Thị trấn <span className="text-danger">*</span></label>
                     <select
                       className="form-select form-select-lg fs-6"
                       value={selectedWard}
@@ -498,6 +601,30 @@ export default function Checkout() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label fw-semibold small">Số nhà, tên đường chi tiết <span className="text-danger">*</span></label>
+                  <input
+                    type="text"
+                    className="form-control form-control-lg fs-6"
+                    placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
+                    value={detailAddress}
+                    onChange={(e) => setDetailAddress(e.target.value)}
+                  />
+                </div>
+
+                <div className="form-check mb-4">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    id="saveAddressCheck"
+                    checked={saveThisAddress}
+                    onChange={(e) => setSaveThisAddress(e.target.checked)}
+                  />
+                  <label className="form-check-input-label text-secondary small fw-medium" htmlFor="saveAddressCheck">
+                    Lưu địa chỉ này vào sổ địa chỉ tài khoản của tôi cho những lần mua sau
+                  </label>
                 </div>
 
                 <div className="mb-4">
@@ -518,7 +645,7 @@ export default function Checkout() {
                 </div>
 
                 <div className="mb-4">
-                  <label className="form-label fw-semibold small">Ghi chú đơn hàng (Size giày, màu sắc...)</label>
+                  <label className="form-label fw-semibold small">Ghi chú đơn hàng (Ghi chú thời gian giao, size, màu...)</label>
                   <textarea
                     className="form-control"
                     rows="3"
@@ -528,7 +655,6 @@ export default function Checkout() {
                   ></textarea>
                 </div>
 
-                {/* Nút hành động trên Mobile */}
                 <div className="d-grid d-lg-none gap-2">
                   <button 
                     type="button"
@@ -584,9 +710,8 @@ export default function Checkout() {
                 })}
               </div>
 
-              {/* Ô NHẬP VOUCHER */}
               <div className="mb-4 bg-light p-3 rounded-3">
-                <label className="form-label fw-bold text-secondary small mb-2">🎟️ Thẻ giảm giá (Voucher)</label>
+                <label className="form-label fw-bold text-secondary small mb-2">🎟️ Mã giảm giá (Voucher)</label>
                 <div className="input-group">
                   <input
                     type="text"
@@ -607,7 +732,7 @@ export default function Checkout() {
                       onClick={handleApplyVoucher}
                       disabled={isValidatingVoucher}
                     >
-                      {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                      {isValidatingVoucher ? "Check..." : "Áp dụng"}
                     </button>
                   )}
                 </div>
@@ -616,7 +741,6 @@ export default function Checkout() {
                 {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
               </div>
 
-              {/* Bảng tính chi phí */}
               <div className="d-flex justify-content-between mb-2 small">
                 <span className="text-muted">Tạm tính đơn hàng:</span>
                 <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>
@@ -639,7 +763,6 @@ export default function Checkout() {
                 <span className="h4 mb-0 fw-bold text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
               </div>
 
-              {/* Nút hành động trên Desktop */}
               <div className="d-none d-lg-block">
                 <button 
                   type="button"
