@@ -58,6 +58,12 @@ export default function Layout({ children }) {
               </Link>
             </li>
 
+            <li className="nav-item mb-2">
+              <Link href="/admin/comments" className="nav-link">
+                Quản lý bình luận
+              </Link>
+            </li>
+
             <li className="nav-item mt-5 border-top">
               <a href="#" className="nav-link">
                 Đăng xuất

@@ -51,17 +51,23 @@ export default function ProductDetailPage() {
 
     // Hàm riêng để fetch danh sách đánh giá
     const fetchReviews = useCallback(async () => {
-        if (!id) return;
-        try {
-            const resReviews = await fetch(`/api/products/${id}/reviews`, { cache: 'no-store' });
-            if (resReviews.ok) {
-                const reviewsData = await resReviews.json();
-                setReviews(Array.isArray(reviewsData) ? reviewsData : []);
-            }
-        } catch (err) {
-            console.error("Lỗi tải danh sách đánh giá:", err);
+    if (!id) return;
+    try {
+        const resReviews = await fetch(`/api/products/${id}/reviews`, { cache: 'no-store' });
+        if (resReviews.ok) {
+            const reviewsData = await resReviews.json();
+            
+            // Lọc chỉ giữ lại những bình luận hiển thị (loại bỏ các bình luận đã bị ẩn)
+            const visibleReviews = Array.isArray(reviewsData) 
+                ? reviewsData.filter(rev => !rev.isHidden && rev.status !== 'hidden') 
+                : [];
+
+            setReviews(visibleReviews);
         }
-    }, [id]);
+    } catch (err) {
+        console.error("Lỗi tải danh sách đánh giá:", err);
+    }
+}, [id]);
 
     // Fetch dữ liệu sản phẩm & đánh giá lần đầu
     useEffect(() => {
