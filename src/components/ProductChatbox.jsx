@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 export default function ProductChatbox({ products }) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: "bot", text: "Xin chào Nam! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá ), mình tìm cho liền nhé! 🤖" }
+    { role: "bot", text: "Xin chào! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá...), mình tìm cho liền nhé! 🤖" }
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false); // Trạng thái chờ AI phản hồi
@@ -23,16 +23,28 @@ export default function ProductChatbox({ products }) {
     if (!input.trim() || isLoading) return;
 
     const userText = input.trim();
-    setMessages((prev) => [...prev, { role: "user", text: userText }]);
+    const updatedMessages = [...messages, { role: "user", text: userText }];
+    
+    setMessages(updatedMessages);
     setInput("");
     setIsLoading(true);
 
+    // Format lịch sử hội thoại đúng chuẩn Gemini API để AI ghi nhớ ngữ cảnh cũ
+    const historyForAPI = updatedMessages.slice(0, -1).map((msg) => ({
+      role: msg.role === "user" ? "user" : "model",
+      parts: [{ text: msg.text }],
+    }));
+
     try {
-      // 1. Gọi API Route lên Server để xử lý thông tin qua AI
+      // 1. Gọi API Route lên Server kèm tin nhắn mới, lịch sử chat và danh sách sản phẩm
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userMessage: userText, products }),
+        body: JSON.stringify({ 
+          userMessage: userText, 
+          products,
+          history: historyForAPI 
+        }),
       });
 
       if (!res.ok) throw new Error("Giao tiếp AI thất bại");
@@ -42,20 +54,23 @@ export default function ProductChatbox({ products }) {
       // 2. Thêm câu trả lời của AI vào khung chat
       setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
 
-      // 3. Nếu tìm thấy sản phẩm, đồng bộ bộ lọc lên URL/Giao diện
+      // 3. Nếu tìm thấy sản phẩm phù hợp, đẩy mảng ID lên URL để lọc giao diện
       if (data.matchedIds && data.matchedIds.length > 0) {
         const params = new URLSearchParams(searchParams.toString());
         
         // Truyền mảng ID sản phẩm lên URL dưới dạng chuỗi phân cách dấu phẩy
         params.set("filterIds", data.matchedIds.join(","));
         
-        // Xóa bớt chữ tìm kiếm text cũ để tránh xung đột bộ lọc
+        // Xóa bớt param search cũ để tránh xung đột bộ lọc
         params.delete("search"); 
         
         router.push(`?${params.toString()}`);
       }
     } catch (error) {
-      setMessages((prev) => [...prev, { role: "bot", text: "Ối, có chút lỗi kết nối với AI rồi. Bạn thử lại nhé!" }]);
+      setMessages((prev) => [
+        ...prev, 
+        { role: "bot", text: "Ối, có chút lỗi kết nối với AI rồi. Bạn thử lại nhé!" }
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -81,7 +96,7 @@ export default function ProductChatbox({ products }) {
           <div className="card-header text-white d-flex justify-content-between align-items-center py-3" style={{ backgroundColor: "#d87c3c" }}>
             <div className="d-flex align-items-center gap-2">
               <span className="spinner-grow spinner-grow-sm text-light" role="status" style={{ display: isLoading ? "inline-block" : "none" }}></span>
-              <h6 className="m-0 fw-bold">Trợ Lý  Khách Hàng ⚡</h6>
+              <h6 className="m-0 fw-bold">Trợ Lý Khách Hàng ⚡</h6>
             </div>
             <button onClick={() => setIsOpen(false)} className="btn-close btn-close-white"></button>
           </div>

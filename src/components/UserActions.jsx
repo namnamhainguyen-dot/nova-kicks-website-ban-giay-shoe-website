@@ -37,7 +37,6 @@ export default function UserActions() {
       {/* 🔥 CẬP NHẬT: Chỉ hiện khi user là null hoặc role không phải admin */}
       {(!user || user.role !== 'admin') && (
         <>
-          <li><Link href="/wishlist">Yêu thích</Link></li>
           <li><Link href="/cart">Giỏ hàng</Link></li>
         </>
       )}

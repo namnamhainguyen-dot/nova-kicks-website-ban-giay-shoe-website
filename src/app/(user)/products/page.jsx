@@ -1,5 +1,6 @@
 import ProductFilter from "@/components/ProductFilter";
-import ProductChatbox from "@/components/ProductChatbox"; // 1. IMPORT CHATBOX VÀO ĐÂY
+import ProductChatbox from "@/components/ProductChatbox";
+import Link from "next/link";
 
 // 1. Hàm lấy danh sách sản phẩm từ API
 async function getProducts(categoryID) {
@@ -19,7 +20,11 @@ async function getProducts(categoryID) {
 }
 
 export default async function ProductsPage({ searchParams }) {
-  const { categoryID } = await searchParams;
+  const params = await searchParams;
+  const categoryID = params?.categoryID;
+  const filterIdsParam = params?.filterIds;
+  const searchQuery = params?.search;
+
   const rawProducts = await getProducts(categoryID);
 
   // CHUẨN HÓA DỮ LIỆU
@@ -33,11 +38,24 @@ export default async function ProductsPage({ searchParams }) {
 
     return {
       ...product,
+      _id: String(product._id),
       availableColors,
       availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này."
     };
   });
+
+  // XỬ LÝ LỌC SẢN PHẨM TỪ AI (filterIds) HOẶC TÌM KIẾM (search)
+  let displayedProducts = products;
+
+  if (filterIdsParam) {
+    const filterIds = filterIdsParam.split(",");
+    displayedProducts = products.filter(p => filterIds.includes(p._id));
+  } else if (searchQuery) {
+    displayedProducts = products.filter(p => 
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
 
   return (
     <main
@@ -80,16 +98,40 @@ export default async function ProductsPage({ searchParams }) {
         }
       `}</style>
 
+      {/* HEADER TIÊU ĐỀ */}
       <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
         <h1 className="fw-bold text-uppercase m-0" style={{ fontSize: "1.75rem", letterSpacing: "0.05em" }}>
           {categoryID ? `Danh mục sản phẩm` : "Tất cả sản phẩm"}
         </h1>
-        <span className="text-secondary fw-semibold">{products.length} sản phẩm</span>
+        <span className="text-secondary fw-semibold">{displayedProducts.length} sản phẩm</span>
       </div>
 
-      <ProductFilter key={categoryID || "all"} products={products} />
+      {/* BANNER THÔNG BÁO KHI ĐANG DÙNG BỘ LỌC TỪ AI CHATBOX */}
+      {filterIdsParam && (
+        <div 
+          className="alert d-flex justify-content-between align-items-center mb-4 p-3 rounded-3 border-0 shadow-sm"
+          style={{ backgroundColor: "#fff3eb", color: "#d87c3c" }}
+        >
+          <span className="fw-semibold">
+            🤖 Trợ lý AI đã tìm thấy <strong>{displayedProducts.length}</strong> sản phẩm phù hợp với yêu cầu của bạn!
+          </span>
+          <Link 
+            href={categoryID ? `/products?categoryID=${categoryID}` : "/products"} 
+            className="btn btn-sm btn-dark px-3 rounded-pill"
+            style={{ backgroundColor: "#d87c3c", borderColor: "#d87c3c" }}
+          >
+            Xóa bộ lọc AI ✕
+          </Link>
+        </div>
+      )}
 
-      {/* 2. CHÈN CHATBOX ĐỂ TỰ ĐỘNG TÌM KIẾM SẢN PHẨM */}
+      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM */}
+      <ProductFilter 
+        key={`${categoryID || "all"}-${filterIdsParam || "none"}`} 
+        products={displayedProducts} 
+      />
+
+      {/* CHATBOX AI (TRUYỀN TOÀN BỘ DANH SÁCH SẢN PHẨM ĐỂ AI TÌM KIẾM CẢ KHO) */}
       <ProductChatbox products={products} />
     </main>
   );
