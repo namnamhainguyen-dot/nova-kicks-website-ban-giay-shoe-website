@@ -8,8 +8,17 @@ export default function Checkout() {
   const { cart, setCart } = useContext(CartContext);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [deliveryAddress, setDeliveryAddress] = useState("");
   const [orderNote, setOrderNote] = useState("");
+
+  // ── STATE ĐỊA CHỈ HÀNH CHÍNH ──
+  const [provinces, setProvinces] = useState([]);
+  const [districts, setDistricts] = useState([]);
+  const [wards, setWards] = useState([]);
+
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [selectedDistrict, setSelectedDistrict] = useState("");
+  const [selectedWard, setSelectedWard] = useState("");
+  const [detailAddress, setDetailAddress] = useState("");
 
   const [paymentMethod, setPaymentMethod] = useState("cod");
   
@@ -31,15 +40,57 @@ export default function Checkout() {
   const [currentUser, setCurrentUser] = useState(null);
 
   const router = useRouter();
-  
-  // Dùng useRef để tránh việc thực thi dọn dẹp giỏ hàng nhiều lần khi render
   const hasClearedCart = useRef(false);
 
-  // ── EFFECT GỘP: CHỈ CHẠY 1 LẦN DUY NHẤT KHI MOUNT ──
+  // ── 1. LẤY DANH SÁCH TỈNH / THÀNH PHỐ KHI MOUNT ──
+  useEffect(() => {
+    fetch("https://provinces.open-api.vn/api/p/")
+      .then((res) => res.json())
+      .then((data) => setProvinces(data))
+      .catch((err) => console.error("Lỗi lấy danh sách tỉnh thành:", err));
+  }, []);
+
+  // ── 2. LẤY QUẬN / HUYỆN KHI CHỌN TỈNH ──
+  useEffect(() => {
+    if (!selectedProvince) {
+      setDistricts([]);
+      setWards([]);
+      setSelectedDistrict("");
+      setSelectedWard("");
+      return;
+    }
+    fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=2`)
+      .then((res) => res.json())
+      .then((data) => {
+        setDistricts(data.districts || []);
+        setWards([]);
+        setSelectedDistrict("");
+        setSelectedWard("");
+      })
+      .catch((err) => console.error("Lỗi lấy danh sách quận huyện:", err));
+  }, [selectedProvince]);
+
+  // ── 3. LẤY PHƯỜNG / XÃ KHI CHỌN QUẬN ──
+  useEffect(() => {
+    if (!selectedDistrict) {
+      setWards([]);
+      setSelectedWard("");
+      return;
+    }
+    fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict}?depth=2`)
+      .then((res) => res.json())
+      .then((data) => {
+        setWards(data.wards || []);
+        setSelectedWard("");
+      })
+      .catch((err) => console.error("Lỗi lấy danh sách phường xã:", err));
+  }, [selectedDistrict]);
+
+  // ── EFFECT GỘP: DỌN ĐƠN HÀNG & USER DATA ──
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Đọc sản phẩm chờ thanh toán từ sessionStorage
+    // Reading checkout_items
     const storedItems = sessionStorage.getItem("checkout_items");
     let parsedCheckoutItems = [];
     if (storedItems) {
@@ -55,17 +106,16 @@ export default function Checkout() {
       setCheckoutItems(cart);
     }
 
-    // 2. XỬ LÝ QUAY VỀ SAU KHI THANH TOÁN GIẢ LẬP VIETQR THÀNH CÔNG
+    // VietQR simulated success handling
     const queryParams = new URLSearchParams(window.location.search);
     const successSimulated = queryParams.get("success_simulated");
     const urlOrderId = queryParams.get("orderId");
 
     if (successSimulated === "true" && urlOrderId && !hasClearedCart.current) {
-      hasClearedCart.current = true; // Đánh dấu đã xử lý xong
+      hasClearedCart.current = true;
       setCreatedOrderId(urlOrderId);
       setIsSuccess(true);
       
-      // Tiến hành xóa giỏ hàng dựa trên các item đã thanh toán lưu trong sessionStorage
       if (parsedCheckoutItems.length > 0) {
         setCart((prevCart) => {
           const remainingCart = prevCart.filter(cartItem =>
@@ -82,7 +132,7 @@ export default function Checkout() {
       sessionStorage.removeItem("checkout_items");
     }
 
-    // 3. Lấy thông tin user đăng nhập điền vào Form
+    // Current User data
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
@@ -90,17 +140,16 @@ export default function Checkout() {
         setCurrentUser(parsedUser);
         if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
         if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
-        if (parsedUser.address) setDeliveryAddress(parsedUser.address);
+        if (parsedUser.address) setDetailAddress(parsedUser.address);
       } catch (e) {
         console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
       }
     }
-  }, [setCart]); // Thêm setCart vào dependency an toàn vì nó không đổi giữa các lần render
+  }, [setCart]);
 
-  // Tính tổng tiền CHỈ trên danh sách sản phẩm được chọn mua
+  // Tính tổng tiền
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
-  // Tính số tiền được giảm giá dựa trên tổng tiền mới
   let discountAmount = 0;
   if (appliedVoucher) {
     if (appliedVoucher.discount_type === "fixed") {
@@ -110,8 +159,15 @@ export default function Checkout() {
     }
   }
 
-  // Tổng tiền cuối cùng phải thanh toán
   const finalTotal = Math.max(0, total - discountAmount);
+
+  // ── XỬ LÝ NHẬP SỐ ĐIỆN THOẠI (Chỉ giữ chữ số, tối đa 10 số) ──
+  const handlePhoneChange = (e) => {
+    const value = e.target.value.replace(/\D/g, ""); // Xóa toàn bộ ký tự không phải số
+    if (value.length <= 10) {
+      setCustomerPhone(value);
+    }
+  };
 
   // Xử lý áp dụng Voucher
   const handleApplyVoucher = async (e) => {
@@ -172,7 +228,6 @@ export default function Checkout() {
     }
   };
 
-  // Hủy dùng voucher
   const handleRemoveVoucher = () => {
     setAppliedVoucher(null);
     setVoucherCode("");
@@ -180,7 +235,7 @@ export default function Checkout() {
     setVoucherError("");
   };
 
-  // Kiểm tra biểu mẫu thông tin khách hàng
+  // ── KIỂM TRA ĐIỀU KIỆN ĐẶT HÀNG ──
   const validateOrder = () => {
     if (checkoutItems.length === 0) {
       alert("Không tìm thấy sản phẩm nào để thanh toán!");
@@ -190,15 +245,33 @@ export default function Checkout() {
       alert("Vui lòng điền đầy đủ Họ và tên người nhận!");
       return false;
     }
-    if (!customerPhone.trim()) {
-      alert("Vui lòng điền đầy đủ Số điện thoại liên hệ!");
+    
+    // Ràng buộc chính xác 10 chữ số
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(customerPhone)) {
+      alert("Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số.");
       return false;
     }
-    if (!deliveryAddress.trim()) {
-      alert("Vui lòng điền đầy đủ Địa chỉ giao hàng!");
+
+    if (!detailAddress.trim()) {
+      alert("Vui lòng nhập địa chỉ nhà chi tiết (số nhà, tên đường...)!");
       return false;
     }
+
+    if (!selectedProvince || !selectedDistrict || !selectedWard) {
+      alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
+      return false;
+    }
+
     return true;
+  };
+
+  // ── GHÉP CHUỖI ĐỊA CHỈ HOÀN CHỈNH ──
+  const getFullDeliveryAddress = () => {
+    const provName = provinces.find((p) => p.code == selectedProvince)?.name || "";
+    const distName = districts.find((d) => d.code == selectedDistrict)?.name || "";
+    const wardName = wards.find((w) => w.code == selectedWard)?.name || "";
+    return `${detailAddress.trim()}, ${wardName}, ${distName}, ${provName}`;
   };
 
   // Gửi đơn hàng lên API
@@ -207,13 +280,14 @@ export default function Checkout() {
     if (!validateOrder()) return;
 
     setIsOrdering(true);
+    const fullAddress = getFullDeliveryAddress();
 
     const orderData = {
       email: currentUser?.email || "guest",
       userId: currentUser?._id || currentUser?.id || null,
       name: customerName,
       phone: customerPhone,
-      location_id: deliveryAddress,
+      location_id: fullAddress,
       note: orderNote,
       order_items: checkoutItems.map(item => ({
         product_id: item._id,
@@ -243,18 +317,15 @@ export default function Checkout() {
 
       const result = await res.json();
 
-      // --- TÍCH HỢP LOGIC THANH TOÁN (VNPAY / NGÂN HÀNG) ---
       if (result.paymentUrl) {
         window.location.href = result.paymentUrl;
         return; 
       }
 
-      // --- LOGIC XỬ LÝ ĐƠN HÀNG THÀNH CÔNG (CHO COD / CHUYỂN KHOẢN GIẢ LẬP) ---
       if (result.code === "success" || result.success || result._id || result.id) {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
 
-        // Xóa sản phẩm vừa thanh toán khỏi giỏ hàng ngay lập tức (Dành cho COD)
         const remainingCart = cart.filter(cartItem =>
           !checkoutItems.some(checkoutItem =>
             checkoutItem._id === cartItem._id &&
@@ -347,25 +418,86 @@ export default function Checkout() {
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label fw-semibold small">Số điện thoại liên hệ <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold small">
+                    Số điện thoại liên hệ <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="tel"
                     className="form-control form-control-lg fs-6"
-                    placeholder="Nhập số điện thoại liên hệ"
+                    placeholder="Nhập số điện thoại (ví dụ: 0912345678)"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={handlePhoneChange}
                   />
+                  {customerPhone && customerPhone.length !== 10 && (
+                    <div className="text-danger small mt-1">
+                      ⚠️ Số điện thoại chưa đúng.
+                    </div>
+                  )}
                 </div>
 
+                {/* ── ĐỊA CHỈ NHÀ CHI TIẾT (Lên trên) ── */}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold small">Địa chỉ giao hàng <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold small">Địa chỉ nhà chi tiết <span className="text-danger">*</span></label>
                   <input
                     type="text"
                     className="form-control form-control-lg fs-6"
-                    placeholder="Ví dụ: 123 Đường Nguyễn Trãi, Phường 3, Quận 5, TP.HCM"
-                    value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
+                    value={detailAddress}
+                    onChange={(e) => setDetailAddress(e.target.value)}
                   />
+                </div>
+
+                {/* ── CÁC Ô CHỌN TỈNH / HUYỆN / XÃ (Xuống dưới) ── */}
+                <div className="row g-2 mb-3">
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold small">Tỉnh / Thành phố <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select form-select-lg fs-6"
+                      value={selectedProvince}
+                      onChange={(e) => setSelectedProvince(e.target.value)}
+                    >
+                      <option value="">-- Chọn Tỉnh/Thành --</option>
+                      {provinces.map((p) => (
+                        <option key={p.code} value={p.code}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold small">Quận / Huyện <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select form-select-lg fs-6"
+                      value={selectedDistrict}
+                      onChange={(e) => setSelectedDistrict(e.target.value)}
+                      disabled={!selectedProvince}
+                    >
+                      <option value="">-- Chọn Quận/Huyện --</option>
+                      {districts.map((d) => (
+                        <option key={d.code} value={d.code}>
+                          {d.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-semibold small">Phường / Xã <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select form-select-lg fs-6"
+                      value={selectedWard}
+                      onChange={(e) => setSelectedWard(e.target.value)}
+                      disabled={!selectedDistrict}
+                    >
+                      <option value="">-- Chọn Phường/Xã --</option>
+                      {wards.map((w) => (
+                        <option key={w.code} value={w.code}>
+                          {w.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
                 <div className="mb-4">
@@ -413,7 +545,7 @@ export default function Checkout() {
           </div>
         </div>
 
-        {/* CỘT PHẢI: TÓM TẮT GIỎ HÀNG ĐÃ LỌC & MÃ GIẢM GIÁ */}
+        {/* CỘT PHẢI: TÓM TẮT GIỎ HÀNG & VOUCHER */}
         <div className="col-lg-5 col-md-12">
           <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
             <div className="card-body p-4">
@@ -452,7 +584,7 @@ export default function Checkout() {
                 })}
               </div>
 
-              {/* ── Ô NHẬP VOUCHER GIẢM GIÁ ── */}
+              {/* Ô NHẬP VOUCHER */}
               <div className="mb-4 bg-light p-3 rounded-3">
                 <label className="form-label fw-bold text-secondary small mb-2">🎟️ Thẻ giảm giá (Voucher)</label>
                 <div className="input-group">
@@ -484,7 +616,7 @@ export default function Checkout() {
                 {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
               </div>
 
-              {/* Bảng tính toán chi phí */}
+              {/* Bảng tính chi phí */}
               <div className="d-flex justify-content-between mb-2 small">
                 <span className="text-muted">Tạm tính đơn hàng:</span>
                 <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>

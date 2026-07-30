@@ -1,17 +1,20 @@
-import clientPromise from "../../../../libs/mongodb"; // Đã sửa đường dẫn lùi 4 cấp chuẩn xác ra ngoài src
+import clientPromise from "../../../../libs/mongodb";
 import { ObjectId } from "mongodb";
 import nodemailer from "nodemailer";
 
-// CẤU HÌNH TRÌNH GỬI EMAIL (TRANSPORTER)
+/// CẤU HÌNH TRÌNH GỬI EMAIL (TRANSPORTER)
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "namnamhainguyen@gmail.com", // Gmail dùng để gửi đi
-    pass: "xyfmsgxksokkjdlc",       // Mật khẩu ứng dụng 16 ký tự của bạn
+    user: (process.env.EMAIL_USER || "luckhanh6677@gmail.com").trim(),
+    pass: (process.env.EMAIL_PASS || "kemtlqntuxiiqfai").replace(/\s+/g, ""), // Tự động xóa sạch khoảng trắng
   },
 });
+// ==========================================
+// 📧 CÁC MẪU TEMPLATE EMAIL
+// ==========================================
 
-// Hàm tạo giao diện HTML cho nội dung Email
+// 1. Mẫu HTML Mail 1: Báo đơn mới / Xác nhận thanh toán
 function generateOrderEmailHTML(order) {
   const itemsHTML = order.order_items?.map(item => `
     <tr>
@@ -22,20 +25,20 @@ function generateOrderEmailHTML(order) {
       <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: center;">x${item.quantity}</td>
       <td style="padding: 10px; border-bottom: 1px solid #ddd; text-align: right;">${((item.price || 0) * (item.quantity || 1)).toLocaleString("vi-VN")}đ</td>
     </tr>
-  `).join("");
+  `).join("") || "";
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
       <h2 style="color: #1a1a1a; text-align: center; text-transform: uppercase;">Thông Báo Đơn Hàng Mới</h2>
-      <p style="font-size: 16px; color: #333;">Xin chào,</p>
-      <p style="font-size: 14px; color: #555;">Hệ thống <strong>Nova Kicks</strong> ghi nhận một đơn hàng đã được cập nhật trạng thái thanh toán thành công. Dưới đây là thông tin chi tiết:</p>
+      <p style="font-size: 16px; color: #333;">Xin chào ${order.name || "Khách hàng"},</p>
+      <p style="font-size: 14px; color: #555;">Hệ thống <strong>Nova Kicks</strong> ghi nhận đơn hàng của bạn đã cập nhật trạng thái thành công. Dưới đây là thông tin chi tiết:</p>
       
       <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
         <h4 style="margin-top: 0; color: #333;">📍 Thông tin đơn hàng #${order._id.toString().toUpperCase()}</h4>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Người nhận:</strong> ${order.name}</p>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Số điện thoại:</strong> ${order.phone}</p>
         <p style="margin: 5px 0; font-size: 14px;"><strong>Địa chỉ giao:</strong> ${order.location_id || "Chưa cập nhật"}</p>
-        <p style="margin: 5px 0; font-size: 14px;"><strong>Trạng thái thanh toán:</strong> <span style="color: green; font-weight: bold;">ĐÃ THANH TOÁN (VietQR)</span></p>
+        <p style="margin: 5px 0; font-size: 14px;"><strong>Trạng thái thanh toán:</strong> <span style="color: green; font-weight: bold;">ĐÃ XÁC NHẬN</span></p>
       </div>
 
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 14px;">
@@ -52,22 +55,81 @@ function generateOrderEmailHTML(order) {
       </table>
 
       <div style="text-align: right; font-size: 16px;">
-        <strong>Tổng tiền cuối cùng: <span style="color: #d9534f; font-size: 20px;">${(order.final_total || order.total).toLocaleString("vi-VN")}đ</span></strong>
+        <strong>Tổng tiền thanh toán: <span style="color: #d9534f; font-size: 20px;">${(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ</span></strong>
       </div>
       
       <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-      <p style="font-size: 12px; color: #999; text-align: center;">Đây là email tự động từ hệ thống giả lập website Nova Kicks. Vui lòng không phản hồi lại email này.</p>
+      <p style="font-size: 12px; color: #999; text-align: center;">Cảm ơn bạn đã lựa chọn Nova Kicks!</p>
     </div>
   `;
 }
 
-//HÀM GET (Chi tiết đơn hàng)
+// 2. Mẫu HTML Mail 2: Cảm ơn sau khi giao hàng thành công (completed)
+function generateThankYouEmailHTML(order) {
+  const itemsHTML = order.order_items?.map(item => `
+    <tr>
+      <td style="padding: 10px; border-bottom: 1px solid #eee;">
+        <strong>${item.name}</strong><br>
+        <small style="color: #666;">Màu: ${item.color || '---'} | Size: ${item.size || '---'}</small>
+      </td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">x${item.quantity}</td>
+      <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${((item.price || 0) * (item.quantity || 1)).toLocaleString("vi-VN")}đ</td>
+    </tr>
+  `).join("") || "";
+
+  return `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+      <div style="background-color: #111111; color: #ffffff; padding: 30px 20px; text-align: center;">
+        <h1 style="margin: 0; font-size: 24px; letter-spacing: 2px;">NOVA KICKS</h1>
+        <p style="margin: 8px 0 0; font-size: 15px; color: #28a745; font-weight: bold;">🎉 ĐƠN HÀNG ĐÃ GIAO THÀNH CÔNG!</p>
+      </div>
+      
+      <div style="padding: 24px; background-color: #ffffff;">
+        <p style="font-size: 15px; color: #111;">Xin chào <strong>${order.name || "Khách hàng"}</strong>,</p>
+        <p style="font-size: 14px; color: #444; line-height: 1.6;">
+          Đơn hàng <strong>#${order._id.toString().toUpperCase()}</strong> của bạn đã giao thành công và hoàn tất. Cảm ơn bạn rất nhiều vì đã tin tưởng và lựa chọn sản phẩm từ <strong>Nova Kicks</strong>!
+        </p>
+
+        <h3 style="color: #111111; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 20px;">👟 TỔNG KẾT ĐƠN HÀNG</h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <thead>
+            <tr style="background-color: #f8f9fa;">
+              <th style="padding: 8px 10px; text-align: left;">Sản phẩm</th>
+              <th style="padding: 8px 10px; text-align: center;">SL</th>
+              <th style="padding: 8px 10px; text-align: right;">Giá</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHTML}
+          </tbody>
+        </table>
+
+        <div style="margin-top: 15px; text-align: right; font-size: 15px;">
+          <strong>Tổng giá trị: <span style="color: #dc3545;">${(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ</span></strong>
+        </div>
+
+        <div style="background-color: #f0f7ff; border-left: 4px solid #007bff; padding: 12px 15px; margin-top: 25px; border-radius: 4px;">
+          <p style="margin: 0; font-size: 13px; color: #004085; line-height: 1.5;">
+            🌟 <strong>Hy vọng bạn hài lòng với trải nghiệm lần này!</strong> Nếu có bất kỳ thắc mắc hay cần hỗ trợ về sản phẩm, hãy liên hệ ngay với Nova Kicks nhé.
+          </p>
+        </div>
+      </div>
+      
+      <div style="background-color: #111111; text-align: center; padding: 15px; font-size: 12px; color: #aaaaaa;">
+        Cảm ơn bạn đã đồng hành cùng <strong>Nova Kicks</strong>!
+      </div>
+    </div>
+  `;
+}
+
+// ==========================================
+// 1. HÀM GET (Chi tiết đơn hàng)
+// ==========================================
 export async function GET(request, { params }) {
   try {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    // Next.js 16 bắt buộc phải await params
     const { id } = await params;
 
     if (!id || id.length !== 24) {
@@ -80,7 +142,6 @@ export async function GET(request, { params }) {
       return Response.json({ success: false, error: "Đơn hàng không tồn tại trong hệ thống" }, { status: 404 });
     }
 
-    // Chuẩn hóa cấu trúc trả về { success: true, data: order } để Front-end page.jsx đọc được luôn
     return Response.json({
       ...order,
       _id: String(order._id),
@@ -92,7 +153,7 @@ export async function GET(request, { params }) {
 }
 
 // ==========================================
-// ✅ 2. HÀM PATCH (Cập nhật trạng thái)
+// 2. HÀM PATCH (Cập nhật trạng thái & Gửi Email)
 // ==========================================
 export async function PATCH(request, { params }) {
   try {
@@ -105,7 +166,6 @@ export async function PATCH(request, { params }) {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    // 👉 ĐÃ SỬA: Khởi tạo object cập nhật động chứa cả status và isPaid (nếu có truyền lên)
     const updateFields = {};
     
     if (body.status !== undefined) {
@@ -113,15 +173,14 @@ export async function PATCH(request, { params }) {
     }
     
     if (body.isPaid !== undefined) {
-      updateFields.isPaid = body.isPaid; // Lưu trạng thái thanh toán true/false vào database
+      updateFields.isPaid = body.isPaid;
     }
 
-    // BỔ SUNG: Nếu trạng thái là hủy đơn và có lý do hủy từ client gửi lên
     if (body.status === "cancelled" && body.cancelReason) {
       updateFields.cancelReason = body.cancelReason;
     }
 
-    // Cập nhật dữ liệu mới vào MongoDB
+    // Cập nhật dữ liệu vào MongoDB
     const result = await db.collection("orders").updateOne(
       { _id: new ObjectId(id) },
       { $set: updateFields }
@@ -131,29 +190,39 @@ export async function PATCH(request, { params }) {
       return Response.json({ success: false, error: "Không tìm thấy đơn hàng" }, { status: 404 });
     }
 
-    // 🌟 LOGIC TỰ ĐỘNG GỬI MAIL KHI THANH TOÁN THÀNH CÔNG
-    // (Lúc này DB đã được cập nhật isPaid: true thành công ở bước trên)
-    if (body.isPaid === true) {
-      const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+    // Lấy thông tin đơn hàng đầy đủ sau khi cập nhật
+    const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+
+    if (fullOrderDetails && fullOrderDetails.email && fullOrderDetails.email !== "guest") {
       
-      if (fullOrderDetails) {
+      // 🌟 KỊCH BẢN 1: GỬI MAIL 1 (Khi xác nhận thanh toán thành công isPaid = true)
+      if (body.isPaid === true) {
         const mailOptions = {
-          from: '"Nova Kicks" <namnamhainguyen@gmail.com>', // Gmail gửi đi
-          to: fullOrderDetails.email, // Gửi trực tiếp đến hòm thư của khách hàng
-          
-          // 🌟 BỔ SUNG BCC: Gửi một bản sao ẩn danh về hòm thư của bạn (Admin)
-          bcc: "namnamhainguyen@gmail.com", 
-          
+          from: '"Nova Kicks" <luckhanh6677@gmail.com>',
+          to: fullOrderDetails.email,
+          bcc: "luckhanh6677@gmail.com",
           subject: `👟 [Nova Kicks] Xác nhận thanh toán đơn hàng #${fullOrderDetails._id.toString().toUpperCase()}`,
-          html: generateOrderEmailHTML(fullOrderDetails), 
+          html: generateOrderEmailHTML(fullOrderDetails),
         };
 
-        // Kích hoạt tiến trình gửi mail bất đồng bộ (không làm chậm phản hồi của client)
         transporter.sendMail(mailOptions).then(info => {
-          console.log("Email thông báo đơn hàng gửi thành công:", info.messageId);
-        }).catch(mailErr => {
-          console.error("Lỗi tiến trình gửi mail:", mailErr);
-        });
+          console.log("Email Mail 1 (Xác nhận) đã gửi:", info.messageId);
+        }).catch(mailErr => console.error("Lỗi gửi Mail 1:", mailErr));
+      }
+
+      // 🌟 KỊCH BẢN 2: GỬI MAIL 2 (Khi Admin đổi trạng thái thành "completed")
+      if (body.status === "completed") {
+        const thankYouMailOptions = {
+          from: '"Nova Kicks" <luckhanh6677@gmail.com>',
+          to: fullOrderDetails.email,
+          bcc: "luckhanh6677@gmail.com",
+          subject: `🎉 [Nova Kicks] Cảm ơn bạn đã mua hàng! (Đơn hàng #${fullOrderDetails._id.toString().toUpperCase()})`,
+          html: generateThankYouEmailHTML(fullOrderDetails),
+        };
+
+        transporter.sendMail(thankYouMailOptions).then(info => {
+          console.log("Email Mail 2 (Cảm ơn) đã gửi thành công:", info.messageId);
+        }).catch(mailErr => console.error("Lỗi gửi Mail 2:", mailErr));
       }
     }
 
@@ -168,7 +237,7 @@ export async function PATCH(request, { params }) {
 }
 
 // ==========================================
-// 🚀 3. BỔ SUNG HÀM DELETE (Xóa đơn hàng)
+// 3. HÀM DELETE (Xóa đơn hàng)
 // ==========================================
 export async function DELETE(request, { params }) {
   try {
