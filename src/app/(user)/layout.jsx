@@ -4,6 +4,7 @@ import clientPromise from "@/libs/mongodb";
 import Link from "next/link";
 import Image from "next/image";
 import UserActions from "@/components/UserActions";
+import NavbarLinks from "@/components/NavbarLinks"; // Import component NavbarLinks mới
 import { Toaster } from "react-hot-toast";
 
 async function getCategories() {
@@ -201,17 +202,18 @@ export default async function Layout({ children }) {
             transition: all 0.3s ease; 
             position: relative;
             padding: 4px 0;
+            display: inline-block;
           }
           
           .nk-links a::after {
             content: '';
             position: absolute;
-            bottom: -2px;
-            left: 50%;
             width: 0;
             height: 2px;
+            bottom: -4px;
+            left: 50%;
             background: linear-gradient(90deg, var(--accent), var(--gold));
-            transition: all 0.3s ease;
+            transition: all 0.3s ease-in-out;
             transform: translateX(-50%);
             border-radius: 2px;
           }
@@ -276,6 +278,7 @@ export default async function Layout({ children }) {
             position: relative;
             white-space: nowrap;
             padding: 4px 0;
+            display: inline-block;
           }
           
           .nk-categories-list a::before {
@@ -298,17 +301,79 @@ export default async function Layout({ children }) {
           .nk-categories-list a::after {
             content: '';
             position: absolute;
-            bottom: -4px;
-            left: 0;
             width: 0;
             height: 2px;
+            bottom: -4px;
+            left: 50%;
             background: linear-gradient(90deg, var(--accent), var(--gold));
-            transition: width 0.3s ease;
+            transition: all 0.3s ease-in-out;
+            transform: translateX(-50%);
             border-radius: 2px;
           }
           
-          .nk-categories-list a:hover::after {
+          .nk-categories-list a:hover::after,
+          .nk-categories-list a.active::after {
             width: 100%;
+          }
+
+          /* ── USER ACTIONS / NK-ACTIONS ── */
+          .nk-actions {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+          }
+
+          .nk-actions li {
+            list-style: none;
+            margin: 0;
+          }
+
+          .nk-actions a {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: all 0.3s ease;
+          }
+
+          .nk-actions a:hover {
+            color: var(--text-primary);
+          }
+
+          /* ── HIỆU ỨNG ANIMATION CHO DROPDOWN MENU ── */
+          .nk-actions .nav-item.dropdown {
+            position: relative;
+          }
+
+          .nk-actions .nav-item.dropdown .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            left: auto;
+            min-width: 160px;
+            
+            display: block;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(10px);
+            transition: all 0.3s ease-in-out;
+          }
+
+          .nk-actions .nav-item.dropdown:hover .dropdown-menu {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(4px);
+          }
+
+          .nk-actions .badge {
+            padding: 0.25em 0.45em;
+            font-weight: 600;
+            background-color: var(--accent) !important;
           }
           
           /* ── FOOTER NÂNG CẤP ── */
@@ -489,7 +554,7 @@ export default async function Layout({ children }) {
           <WishlistProvider>
             
             {/* ── NAVBAR CHÍNH NÂNG CẤP ── */}
-            <nav className="nk-nav" id="mainNav">
+            <nav className="nk-nav" id="mainNav" suppressHydrationWarning>
               <div className="container">
                 <Link className="nk-brand" href="/">
                   <Image 
@@ -507,32 +572,8 @@ export default async function Layout({ children }) {
                   <span className="brand-dot"></span>
                 </Link>
 
-                <ul className="nk-links">
-                  <li>
-                    <Link href="/" >
-                      <i className="fas fa-home" style={{ marginRight: '4px', fontSize: '0.6rem' }}></i>
-                      Trang chủ
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/products">
-                      <i className="fas fa-grid-2" style={{ marginRight: '4px', fontSize: '0.6rem' }}></i>
-                      Bộ sưu tập
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/new">
-                      <i className="fas fa-newspaper" style={{ marginRight: '4px', fontSize: '0.6rem' }}></i>
-                      Tin tức
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/contact">
-                      <i className="fas fa-envelope" style={{ marginRight: '4px', fontSize: '0.6rem' }}></i>
-                      Liên hệ
-                    </Link>
-                  </li>
-                </ul>
+                {/* Sử dụng component NavbarLinks đã được tách rời */}
+                <NavbarLinks />
 
                 <UserActions />
               </div>
