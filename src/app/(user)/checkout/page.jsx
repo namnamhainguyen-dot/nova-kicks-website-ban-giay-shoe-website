@@ -1,4 +1,5 @@
 "use client";
+
 import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
 import { useContext, useState, useEffect, useRef } from "react";
@@ -6,11 +7,19 @@ import Link from "next/link";
 
 export default function Checkout() {
   const { cart, setCart } = useContext(CartContext);
+  const router = useRouter();
+
+  // ── 1. THÔNG TIN KHÁCH HÀNG ──
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [orderNote, setOrderNote] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
 
-  // ── STATE ĐỊA CHỈ HÀNH CHÍNH (DÙNG API CẬP NHẬT MỚI) ──
+  // ── 2. ĐỊA CHỈ HÀNH CHÍNH & DANH SÁCH ĐỊA CHỈ ĐÃ LƯU ──
+  const [savedAddresses, setSavedAddresses] = useState([]); // Mảng các địa chỉ đã lưu
+  const [selectedAddressId, setSelectedAddressId] = useState("new"); // ID địa chỉ được chọn ('new' = nhập mới)
+
+  // Địa chỉ mới (Form động)
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
@@ -20,43 +29,30 @@ export default function Checkout() {
   const [selectedWard, setSelectedWard] = useState("");
   const [detailAddress, setDetailAddress] = useState("");
 
-  // Cờ chặn useEffect reset state khi load địa chỉ đã lưu
-  const isAutoFilling = useRef(false);
-
-  // ── STATE QUẢN LÝ NHIỀU ĐỊA CHỈ & LƯU LẦN SAU ──
-  const [savedAddresses, setSavedAddresses] = useState([]);
-  const [selectedAddressId, setSelectedAddressId] = useState("new");
-  const [saveThisAddress, setSaveThisAddress] = useState(true);
-
+  // ── 3. THANH TOÁN & ĐƠN HÀNG ──
   const [paymentMethod, setPaymentMethod] = useState("cod");
   const [isOrdering, setIsOrdering] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [createdOrderId, setCreatedOrderId] = useState("");
-
   const [checkoutItems, setCheckoutItems] = useState([]);
+  const hasClearedCart = useRef(false);
 
-  // ── STATE VOUCHER ──
+  // ── 4. VOUCHER ──
   const [voucherCode, setVoucherCode] = useState("");
-  const [appliedVoucher, setAppliedVoucher] = useState(null); 
+  const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState("");
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
 
-  const [currentUser, setCurrentUser] = useState(null);
-  const router = useRouter();
-  const hasClearedCart = useRef(false);
-
-  // ── 1. LẤY DANH SÁCH TỈNH / THÀNH PHỐ KHI MOUNT (API mới nhất) ──
+  // ── FETCH TỈNH / THÀNH PHỐ ──
   useEffect(() => {
     fetch("https://provinces.open-api.vn/api/p/")
       .then((res) => res.json())
-      .then((data) => {
-        setProvinces(data || []);
-      })
+      .then((data) => setProvinces(data || []))
       .catch((err) => console.error("Lỗi lấy danh sách tỉnh thành:", err));
   }, []);
 
-  // ── 2. LẤY QUẬN / HUYỆN KHI CHỌN TỈNH ──
+  // ── FETCH QUẬN / HUYỆN ──
   useEffect(() => {
     if (!selectedProvince) {
       setDistricts([]);
@@ -65,9 +61,6 @@ export default function Checkout() {
       setSelectedWard("");
       return;
     }
-
-    if (isAutoFilling.current) return;
-
     fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=2`)
       .then((res) => res.json())
       .then((data) => {
@@ -79,16 +72,13 @@ export default function Checkout() {
       .catch((err) => console.error("Lỗi lấy danh sách quận huyện:", err));
   }, [selectedProvince]);
 
-  // ── 3. LẤY PHƯỜNG / XÃ KHI CHỌN QUẬN (Đã cập nhật sáp nhập) ──
+  // ── FETCH PHƯỜNG / XÃ ──
   useEffect(() => {
     if (!selectedDistrict) {
       setWards([]);
       setSelectedWard("");
       return;
     }
-
-    if (isAutoFilling.current) return;
-
     fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict}?depth=2`)
       .then((res) => res.json())
       .then((data) => {
@@ -98,10 +88,11 @@ export default function Checkout() {
       .catch((err) => console.error("Lỗi lấy danh sách phường xã:", err));
   }, [selectedDistrict]);
 
-  // ── 4. TẢI DỮ LIỆU USER & DANH SÁCH ĐỊA CHỈ ĐÃ LƯU ──
+  // ── KHỞI TẠO DỮ LIỆU USER & CHECKOUT ITEMS ──
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    // 1. Lấy sản phẩm cần thanh toán
     const storedItems = sessionStorage.getItem("checkout_items");
     let parsedCheckoutItems = [];
     if (storedItems) {
@@ -111,12 +102,13 @@ export default function Checkout() {
           setCheckoutItems(parsedCheckoutItems);
         }
       } catch (e) {
-        console.error("Lỗi đọc checkout_items:", e);
+        console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
       }
     } else if (cart && cart.length > 0) {
       setCheckoutItems(cart);
     }
 
+    // 2. Xử lý sau khi giả lập chuyển hướng thanh toán thành công
     const queryParams = new URLSearchParams(window.location.search);
     const successSimulated = queryParams.get("success_simulated");
     const urlOrderId = queryParams.get("orderId");
@@ -125,15 +117,17 @@ export default function Checkout() {
       hasClearedCart.current = true;
       setCreatedOrderId(urlOrderId);
       setIsSuccess(true);
-      
+
       if (parsedCheckoutItems.length > 0) {
         setCart((prevCart) => {
-          const remainingCart = prevCart.filter(cartItem =>
-            !parsedCheckoutItems.some(checkoutItem =>
-              checkoutItem._id === cartItem._id &&
-              checkoutItem.selectedColor === cartItem.selectedColor &&
-              checkoutItem.selectedSize === cartItem.selectedSize
-            )
+          const remainingCart = prevCart.filter(
+            (cartItem) =>
+              !parsedCheckoutItems.some(
+                (checkoutItem) =>
+                  checkoutItem._id === cartItem._id &&
+                  checkoutItem.selectedColor === cartItem.selectedColor &&
+                  checkoutItem.selectedSize === cartItem.selectedSize
+              )
           );
           localStorage.setItem("cart", JSON.stringify(remainingCart));
           return remainingCart;
@@ -142,91 +136,65 @@ export default function Checkout() {
       sessionStorage.removeItem("checkout_items");
     }
 
+    // 3. Đọc dữ liệu tài khoản & Danh sách nhiều địa chỉ
     const savedUser = localStorage.getItem("user");
-    let userObj = null;
     if (savedUser) {
       try {
-        userObj = JSON.parse(savedUser);
-        setCurrentUser(userObj);
+        const parsedUser = JSON.parse(savedUser);
+        setCurrentUser(parsedUser);
+
+        // Hỗ trợ cả cấu trúc mảng `addresses` hoặc địa chỉ đơn `address`
+        let userAddrs = [];
+        if (Array.isArray(parsedUser.addresses) && parsedUser.addresses.length > 0) {
+          userAddrs = parsedUser.addresses;
+        } else if (parsedUser.address && parsedUser.address.trim() !== "") {
+          // Tự chuyển địa chỉ đơn lẻ thành 1 item mảng nếu schema cũ
+          userAddrs = [
+            {
+              _id: "default_single",
+              label: "Địa chỉ mặc định",
+              receiverName: parsedUser.fullname || "",
+              receiverPhone: parsedUser.phone || "",
+              fullAddress: parsedUser.address,
+              isDefault: true,
+            },
+          ];
+        }
+
+        setSavedAddresses(userAddrs);
+
+        if (userAddrs.length > 0) {
+          // Ưu tiên chọn địa chỉ mặc định (isDefault: true) hoặc item đầu tiên
+          const defaultAddr = userAddrs.find((a) => a.isDefault) || userAddrs[0];
+          setSelectedAddressId(defaultAddr._id);
+          setCustomerName(defaultAddr.receiverName || parsedUser.fullname || "");
+          setCustomerPhone(defaultAddr.receiverPhone || parsedUser.phone || "");
+        } else {
+          if (parsedUser.fullname) setCustomerName(parsedUser.fullname);
+          if (parsedUser.phone) setCustomerPhone(parsedUser.phone);
+        }
       } catch (e) {
-        console.error("Lỗi đọc user:", e);
+        console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
       }
-    }
-
-    const userStorageKey = userObj?._id || userObj?.email ? `addresses_${userObj._id || userObj.email}` : "guest_addresses";
-    const rawAddresses = localStorage.getItem(userStorageKey);
-    let addressList = [];
-
-    if (rawAddresses) {
-      try {
-        addressList = JSON.parse(rawAddresses);
-        setSavedAddresses(addressList);
-      } catch (e) {
-        console.error("Lỗi đọc địa chỉ:", e);
-      }
-    }
-
-    if (addressList.length > 0) {
-      const defaultAddr = addressList.find(a => a.isDefault) || addressList[0];
-      fillAddressForm(defaultAddr);
-      setSelectedAddressId(defaultAddr.id);
-    } else if (userObj) {
-      if (userObj.fullname) setCustomerName(userObj.fullname);
-      if (userObj.phone) setCustomerPhone(userObj.phone);
-      if (userObj.address) setDetailAddress(userObj.address);
     }
   }, [setCart]);
 
-  // Điền nhanh form khi chọn địa chỉ đã lưu
-  const fillAddressForm = async (addrObj) => {
-    isAutoFilling.current = true;
-    setCustomerName(addrObj.name || "");
-    setCustomerPhone(addrObj.phone || "");
-    setDetailAddress(addrObj.detailAddress || "");
-
-    if (addrObj.provinceCode) {
-      setSelectedProvince(addrObj.provinceCode);
-      try {
-        const resD = await fetch(`https://provinces.open-api.vn/api/p/${addrObj.provinceCode}?depth=2`);
-        const dataD = await resD.json();
-        setDistricts(dataD.districts || []);
-
-        if (addrObj.districtCode) {
-          setSelectedDistrict(addrObj.districtCode);
-          const resW = await fetch(`https://provinces.open-api.vn/api/d/${addrObj.districtCode}?depth=2`);
-          const dataW = await resW.json();
-          setWards(dataW.wards || []);
-
-          if (addrObj.wardCode) {
-            setSelectedWard(addrObj.wardCode);
-          }
-        }
-      } catch (err) {
-        console.error("Lỗi tự động tải danh sách địa chỉ:", err);
-      }
-    }
-    isAutoFilling.current = false;
+  // ── XỬ LÝ KHI ĐỔI ĐỊA CHỈ ĐÃ LƯU ──
+  const handleSelectSavedAddress = (addr) => {
+    setSelectedAddressId(addr._id);
+    setCustomerName(addr.receiverName || currentUser?.fullname || "");
+    setCustomerPhone(addr.receiverPhone || currentUser?.phone || "");
   };
 
-  const handleSelectSavedAddress = (e) => {
-    const addrId = e.target.value;
-    setSelectedAddressId(addrId);
-
-    if (addrId === "new") {
-      setDetailAddress("");
-      setSelectedProvince("");
-      setSelectedDistrict("");
-      setSelectedWard("");
-      setDistricts([]);
-      setWards([]);
-    } else {
-      const found = savedAddresses.find(a => a.id === addrId);
-      if (found) {
-        fillAddressForm(found);
-      }
+  const handleSelectNewAddress = () => {
+    setSelectedAddressId("new");
+    if (currentUser) {
+      setCustomerName(currentUser.fullname || "");
+      setCustomerPhone(currentUser.phone || "");
     }
   };
 
+  // ── TÍNH TOÁN GIÁ TRỊ ĐƠN HÀNG ──
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
   let discountAmount = 0;
@@ -240,6 +208,7 @@ export default function Checkout() {
 
   const finalTotal = Math.max(0, total - discountAmount);
 
+  // ── HANDLERS ──
   const handlePhoneChange = (e) => {
     const value = e.target.value.replace(/\D/g, "");
     if (value.length <= 10) {
@@ -248,9 +217,10 @@ export default function Checkout() {
   };
 
   const handleApplyVoucher = async (e) => {
-    if (e) e.preventDefault(); 
+    if (e) e.preventDefault();
+
     if (!voucherCode.trim()) {
-      setVoucherError("Vui lòng nhập mã code!");
+      setVoucherError("Vui lòng nhập mã giảm giá!");
       return;
     }
 
@@ -269,23 +239,27 @@ export default function Checkout() {
 
       if (result.success || res.ok) {
         const startDateKey = result.start_date || result.startDate;
+
         if (startDateKey) {
           const startDate = new Date(startDateKey);
           const now = new Date();
+
           if (now < startDate) {
             const formattedDate = startDate.toLocaleDateString("vi-VN", {
               day: "2-digit",
               month: "2-digit",
               year: "numeric",
             });
-            setVoucherError(`Mã giảm giá này chưa đến ngày sử dụng! (Có hiệu lực từ ngày ${formattedDate})`);
+            setVoucherError(`Mã giảm giá có hiệu lực từ ngày ${formattedDate}!`);
             setAppliedVoucher(null);
             return;
           }
         }
 
         if (total < result.min_order_value) {
-          setVoucherError(`Đơn hàng phải tối thiểu từ ${result.min_order_value.toLocaleString("vi-VN")}đ để dùng mã này!`);
+          setVoucherError(
+            `Đơn hàng tối thiểu ${result.min_order_value.toLocaleString("vi-VN")}đ để dùng mã này!`
+          );
           setAppliedVoucher(null);
         } else {
           setAppliedVoucher(result);
@@ -318,56 +292,43 @@ export default function Checkout() {
       alert("Vui lòng điền đầy đủ Họ và tên người nhận!");
       return false;
     }
+
     const phoneRegex = /^[0-9]{10}$/;
     if (!phoneRegex.test(customerPhone)) {
       alert("Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số.");
       return false;
     }
-    if (!detailAddress.trim()) {
-      alert("Vui lòng nhập địa chỉ nhà chi tiết (số nhà, tên đường...)!");
-      return false;
+
+    if (selectedAddressId !== "new") {
+      const matchedAddr = savedAddresses.find((a) => a._id === selectedAddressId);
+      if (!matchedAddr || !matchedAddr.fullAddress) {
+        alert("Địa chỉ được chọn không hợp lệ!");
+        return false;
+      }
+    } else {
+      if (!detailAddress.trim()) {
+        alert("Vui lòng nhập địa chỉ nhà chi tiết!");
+        return false;
+      }
+      if (!selectedProvince || !selectedDistrict || !selectedWard) {
+        alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
+        return false;
+      }
     }
-    if (!selectedProvince || !selectedDistrict || !selectedWard) {
-      alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
-      return false;
-    }
+
     return true;
   };
 
   const getFullDeliveryAddress = () => {
+    if (selectedAddressId !== "new") {
+      const matchedAddr = savedAddresses.find((a) => a._id === selectedAddressId);
+      return matchedAddr ? matchedAddr.fullAddress : "";
+    }
+
     const provName = provinces.find((p) => p.code == selectedProvince)?.name || "";
     const distName = districts.find((d) => d.code == selectedDistrict)?.name || "";
     const wardName = wards.find((w) => w.code == selectedWard)?.name || "";
     return `${detailAddress.trim()}, ${wardName}, ${distName}, ${provName}`;
-  };
-
-const saveAddressToAccount = () => {
-    // Nếu người dùng KHÔNG tích chọn lưu địa chỉ thì dừng lại luôn
-    if (!saveThisAddress) return;
-
-    const userKey = currentUser?._id || currentUser?.email ? `addresses_${currentUser._id || currentUser.email}` : "guest_addresses";
-    const currentList = [...savedAddresses];
-
-    const isExist = currentList.some(
-      (a) => a.detailAddress === detailAddress.trim() && a.provinceCode == selectedProvince && a.districtCode == selectedDistrict
-    );
-
-    if (!isExist) {
-      const newAddrItem = {
-        id: "addr_" + Date.now(),
-        name: customerName,
-        phone: customerPhone,
-        detailAddress: detailAddress.trim(),
-        provinceCode: selectedProvince,
-        districtCode: selectedDistrict,
-        wardCode: selectedWard,
-        fullText: getFullDeliveryAddress(),
-        isDefault: currentList.length === 0
-      };
-      const updatedList = [newAddrItem, ...currentList];
-      localStorage.setItem(userKey, JSON.stringify(updatedList));
-      setSavedAddresses(updatedList);
-    }
   };
 
   const handleOrder = async (e) => {
@@ -377,8 +338,6 @@ const saveAddressToAccount = () => {
     setIsOrdering(true);
     const fullAddress = getFullDeliveryAddress();
 
-    saveAddressToAccount();
-
     const orderData = {
       email: currentUser?.email || "guest",
       userId: currentUser?._id || currentUser?.id || null,
@@ -386,19 +345,19 @@ const saveAddressToAccount = () => {
       phone: customerPhone,
       location_id: fullAddress,
       note: orderNote,
-      order_items: checkoutItems.map(item => ({
+      order_items: checkoutItems.map((item) => ({
         product_id: item._id,
         name: item.name,
         quantity: item.quantity,
         price: item.price,
         color: item.selectedColor || null,
-        size: item.selectedSize || null
+        size: item.selectedSize || null,
       })),
       total: total,
       discount: discountAmount,
       final_total: finalTotal,
       applied_voucher: appliedVoucher ? voucherCode.toUpperCase() : null,
-      paymentMethod: paymentMethod
+      paymentMethod: paymentMethod,
     };
 
     try {
@@ -416,19 +375,21 @@ const saveAddressToAccount = () => {
 
       if (result.paymentUrl) {
         window.location.href = result.paymentUrl;
-        return; 
+        return;
       }
 
       if (result.code === "success" || result.success || result._id || result.id) {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
 
-        const remainingCart = cart.filter(cartItem =>
-          !checkoutItems.some(checkoutItem =>
-            checkoutItem._id === cartItem._id &&
-            checkoutItem.selectedColor === cartItem.selectedColor &&
-            checkoutItem.selectedSize === cartItem.selectedSize
-          )
+        const remainingCart = cart.filter(
+          (cartItem) =>
+            !checkoutItems.some(
+              (checkoutItem) =>
+                checkoutItem._id === cartItem._id &&
+                checkoutItem.selectedColor === cartItem.selectedColor &&
+                checkoutItem.selectedSize === cartItem.selectedSize
+            )
         );
 
         setCart(remainingCart);
@@ -449,6 +410,7 @@ const saveAddressToAccount = () => {
     }
   };
 
+  // ── VIEW 1: ĐẶT HÀNG THÀNH CÔNG ──
   if (isSuccess) {
     return (
       <main className="container mt-5 pt-5 text-center py-5">
@@ -459,8 +421,8 @@ const saveAddressToAccount = () => {
             Cảm ơn bạn đã tin tưởng lựa chọn sản phẩm của chúng tôi. Đơn hàng đang được đóng gói và sẽ sớm giao tới bạn.
           </p>
           <div className="d-grid gap-3 px-4">
-            <Link 
-              href={createdOrderId ? `/orders/${createdOrderId}` : "/orders/history"} 
+            <Link
+              href={createdOrderId ? `/orders/${createdOrderId}` : "/orders/history"}
               className="btn btn-dark btn-lg rounded-pill fw-bold fs-6 shadow-sm py-2"
             >
               Xem đơn hàng ➔
@@ -474,13 +436,14 @@ const saveAddressToAccount = () => {
     );
   }
 
-  if (cart.length === 0) {
+  // ── VIEW 2: GIỎ HÀNG TRỐNG ──
+  if (checkoutItems.length === 0) {
     return (
       <main className="container mt-5 pt-5 text-center py-5">
         <h1 className="mb-4 text-secondary fw-bold">Trang Thanh Toán</h1>
         <div className="alert alert-warning d-inline-block p-4 shadow-sm rounded-3" style={{ maxWidth: "500px" }}>
           <h4 className="alert-heading fw-bold">🛒 Chưa có sản phẩm</h4>
-          <p className="mb-3 text-muted">Vui lòng chọn mẫu sản phẩm yêu thích vào giỏ trước khi thực hiện thanh toán nhé!</p>
+          <p className="mb-3 text-muted">Vui lòng chọn sản phẩm vào giỏ trước khi thực hiện thanh toán nhé!</p>
           <Link href="/products" className="btn btn-dark px-4 rounded-pill fw-semibold">
             Quay lại cửa hàng
           </Link>
@@ -489,40 +452,23 @@ const saveAddressToAccount = () => {
     );
   }
 
+  // ── VIEW 3: FORM THANH TOÁN ──
   return (
     <main className="container mt-5 pt-5 mb-5">
-      <div className="row g-4">
-        
-        {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG */}
-        <div className="col-lg-7 col-md-12">
-          <div className="card shadow-sm border-0 rounded-3">
-            <div className="card-body p-4">
-              <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
-              
-              <form onSubmit={handleOrder}>
+      <form onSubmit={handleOrder}>
+        <div className="row g-4">
+          
+          {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG & ĐỊA CHỈ */}
+          <div className="col-lg-7 col-md-12">
+            <div className="card shadow-sm border-0 rounded-3">
+              <div className="card-body p-4">
+                <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
 
-                {savedAddresses.length > 0 && (
-                  <div className="mb-4 p-3 bg-light rounded border">
-                    <label className="form-label fw-bold text-primary small d-flex align-items-center gap-1">
-                      📍 Chọn địa chỉ đã lưu của bạn:
-                    </label>
-                    <select
-                      className="form-select form-select-sm fw-medium"
-                      value={selectedAddressId}
-                      onChange={handleSelectSavedAddress}
-                    >
-                      {savedAddresses.map((addr) => (
-                        <option key={addr.id} value={addr.id}>
-                          {addr.name} - {addr.phone} ({addr.fullText})
-                        </option>
-                      ))}
-                      <option value="new">+ Nhập địa chỉ mới...</option>
-                    </select>
-                  </div>
-                )}
-
+                {/* Họ tên */}
                 <div className="mb-3">
-                  <label className="form-label fw-semibold small">Họ và tên người nhận <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold small">
+                    Họ và tên người nhận <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="text"
                     className="form-control form-control-lg fs-6"
@@ -532,6 +478,7 @@ const saveAddressToAccount = () => {
                   />
                 </div>
 
+                {/* Số điện thoại */}
                 <div className="mb-3">
                   <label className="form-label fw-semibold small">
                     Số điện thoại liên hệ <span className="text-danger">*</span>
@@ -545,107 +492,175 @@ const saveAddressToAccount = () => {
                   />
                   {customerPhone && customerPhone.length !== 10 && (
                     <div className="text-danger small mt-1">
-                      ⚠️ Số điện thoại chưa đúng (yêu cầu đủ 10 chữ số).
+                      ⚠️ Số điện thoại chưa đủ 10 chữ số.
                     </div>
                   )}
                 </div>
 
-                {/* ── BỘ CHỌN ĐỊA CHỈ (PROVINCES OPEN-API mới nhất) ── */}
-                <div className="row g-2 mb-3">
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold small">Tỉnh / Thành phố <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select form-select-lg fs-6"
-                      value={selectedProvince}
-                      onChange={(e) => setSelectedProvince(e.target.value)}
-                    >
-                      <option value="">-- Chọn Tỉnh/Thành --</option>
-                      {provinces.map((p) => (
-                        <option key={p.code} value={p.code}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold small">Quận / Huyện / TP <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select form-select-lg fs-6"
-                      value={selectedDistrict}
-                      onChange={(e) => setSelectedDistrict(e.target.value)}
-                      disabled={!selectedProvince}
-                    >
-                      <option value="">-- Chọn Quận/Huyện --</option>
-                      {districts.map((d) => (
-                        <option key={d.code} value={d.code}>
-                          {d.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label fw-semibold small">Phường / Xã / Thị trấn <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select form-select-lg fs-6"
-                      value={selectedWard}
-                      onChange={(e) => setSelectedWard(e.target.value)}
-                      disabled={!selectedDistrict}
-                    >
-                      <option value="">-- Chọn Phường/Xã --</option>
-                      {wards.map((w) => (
-                        <option key={w.code} value={w.code}>
-                          {w.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="mb-3">
-                  <label className="form-label fw-semibold small">Số nhà, tên đường chi tiết <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg fs-6"
-                    placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
-                    value={detailAddress}
-                    onChange={(e) => setDetailAddress(e.target.value)}
-                  />
-                </div>
-
-                <div className="form-check mb-4">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    id="saveAddressCheck"
-                    checked={saveThisAddress}
-                    onChange={(e) => setSaveThisAddress(e.target.checked)}
-                  />
-                  <label className="form-check-input-label text-secondary small fw-medium" htmlFor="saveAddressCheck">
-                    Lưu địa chỉ này vào sổ địa chỉ tài khoản của tôi cho những lần mua sau
+                {/* Địa chỉ giao hàng (Nhiều địa chỉ) */}
+                <div className="mb-4">
+                  <label className="form-label fw-semibold small">
+                    Địa chỉ giao hàng <span className="text-danger">*</span>
                   </label>
+
+                  {/* Danh sách các địa chỉ đã lưu */}
+                  {savedAddresses.length > 0 && (
+                    <div className="d-flex flex-column gap-2 mb-3">
+                      {savedAddresses.map((addr) => (
+                        <div
+                          key={addr._id}
+                          className={`p-3 border rounded user-select-none ${
+                            selectedAddressId === addr._id ? "border-dark bg-light fw-medium" : ""
+                          }`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => handleSelectSavedAddress(addr)}
+                        >
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <input
+                              type="radio"
+                              name="savedAddressOption"
+                              checked={selectedAddressId === addr._id}
+                              onChange={() => handleSelectSavedAddress(addr)}
+                            />
+                            <span className="badge bg-secondary">{addr.label || "Địa chỉ"}</span>
+                            {addr.isDefault && <span className="badge bg-success">Mặc định</span>}
+                          </div>
+                          <div className="small text-dark ms-4">
+                            <strong>{addr.receiverName || customerName}</strong> ({addr.receiverPhone || customerPhone}) <br />
+                            {addr.fullAddress}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Option Chọn Nhập Địa Chỉ Mới */}
+                      <div
+                        className={`p-3 border rounded user-select-none ${
+                          selectedAddressId === "new" ? "border-dark bg-light fw-medium" : ""
+                        }`}
+                        style={{ cursor: "pointer" }}
+                        onClick={handleSelectNewAddress}
+                      >
+                        <input
+                          type="radio"
+                          name="savedAddressOption"
+                          checked={selectedAddressId === "new"}
+                          onChange={handleSelectNewAddress}
+                        />
+                        <span className="ms-2 small fw-bold text-primary">+ Giao đến địa chỉ khác / Địa chỉ mới</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Form chọn Tỉnh/Huyện/Xã (Hiện khi bấm nhập địa chỉ mới hoặc chưa có địa chỉ nào) */}
+                  {(selectedAddressId === "new" || savedAddresses.length === 0) && (
+                    <div className="border p-3 rounded bg-light">
+                      <div className="mb-3">
+                        <input
+                          type="text"
+                          className="form-control form-control-lg fs-6"
+                          placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
+                          value={detailAddress}
+                          onChange={(e) => setDetailAddress(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="row g-2">
+                        <div className="col-md-4">
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedProvince}
+                            onChange={(e) => setSelectedProvince(e.target.value)}
+                          >
+                            <option value="">-- Chọn Tỉnh/Thành --</option>
+                            {provinces.map((p) => (
+                              <option key={p.code} value={p.code}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-4">
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedDistrict}
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            disabled={!selectedProvince}
+                          >
+                            <option value="">-- Chọn Quận/Huyện --</option>
+                            {districts.map((d) => (
+                              <option key={d.code} value={d.code}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="col-md-4">
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedWard}
+                            onChange={(e) => setSelectedWard(e.target.value)}
+                            disabled={!selectedDistrict}
+                          >
+                            <option value="">-- Chọn Phường/Xã --</option>
+                            {wards.map((w) => (
+                              <option key={w.code} value={w.code}>
+                                {w.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
+                {/* Phương thức thanh toán */}
                 <div className="mb-4">
-                  <label className="form-label fw-semibold small">Chọn phương thức thanh toán <span className="text-danger">*</span></label>
+                  <label className="form-label fw-semibold small">
+                    Chọn phương thức thanh toán <span className="text-danger">*</span>
+                  </label>
                   <div className="d-flex flex-column gap-2">
-                    <div className={`p-3 border rounded cursor-pointer ${paymentMethod === 'cod' ? 'border-dark bg-light' : ''}`}
-                        onClick={() => setPaymentMethod('cod')}>
-                      <input type="radio" name="payment" value="cod" checked={paymentMethod === 'cod'} onChange={() => setPaymentMethod('cod')} />
-                      <span className="ms-2 fw-medium">Thanh toán khi nhận hàng (COD)</span>
+                    <div
+                      className={`p-3 border rounded user-select-none ${
+                        paymentMethod === "cod" ? "border-dark bg-light fw-medium" : ""
+                      }`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setPaymentMethod("cod")}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="cod"
+                        checked={paymentMethod === "cod"}
+                        onChange={() => setPaymentMethod("cod")}
+                      />
+                      <span className="ms-2">Thanh toán khi nhận hàng (COD)</span>
                     </div>
-                    
-                    <div className={`p-3 border rounded cursor-pointer ${paymentMethod === 'vnpay' ? 'border-dark bg-light' : ''}`}
-                        onClick={() => setPaymentMethod('vnpay')}>
-                      <input type="radio" name="payment" value="vnpay" checked={paymentMethod === 'vnpay'} onChange={() => setPaymentMethod('vnpay')} />
-                      <span className="ms-2 fw-medium">Thanh toán qua VNPay (Thẻ/QR Code)</span>
+
+                    <div
+                      className={`p-3 border rounded user-select-none ${
+                        paymentMethod === "vnpay" ? "border-dark bg-light fw-medium" : ""
+                      }`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setPaymentMethod("vnpay")}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="vnpay"
+                        checked={paymentMethod === "vnpay"}
+                        onChange={() => setPaymentMethod("vnpay")}
+                      />
+                      <span className="ms-2">Thanh toán qua VNPay (Thẻ/QR Code)</span>
                     </div>
                   </div>
                 </div>
 
+                {/* Ghi chú */}
                 <div className="mb-4">
-                  <label className="form-label fw-semibold small">Ghi chú đơn hàng (Ghi chú thời gian giao, size, màu...)</label>
+                  <label className="form-label fw-semibold small">Ghi chú đơn hàng (Kích cỡ, màu sắc...)</label>
                   <textarea
                     className="form-control"
                     rows="3"
@@ -655,142 +670,153 @@ const saveAddressToAccount = () => {
                   ></textarea>
                 </div>
 
+                {/* Nút Đặt hàng trên Mobile */}
                 <div className="d-grid d-lg-none gap-2">
-                  <button 
-                    type="button"
-                    onClick={handleOrder}
+                  <button
+                    type="submit"
                     className="btn btn-dark btn-lg py-3 fw-bold shadow-sm rounded-pill"
                     disabled={isOrdering}
                   >
-                    {isOrdering ? "Đang xử lý..." : `Xác Nhận Đặt Hàng • ${finalTotal.toLocaleString("vi-VN")}đ`}
+                    {isOrdering
+                      ? "Đang xử lý..."
+                      : `Xác Nhận Đặt Hàng • ${finalTotal.toLocaleString("vi-VN")}đ`}
                   </button>
-                  <Link href="/cart" className="btn btn-link text-muted small text-center">Quay lại giỏ hàng</Link>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-
-        {/* CỘT PHẢI: TÓM TẮT GIỎ HÀNG & VOUCHER */}
-        <div className="col-lg-5 col-md-12">
-          <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
-            <div className="card-body p-4">
-              <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({checkoutItems.length})</h4>
-              
-              <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
-                {checkoutItems.map((product, index) => {
-                  const uniqueKey = `checkout-${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}-${index}`;
-
-                  return (
-                    <div key={uniqueKey} className="d-flex align-items-center justify-content-between py-2 border-bottom">
-                      <div className="d-flex align-items-center">
-                        {product.image && (
-                          <img 
-                            src={product.image} 
-                            alt={product.name}
-                            className="rounded border me-3 object-fit-cover"
-                            style={{ width: "50px", height: "50px" }}
-                          />
-                        )}
-                        <div>
-                          <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>{product.name}</h6>
-                          <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
-                            {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
-                            {product.selectedColor && product.selectedSize && <span> | </span>}
-                            {product.selectedSize && <span>Size: {product.selectedSize}</span>}
-                          </div>
-                          <small className="text-muted">Số lượng: {product.quantity}</small>
-                        </div>
-                      </div>
-                      <span className="fw-medium text-dark">
-                        {(product.quantity * product.price).toLocaleString("vi-VN")}đ
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="mb-4 bg-light p-3 rounded-3">
-                <label className="form-label fw-bold text-secondary small mb-2">🎟️ Mã giảm giá (Voucher)</label>
-                <div className="input-group">
-                  <input
-                    type="text"
-                    className="form-control form-control-sm text-uppercase fw-bold"
-                    placeholder="NHẬP MÃ GIẢM GIÁ"
-                    value={voucherCode}
-                    onChange={(e) => setVoucherCode(e.target.value)}
-                    disabled={!!appliedVoucher} 
-                  />
-                  {appliedVoucher ? (
-                    <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
-                      Hủy bỏ
-                    </button>
-                  ) : (
-                    <button 
-                      className="btn btn-dark btn-sm fw-semibold" 
-                      type="button" 
-                      onClick={handleApplyVoucher}
-                      disabled={isValidatingVoucher}
-                    >
-                      {isValidatingVoucher ? "Check..." : "Áp dụng"}
-                    </button>
-                  )}
-                </div>
-                
-                {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
-                {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
-              </div>
-
-              <div className="d-flex justify-content-between mb-2 small">
-                <span className="text-muted">Tạm tính đơn hàng:</span>
-                <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>
-              </div>
-              
-              {discountAmount > 0 && (
-                <div className="d-flex justify-content-between mb-2 small">
-                  <span className="text-muted">Giảm giá (Voucher):</span>
-                  <span className="text-danger fw-bold">-{discountAmount.toLocaleString("vi-VN")}đ</span>
-                </div>
-              )}
-
-              <div className="d-flex justify-content-between mb-3 small">
-                <span className="text-muted">Phí vận chuyển:</span>
-                <span className="text-success fw-medium">Miễn phí (Toàn quốc)</span>
-              </div>
-              <hr />
-              <div className="d-flex justify-content-between align-items-center mb-4">
-                <span className="h5 mb-0 fw-bold">Tổng thanh toán:</span>
-                <span className="h4 mb-0 fw-bold text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
-              </div>
-
-              <div className="d-none d-lg-block">
-                <button 
-                  type="button"
-                  onClick={handleOrder}
-                  className="btn btn-dark btn-lg w-100 py-3 fw-bold shadow-sm rounded-pill"
-                  disabled={isOrdering}
-                >
-                  {isOrdering ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                      Đang xử lý đặt hàng...
-                    </>
-                  ) : (
-                    "XÁC NHẬN ĐẶT HÀNG"
-                  )}
-                </button>
-                <div className="text-center mt-3">
-                  <Link href="/cart" className="text-secondary text-decoration-none small">
-                    ← Quay lại chỉnh sửa giỏ hàng
+                  <Link href="/cart" className="btn btn-link text-muted small text-center">
+                    Quay lại giỏ hàng
                   </Link>
                 </div>
               </div>
-
             </div>
           </div>
-        </div>
 
-      </div>
+          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG & VOUCHER */}
+          <div className="col-lg-5 col-md-12">
+            <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
+              <div className="card-body p-4">
+                <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({checkoutItems.length})</h4>
+
+                {/* Danh sách SP */}
+                <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
+                  {checkoutItems.map((product, index) => {
+                    const uniqueKey = `checkout-${product._id}-${product.selectedColor || "none"}-${
+                      product.selectedSize || "none"
+                    }-${index}`;
+
+                    return (
+                      <div key={uniqueKey} className="d-flex align-items-center justify-content-between py-2 border-bottom">
+                        <div className="d-flex align-items-center">
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="rounded border me-3 object-fit-cover"
+                              style={{ width: "50px", height: "50px" }}
+                            />
+                          )}
+                          <div>
+                            <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>
+                              {product.name}
+                            </h6>
+                            <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
+                              {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
+                              {product.selectedColor && product.selectedSize && <span> | </span>}
+                              {product.selectedSize && <span>Size: {product.selectedSize}</span>}
+                            </div>
+                            <small className="text-muted">Số lượng: {product.quantity}</small>
+                          </div>
+                        </div>
+                        <span className="fw-medium text-dark">
+                          {(product.quantity * product.price).toLocaleString("vi-VN")}đ
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Nhập Voucher */}
+                <div className="mb-4 bg-light p-3 rounded-3">
+                  <label className="form-label fw-bold text-secondary small mb-2">🎟️ Mã giảm giá (Voucher)</label>
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      className="form-control form-control-sm text-uppercase fw-bold"
+                      placeholder="NHẬP MÃ GIẢM GIÁ"
+                      value={voucherCode}
+                      onChange={(e) => setVoucherCode(e.target.value)}
+                      disabled={!!appliedVoucher}
+                    />
+                    {appliedVoucher ? (
+                      <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
+                        Hủy bỏ
+                      </button>
+                    ) : (
+                      <button
+                        className="btn btn-dark btn-sm fw-semibold"
+                        type="button"
+                        onClick={handleApplyVoucher}
+                        disabled={isValidatingVoucher}
+                      >
+                        {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                      </button>
+                    )}
+                  </div>
+
+                  {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
+                  {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
+                </div>
+
+                {/* Chi tiết tiền */}
+                <div className="d-flex justify-content-between mb-2 small">
+                  <span className="text-muted">Tạm tính đơn hàng:</span>
+                  <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>
+                </div>
+
+                {discountAmount > 0 && (
+                  <div className="d-flex justify-content-between mb-2 small">
+                    <span className="text-muted">Giảm giá (Voucher):</span>
+                    <span className="text-danger fw-bold">-{discountAmount.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                )}
+
+                <div className="d-flex justify-content-between mb-3 small">
+                  <span className="text-muted">Phí vận chuyển:</span>
+                  <span className="text-success fw-medium">Miễn phí (Toàn quốc)</span>
+                </div>
+                <hr />
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <span className="h5 mb-0 fw-bold">Tổng thanh toán:</span>
+                  <span className="h4 mb-0 fw-bold text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
+                </div>
+
+                {/* Nút Đặt hàng trên Desktop */}
+                <div className="d-none d-lg-block">
+                  <button
+                    type="submit"
+                    className="btn btn-dark btn-lg w-100 py-3 fw-bold shadow-sm rounded-pill"
+                    disabled={isOrdering}
+                  >
+                    {isOrdering ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                        Đang xử lý đặt hàng...
+                      </>
+                    ) : (
+                      "XÁC NHẬN ĐẶT HÀNG"
+                    )}
+                  </button>
+                  <div className="text-center mt-3">
+                    <Link href="/cart" className="text-secondary text-decoration-none small">
+                      ← Quay lại chỉnh sửa giỏ hàng
+                    </Link>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </form>
     </main>
   );
 }
