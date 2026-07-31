@@ -8,7 +8,7 @@ const client = new MongoClient(uri);
 async function connectDB() {
   await client.connect();
   // Thay 'test' bằng tên Database thật của bạn nếu cần
-  return client.db("test").collection("accounts"); 
+  return client.db("test").collection("users"); 
 }
 
 // 1. GET: Lấy danh sách tất cả tài khoản

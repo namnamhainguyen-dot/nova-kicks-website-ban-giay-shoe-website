@@ -2,6 +2,7 @@ import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
 import '../(user)/layout.jsx'; 
 
+
 export default async function Menu() {
   // Lấy dữ liệu mới nhất từ database
   const res = await fetch('http://localhost:3000/api/products', { cache: 'no-store' });

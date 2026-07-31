@@ -30,8 +30,7 @@ export default function AddAccount() {
 
     setSubmitting(true);
     try {
-      // Đã đổi endpoint từ /api/accounts sang /api/users
-      const res = await fetch("/api/users", {
+      const res = await fetch("/api/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -80,7 +79,6 @@ export default function AddAccount() {
                 <input type="text" className="form-control" name="name" placeholder="Nhập họ và tên..." value={formData.name} onChange={handleChange} required />
               </div>
             </div>
-
             <div className="mb-3">
               <label className="form-label small fw-bold text-secondary">Địa chỉ Email <span className="text-danger">*</span></label>
               <input type="email" className="form-control" name="email" placeholder="example@gmail.com" value={formData.email} onChange={handleChange} required />

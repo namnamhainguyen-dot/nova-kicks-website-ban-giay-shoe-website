@@ -4,15 +4,15 @@ import clientPromise from "@/libs/mongodb"; // Import kết nối MongoDB của 
 import Link from "next/link";
 import Image from "next/image";
 import UserActions from "@/components/UserActions"; // 1. IMPORT COMPONENT HÀNH ĐỘNG THÀNH VIÊN
+import ProductChatbox from "@/components/ProductChatbox"; // ⚡ 2. IMPORT PRODUCT CHATBOX
 import { Toaster } from "react-hot-toast";
 
-// ── HÀM LẤY DANH MỤC ĐỘNG TỪ MONGODB (ĐÃ THÊM FILTER CHỈ LẤY ACTIVE) ──
+// ── HÀM LẤY DANH MỤC ĐỘNG TỪ MONGODB ──
 async function getCategories() {
   try {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
     
-    // 🔥 Sửa ở đây: Thêm { status: "active" } để chỉ hiển thị các danh mục đang hiện
     const categoriesList = await db
       .collection("categories")
       .find({ status: "active" }) 
@@ -20,18 +20,36 @@ async function getCategories() {
     
     return categoriesList.map(cat => ({
       ...cat,
-      _id: String(cat._id) // Chuyển ObjectId thành String để truyền lên URL
+      _id: String(cat._id)
     }));
   } catch (error) {
     console.error("Lỗi khi lấy danh mục từ MongoDB:", error);
-    return []; // Trả về mảng rỗng nếu lỗi để không làm sập trang web
+    return [];
+  }
+}
+
+// ── HÀM LẤY DANH SÁCH SẢN PHẨM ĐỂ TRUYỀN CHO CHATBOX AI ──
+async function getProducts() {
+  try {
+    const client = await clientPromise;
+    const db = client.db("Nova-kicks");
+    const productsList = await db.collection("products").find({}).toArray();
+    
+    return productsList.map(prod => ({
+      ...prod,
+      _id: String(prod._id)
+    }));
+  } catch (error) {
+    console.error("Lỗi lấy sản phẩm cho Chatbox:", error);
+    return [];
   }
 }
 
 // Layout là async function để sử dụng await lấy dữ liệu từ database
 export default async function Layout({ children }) {
-  // Lấy danh mục trực tiếp từ database trước khi render giao diện
+  // Lấy danh mục và sản phẩm từ database
   const categories = await getCategories();
+  const products = await getProducts();
 
   return (
     <html lang="vi">
@@ -117,7 +135,6 @@ export default async function Layout({ children }) {
           .nk-links a { font-size: 0.74rem; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-secondary); text-decoration: none; transition: color 0.2s; position: relative; }
           .nk-links a:hover, .nk-links a.active { color: var(--accent); }
           
-          /* Hiệu ứng gạch chân mượt mà dưới Menu khi Hover */
           .nk-links a::after {
             content: '';
             position: absolute;
@@ -162,9 +179,6 @@ export default async function Layout({ children }) {
           .nav-item.dropdown:hover > .dropdown-menu { display: block; margin-top: 0; }
           .dropdown-menu { display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease; }
           
-          /* ================= NÂNG CẤP HIỆU ỨNG SINH ĐỘNG (HOVER CARD & BADGES) ================= */
-          
-          /* Hiệu ứng nổi bật bao quanh sản phẩm (Card) khi Hover */
           .nk-card {
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
           }
@@ -173,13 +187,10 @@ export default async function Layout({ children }) {
             box-shadow: var(--shadow-hover) !important;
           }
 
-          /* Định vị trí cho khung ảnh sản phẩm phục vụ đè Badge lên */
           .card-product .overflow-hidden, .nk-card .p-3, .nk-card .p-4 {
             position: relative;
           }
 
-          /* Tự động chèn nhãn (Badge) động bằng CSS cho các khu vực đặc biệt */
-          /* 1. Nhãn Hot cho sản phẩm thuộc khu vực Đang Hot */
           section:nth-of-type(4) .nk-card .p-4::before {
             content: 'HOT';
             position: absolute;
@@ -189,9 +200,6 @@ export default async function Layout({ children }) {
             padding: 3px 8px; font-family: var(--font-body);
           }
 
-          
-
-          /* Hiệu ứng zoom ảnh mượt và sâu hơn */
           .img-hover-scale {
             transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
           }
@@ -199,7 +207,6 @@ export default async function Layout({ children }) {
             transform: scale(1.06);
           }
 
-          /* Kiểu dáng cho các ô Banner phụ của trang chủ */
           .glass-card {
             transition: transform 0.4s ease, box-shadow 0.4s ease;
           }
@@ -240,16 +247,8 @@ export default async function Layout({ children }) {
 
                 <ul className="nk-links">
                   <li><Link href="/">Trang chủ</Link></li>
-
-
-
-
                   <li><Link href="/products">Bộ sưu tập</Link></li>
                   <li><Link href="/new">Tin tức</Link></li>
-
-
-
-
                   <li><Link href="/contact">Liên hệ</Link></li>
                 </ul>
 
@@ -276,6 +275,9 @@ export default async function Layout({ children }) {
             <main>
               {children}
             </main>
+
+            {/* 🤖 CHÈN PRODUCT CHATBOX VÀO ĐÂY ĐỂ XUẤT HIỆN Ở TẤT CẢ TRANG ── */}
+            <ProductChatbox products={products} />
 
           </WishlistProvider>
         </CartProvider>

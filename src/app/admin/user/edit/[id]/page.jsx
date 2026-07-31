@@ -4,13 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
-export default function EditAccount() {
+export default function EditUser() {
   const router = useRouter();
   const params = useParams();
-  const { id } = params; // Lấy _id tài khoản từ URL
+  const id = params?.id;
 
   const [formData, setFormData] = useState({
-    id: "",
     name: "",
     email: "",
     role: "MEMBER",
@@ -20,134 +19,97 @@ export default function EditAccount() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // 1. Lấy dữ liệu cũ của tài khoản dựa theo MongoDB _id
   useEffect(() => {
-    const fetchAccountDetails = async () => {
+    const fetchUserDetails = async () => {
+      if (!id) return;
       try {
-        // ĐÃ ĐỔI: Chuyển sang gọi endpoint /api/users
-        const res = await fetch(`/api/users`);
-        if (res.ok) {
-          const accounts = await res.json();
-          const currentAccount = accounts.find((acc) => acc._id === id);
-          
-          if (currentAccount) {
-            setFormData({
-              id: currentAccount.id || "",
-              name: currentAccount.name || "",
-              email: currentAccount.email || "",
-              role: currentAccount.role || "MEMBER",
-              status: currentAccount.status || "active",
-              avatar: currentAccount.avatar || "",
-            });
-          } else {
-            alert("Không tìm thấy tài khoản này trong hệ thống!");
-            router.push("/admin/account");
-          }
-        }
+        const res = await fetch(`/api/users/${id}`);
+        if (!res.ok) throw new Error("Không tìm thấy người dùng");
+        const data = await res.json();
+        
+        setFormData({
+          name: data.fullname || data.name || "",
+          email: data.email || "",
+          role: data.role || "MEMBER",
+          status: data.status || "active",
+          avatar: data.avatar || "",
+        });
       } catch (error) {
-        console.error("Lỗi khi tải chi tiết tài khoản:", error);
+        console.error("Lỗi:", error);
       } finally {
         setLoading(false);
       }
     };
-
-    if (id) fetchAccountDetails();
-  }, [id, router]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    fetchUserDetails();
+  }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return alert("Tên hiển thị không được để trống!");
-
     setSubmitting(true);
     try {
-      // ĐÃ ĐỔI: Chuyển sang gửi dữ liệu cập nhật tới /api/users/${id}
       const res = await fetch(`/api/users/${id}`, {
-        method: "PUT",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
-
       if (res.ok) {
-        alert("Cập nhật thông tin tài khoản thành công!");
-        router.push("/admin/account");
-        router.refresh();
+        alert("Cập nhật thành công!");
+        router.push("/admin/user");
       } else {
-        alert("Lỗi khi lưu thông tin thay đổi.");
+        alert("Cập nhật thất bại!");
       }
     } catch (error) {
-      alert("Không thể kết nối API để cập nhật.");
+      alert("Lỗi kết nối server!");
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return <div className="text-center py-5 text-secondary">Đang tải thông tin tài khoản dữ liệu...</div>;
-  }
+  if (loading) return <div className="text-center py-5">Đang tải giao diện...</div>;
 
   return (
-    <div className="container py-4" style={{ maxWidth: "700px" }}>
-      <div className="mb-4">
-        <h4 className="fw-bold mb-1">Chỉnh sửa tài khoản</h4>
-        <p className="text-secondary small">Cập nhật quyền hạn hoặc thông tin hồ sơ của thành viên</p>
-      </div>
+    <div className="container py-4" style={{ maxWidth: "600px" }}>
+      <h4 className="fw-bold mb-4">Chỉnh sửa thông tin người dùng</h4>
+      
+      <div className="card border-0 shadow-sm rounded-4 p-4">
+        <form onSubmit={handleSubmit}>
+          <div className="mb-3">
+            <label className="form-label small fw-bold text-secondary">Tên hiển thị</label>
+            <input type="text" className="form-control" value={formData.name} 
+              onChange={(e) => setFormData({...formData, name: e.target.value})} required />
+          </div>
 
-      <div className="card border-0 shadow-sm rounded-4">
-        <div className="card-body p-4">
-          <form onSubmit={handleSubmit}>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label className="form-label small fw-bold text-secondary">Mã nhân viên / ID</label>
-                <input type="text" className="form-control" name="id" value={formData.id} onChange={handleChange} />
-              </div>
-              <div className="col-md-6 mb-3">
-                <label className="form-label small fw-bold text-secondary">Tên hiển thị <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" name="name" value={formData.name} onChange={handleChange} required />
-              </div>
+          <div className="mb-3">
+            <label className="form-label small fw-bold text-secondary">Email</label>
+            <input type="email" className="form-control bg-light" value={formData.email} disabled />
+          </div>
+
+          <div className="row">
+            <div className="col-md-6 mb-3">
+              <label className="form-label small fw-bold text-secondary">Vai trò</label>
+              <select className="form-select" value={formData.role} 
+                onChange={(e) => setFormData({...formData, role: e.target.value})}>
+                    <option value="MEMBER">MEMBER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
             </div>
-
-            <div className="mb-3">
-              <label className="form-label small fw-bold text-secondary">Địa chỉ Email</label>
-              <input type="email" className="form-control bg-light" name="email" value={formData.email} disabled />
-              <div className="form-text text-muted small">Không cho phép thay đổi địa chỉ email đăng nhập.</div>
+            <div className="col-md-6 mb-3">
+              <label className="form-label small fw-bold text-secondary">Trạng thái</label>
+              <select className="form-select" value={formData.status} 
+                onChange={(e) => setFormData({...formData, status: e.target.value})}>
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+              </select>
             </div>
+          </div>
 
-            <div className="mb-3">
-              <label className="form-label small fw-bold text-secondary">Đường dẫn ảnh đại diện (Avatar URL)</label>
-              <input type="text" className="form-control" name="avatar" value={formData.avatar} onChange={handleChange} />
-            </div>
-
-            <div className="row">
-              <div className="col-md-6 mb-4">
-                <label className="form-label small fw-bold text-secondary">Vai trò hệ thống</label>
-                <select className="form-select" name="role" value={formData.role} onChange={handleChange}>
-                  <option value="MEMBER">MEMBER (Người dùng)</option>
-                  <option value="ADMIN">ADMIN (Quản trị viên)</option>
-                </select>
-              </div>
-
-              <div className="col-md-6 mb-4">
-                <label className="form-label small fw-bold text-secondary">Trạng thái tài khoản</label>
-                <select className="form-select" name="status" value={formData.status} onChange={handleChange}>
-                  <option value="active">Hiển thị (Active)</option>
-                  <option value="inactive">Ẩn (Inactive)</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="d-flex justify-content-end gap-2 border-top pt-3">
-              <Link href="/admin/account" className="btn btn-light px-4">Hủy</Link>
-              <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
-                {submitting ? "Đang lưu..." : "Lưu thay đổi"}
-              </button>
-            </div>
-          </form>
-        </div>
+          <div className="d-flex justify-content-end gap-2 mt-4">
+            <Link href="/admin/user" className="btn btn-light px-4">Hủy</Link>
+            <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
+              {submitting ? "Đang lưu..." : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
