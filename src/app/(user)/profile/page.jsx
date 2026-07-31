@@ -2,8 +2,11 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Profile() {
+  const router = useRouter();
+
   // 1. Khởi tạo State lưu thông tin người dùng, đơn hàng và trạng thái loading
   const [user, setUser] = useState({
     _id: "",
@@ -14,14 +17,17 @@ export default function Profile() {
   });
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false); // Thêm state loading khi submit modal
+  const [submitting, setSubmitting] = useState(false);
 
   // Validation
   const [phoneError, setPhoneError] = useState("");
 
+  // State kiểm soát chế độ chỉnh sửa thông tin cá nhân
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+
   // --- STATE DÀNH CHO QUẢN LÝ ĐA ĐỊA CHỈ (MODAL CRUD) ---
   const [showAddressModal, setShowAddressModal] = useState(false);
-  const [editingAddressId, setEditingAddressId] = useState(null); // null = Thêm mới, string = ID sửa
+  const [editingAddressId, setEditingAddressId] = useState(null);
 
   // Input fields của Modal địa chỉ
   const [addressLabel, setAddressLabel] = useState("Nhà riêng");
@@ -39,6 +45,9 @@ export default function Profile() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
 
+  // Tab điều hướng
+  const [activeTab, setActiveTab] = useState("address");
+
   // 2. Tải thông tin người dùng & đơn hàng
   useEffect(() => {
     const fetchUserDataAndOrders = async () => {
@@ -47,7 +56,6 @@ export default function Profile() {
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser);
 
-          // Tự động tương thích nếu user cũ chỉ có 'address' dạng string
           let userAddresses = parsedUser.addresses || [];
           if (userAddresses.length === 0 && parsedUser.address && parsedUser.address.trim() !== "") {
             userAddresses = [
@@ -107,7 +115,6 @@ export default function Profile() {
     fetchProvinces();
   }, []);
 
-  // Khi chọn Tỉnh/Thành -> Lấy danh sách Quận/Huyện
   const handleProvinceChange = async (e) => {
     const provinceId = e.target.value;
     setSelectedProvince(provinceId);
@@ -129,7 +136,6 @@ export default function Profile() {
     }
   };
 
-  // Khi chọn Quận/Huyện -> Lấy danh sách Xã/Phường
   const handleDistrictChange = async (e) => {
     const districtId = e.target.value;
     setSelectedDistrict(districtId);
@@ -172,17 +178,14 @@ export default function Profile() {
     }));
   };
 
-  // 5. Cập nhật thông tin cơ bản (Tên & SĐT)
+  // 5. Cập nhật thông tin cơ bản
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
     let rawId = user._id || user.id;
-
-    // Xử lý phòng hờ trường hợp _id bị lưu dạng Object của MongoDB
     if (typeof rawId === "object" && rawId !== null) {
       rawId = rawId.$oid || rawId.toString();
     }
-    
     const currentUserId = String(rawId || "").trim();
 
     if (!currentUserId || currentUserId === "undefined" || currentUserId === "[object Object]") {
@@ -213,22 +216,20 @@ export default function Profile() {
 
       if (res.ok) {
         alert("Cập nhật thông tin cá nhân thành công! 🎉");
-        
         const updatedUserData = { ...user, ...payload, _id: currentUserId };
         localStorage.setItem("user", JSON.stringify(updatedUserData));
-
-        // Tự động làm mới lại trang để Header và mọi component đồng bộ ngay lập tức dữ liệu mới
+        setIsEditingProfile(false);
         window.location.reload();
       } else {
         alert(`Lỗi từ server: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
       }
     } catch (error) {
       console.error("Lỗi kết nối khi cập nhật profile:", error);
-      alert("Không thể kết nối đến máy chủ! Vui lòng kiểm tra lại terminal backend.");
+      alert("Không thể kết nối đến máy chủ!");
     }
   };
 
-  // ── 6. QUẢN LÝ DỮ LIỆU ĐA ĐỊA CHỈ ──
+  // 6. QUẢN LÝ ĐA ĐỊA CHỈ
   const syncAddressesToStorageAndServer = async (newAddresses) => {
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
@@ -249,7 +250,6 @@ export default function Profile() {
     }
   };
 
-  // Mở Modal Thêm mới
   const handleOpenAddModal = () => {
     setEditingAddressId(null);
     setAddressLabel("Nhà riêng");
@@ -265,7 +265,6 @@ export default function Profile() {
     setShowAddressModal(true);
   };
 
-  // Mở Modal Sửa
   const handleOpenEditModal = async (addr) => {
     setEditingAddressId(addr._id);
     setAddressLabel(addr.label || "Nhà riêng");
@@ -295,7 +294,6 @@ export default function Profile() {
     setShowAddressModal(true);
   };
 
-  // Lưu Địa chỉ (Thêm hoặc Sửa)
   const handleSaveAddress = async (e) => {
     e.preventDefault();
 
@@ -374,14 +372,12 @@ export default function Profile() {
     setShowAddressModal(false);
   };
 
-  // Xóa Địa chỉ
   const handleDeleteAddress = (id) => {
     if (!confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
     const updatedList = user.addresses.filter((a) => a._id !== id);
     syncAddressesToStorageAndServer(updatedList);
   };
 
-  // Đặt làm mặc định
   const handleSetDefault = (id) => {
     const updatedList = user.addresses.map((a) => ({
       ...a,
@@ -392,8 +388,8 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
-        <div className="spinner-border text-dark" role="status">
+      <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: "#f1f5f9" }}>
+        <div className="spinner-border" role="status" style={{ color: "#d97706" }}>
           <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
@@ -401,168 +397,271 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-vh-100 d-flex flex-column bg-light text-secondary" style={{ fontFamily: "'Inter', sans-serif" }}>
-      <main className="container my-5 pt-5 flex-grow-1">
-        <div className="text-center my-4">
-          <h1 className="fw-bold text-dark mb-2">Hồ sơ cá nhân</h1>
-          <p className="text-muted">Quản lý thông tin tài khoản và lịch sử mua sắm của bạn</p>
-        </div>
-
+    // Đổi màu nền tổng thể trang thành xám nhạt (#f1f5f9) để làm nổi bật khối nội dung trắng bên trên
+    <div className="min-vh-100 d-flex flex-column text-secondary" style={{ backgroundColor: "#f1f5f9", fontFamily: "'Inter', sans-serif" }}>
+      
+      {/* Kéo sát lên trên và tạo khoảng cách âm */}
+      <main className="container mb-4 flex-grow-1 position-relative" style={{ marginTop: "-35px", zIndex: 2 }}>
         <div className="row g-4">
-          {/* CỘT TRÁI: THÔNG TIN CÁ NHÂN & ĐA ĐỊA CHỈ */}
-          <div className="col-lg-6">
-            {/* Khối Thông tin tài khoản */}
-            <div className="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
-              <div className="card-body">
-                <div className="d-flex align-items-center gap-3 mb-4">
-                  <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center" style={{ width: "48px", height: "48px", fontSize: "20px" }}>
-                    👤
-                  </div>
-                  <div>
-                    <h4 className="fw-bold text-dark mb-0">Thông tin cá nhân</h4>
-                    <small className="text-muted">Cập nhật thông tin liên hệ chính</small>
-                  </div>
+          
+          {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
+          <div className="col-lg-3">
+            <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-3 mb-3">
+              <div className="d-flex align-items-center gap-3 px-2">
+                <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style={{ width: "50px", height: "50px", fontSize: "20px", backgroundColor: "#d97706" }}>
+                  {user.fullname ? user.fullname.charAt(0).toUpperCase() : "👤"}
                 </div>
-
-                <form onSubmit={handleUpdateProfile}>
-                  <div className="form-floating mb-3">
-                    <input type="text" className="form-control rounded-3 border-light bg-light" id="fullname" placeholder="Họ và tên" value={user.fullname || ""} onChange={handleInputChange} />
-                    <label htmlFor="fullname" className="text-muted">Họ và tên</label>
-                  </div>
-
-                  <div className="form-floating mb-3">
-                    <input type="email" className="form-control rounded-3 border-light bg-light" id="email" placeholder="Email" value={user.email || ""} onChange={handleInputChange} disabled />
-                    <label htmlFor="email" className="text-muted">Email</label>
-                  </div>
-
-                  <div className="form-floating mb-1">
-                    <input
-                      type="tel"
-                      maxLength={10}
-                      className={`form-control rounded-3 border-light bg-light ${phoneError ? "is-invalid" : ""}`}
-                      id="phone"
-                      placeholder="Số điện thoại"
-                      value={user.phone || ""}
-                      onChange={handleInputChange}
-                    />
-                    <label htmlFor="phone" className="text-muted">Số điện thoại</label>
-                  </div>
-                  {phoneError ? (
-                    <div className="text-danger small mb-3 ms-1" style={{ fontSize: "0.8rem" }}>
-                      {phoneError}
-                    </div>
-                  ) : (
-                    <div className="mb-3"></div>
-                  )}
-
-                  <button type="submit" className="btn btn-dark w-100 py-2.5 rounded-3 fw-semibold shadow-sm">
-                    Lưu thông tin cá nhân
-                  </button>
-                </form>
+                <div className="overflow-hidden">
+                  <div className="text-muted small">Xin chào,</div>
+                  <div className="fw-bold text-dark text-truncate">{user.fullname || "Tài khoản của tôi"}</div>
+                </div>
               </div>
             </div>
 
-            {/* Khối Danh Sách Địa Chỉ Giao Hàng */}
-            <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
-              <div className="card-body">
-                <div className="d-flex align-items-center justify-content-between mb-4">
-                  <div className="d-flex align-items-center gap-3">
-                    <div className="bg-light text-dark rounded-circle d-flex align-items-center justify-content-center" style={{ width: "48px", height: "48px", fontSize: "20px" }}>
-                      📍
-                    </div>
-                    <div>
-                      <h4 className="fw-bold text-dark mb-0">Địa chỉ giao hàng</h4>
-                      <small className="text-muted">Quản lý sổ địa chỉ của bạn</small>
+            <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-2">
+              <div className="d-flex flex-column gap-1">
+                <button
+                  onClick={() => {
+                    setActiveTab("profile");
+                    setIsEditingProfile(false);
+                  }}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all ${activeTab === "profile" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  style={activeTab === "profile" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                >
+                  Tài khoản của tôi
+                </button>
+                <button
+                  onClick={() => setActiveTab("address")}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all ${activeTab === "address" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  style={activeTab === "address" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                >
+                  Địa chỉ nhận hàng
+                </button>
+                <button
+                  onClick={() => setActiveTab("orders")}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all ${activeTab === "orders" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                >
+                  Đơn Mua
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* CỘT PHẢI: NỘI DUNG CHÍNH */}
+          <div className="col-lg-9">
+            
+            {/* TAB 1: HỒ SƠ CÁ NHÂN */}
+            {activeTab === "profile" && (
+              <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
+                <div className="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
+                  <div>
+                    <h4 className="fw-bold text-dark mb-1">Hồ Sơ Của Tôi</h4>
+                    <p className="text-muted small mb-0">Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+                  </div>
+                  {!isEditingProfile && (
+                    <button 
+                      type="button" 
+                      className="btn btn-sm px-3 rounded-2 fw-semibold"
+                      style={{ color: "#d97706", borderColor: "#d97706", backgroundColor: "#fff7ed" }}
+                      onClick={() => setIsEditingProfile(true)}
+                    >
+                      Chỉnh sửa thông tin
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleUpdateProfile} style={{ maxWidth: "650px" }}>
+                  <div className="mb-3 row align-items-center">
+                    <label htmlFor="email" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Tên đăng nhập</label>
+                    <div className="col-sm-9">
+                      <input type="email" className="form-control-plaintext bg-light px-3 py-2 rounded-2 text-dark" id="email" value={user.email || ""} disabled />
                     </div>
                   </div>
-                  <button className="btn btn-outline-dark btn-sm rounded-pill fw-semibold px-3" onClick={handleOpenAddModal}>
-                    + Thêm địa chỉ
+
+                  <div className="mb-3 row align-items-center">
+                    <label htmlFor="fullname" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Họ và tên</label>
+                    <div className="col-sm-9">
+                      {isEditingProfile ? (
+                        <input type="text" className="form-control rounded-2 shadow-none py-2 px-3" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required style={{ borderColor: "#d97706" }} />
+                      ) : (
+                        <input type="text" className="form-control-plaintext bg-light px-3 py-2 rounded-2 text-dark" value={user.fullname || ""} disabled />
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mb-3 row align-items-center">
+                    <label htmlFor="phone" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Số điện thoại</label>
+                    <div className="col-sm-9">
+                      {isEditingProfile ? (
+                        <>
+                          <input
+                            type="tel"
+                            maxLength={10}
+                            className={`form-control rounded-2 shadow-none py-2 px-3 ${phoneError ? "is-invalid" : ""}`}
+                            id="phone"
+                            value={user.phone || ""}
+                            onChange={handleInputChange}
+                            required
+                            style={{ borderColor: phoneError ? undefined : "#d97706" }}
+                          />
+                          {phoneError && <div className="invalid-feedback">{phoneError}</div>}
+                        </>
+                      ) : (
+                        <input type="text" className="form-control-plaintext bg-light px-3 py-2 rounded-2 text-dark" value={user.phone || "Chưa cập nhật"} disabled />
+                      )}
+                    </div>
+                  </div>
+
+                  {isEditingProfile && (
+                    <div className="row mt-4">
+                      <div className="offset-sm-3 col-sm-9 d-flex gap-2">
+                        <button type="submit" className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm" style={{ backgroundColor: "#d97706" }}>
+                          Lưu Thay Đổi
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-light px-4 py-2 rounded-2 border text-secondary"
+                          onClick={() => {
+                            setIsEditingProfile(false);
+                            window.location.reload();
+                          }}
+                        >
+                          Hủy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </form>
+              </div>
+            )}
+
+            {/* TAB 2: ĐỊA CHỈ NHẬN HÀNG */}
+            {activeTab === "address" && (
+              <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
+                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+                  <div>
+                    <h4 className="fw-bold text-dark mb-1">Địa Chỉ Của Tôi</h4>
+                    <p className="text-muted small mb-0">Quản lý các địa chỉ giao hàng đã lưu</p>
+                  </div>
+                  <button className="btn text-white btn-sm rounded-2 fw-semibold px-3 py-2 shadow-sm" style={{ backgroundColor: "#d97706" }} onClick={handleOpenAddModal}>
+                    + Thêm Địa Chỉ Mới
                   </button>
                 </div>
 
-                {/* Danh sách địa chỉ đã lưu */}
                 {(!user.addresses || user.addresses.length === 0) ? (
-                  <div className="text-center py-4 bg-light rounded-3">
-                    <p className="text-muted small mb-0">Bạn chưa lưu địa chỉ nhận hàng nào.</p>
+                  <div className="text-center py-5 bg-light rounded-4">
+                    <p className="text-muted mb-0">Bạn chưa có địa chỉ nhận hàng nào.</p>
                   </div>
                 ) : (
                   <div className="d-flex flex-column gap-3">
                     {user.addresses.map((addr) => (
-                      <div key={addr._id} className="p-3 border rounded-3 bg-light position-relative">
-                        <div className="d-flex justify-content-between align-items-start">
-                          <div>
-                            <div className="d-flex align-items-center gap-2 mb-1">
-                              <span className="badge bg-secondary">{addr.label || "Địa chỉ"}</span>
-                              {addr.isDefault && <span className="badge bg-success">Mặc định</span>}
+                      <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white shadow-sm position-relative transition-all hover-shadow">
+                        <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                          
+                          {/* Thông tin bên trái */}
+                          <div className="flex-grow-1">
+                            <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                              <span className="fw-bold text-dark fs-6">{addr.receiverName || user.fullname}</span>
+                              <span className="text-muted">|</span>
+                              <span className="text-secondary fw-medium">{addr.receiverPhone || user.phone}</span>
+                              {addr.isDefault && (
+                                <span className="badge rounded-pill px-2.5 py-1 text-white ms-1" style={{ backgroundColor: "#d97706", fontSize: "0.75rem" }}>
+                                  Mặc định
+                                </span>
+                              )}
+                              {addr.label && !addr.isDefault && (
+                                <span className="badge rounded-pill px-2.5 py-1 bg-light text-secondary border ms-1" style={{ fontSize: "0.75rem" }}>
+                                  {addr.label}
+                                </span>
+                              )}
                             </div>
-                            <div className="fw-bold text-dark small">
-                              {addr.receiverName || user.fullname} <span className="text-muted fw-normal">({addr.receiverPhone || user.phone})</span>
+                            <div className="text-secondary small line-clamp-2" style={{ lineHeight: "1.6" }}>
+                              {addr.fullAddress}
                             </div>
-                            <div className="small text-secondary mt-1">{addr.fullAddress}</div>
                           </div>
 
-                          <div className="d-flex gap-2">
-                            <button className="btn btn-link text-primary p-0 btn-sm text-decoration-none" onClick={() => handleOpenEditModal(addr)}>
-                              Sửa
-                            </button>
-                            <button className="btn btn-link text-danger p-0 btn-sm text-decoration-none" onClick={() => handleDeleteAddress(addr._id)}>
-                              Xóa
-                            </button>
+                          {/* Thao tác bên phải */}
+                          <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-md-top-0">
+                            <div className="d-flex align-items-center gap-2">
+                              <button 
+                                className="btn btn-sm btn-light border px-3 py-1 rounded-2 text-dark fw-medium"
+                                style={{ fontSize: "0.85rem" }}
+                                onClick={() => handleOpenEditModal(addr)}
+                              >
+                                Cập nhật
+                              </button>
+                              {!addr.isDefault && (
+                                <button 
+                                  className="btn btn-sm btn-outline-danger px-3 py-1 rounded-2 fw-medium"
+                                  style={{ fontSize: "0.85rem" }}
+                                  onClick={() => handleDeleteAddress(addr._id)}
+                                >
+                                  Xóa
+                                </button>
+                              )}
+                            </div>
+                            
+                            {!addr.isDefault && (
+                              <button 
+                                className="btn btn-link text-decoration-none p-0 text-muted small fw-medium mt-md-1"
+                                style={{ fontSize: "0.8rem", color: "#d97706" }}
+                                onClick={() => handleSetDefault(addr._id)}
+                              >
+                                Thiết lập mặc định
+                              </button>
+                            )}
                           </div>
+
                         </div>
-
-                        {!addr.isDefault && (
-                          <button className="btn btn-sm btn-white border border-secondary-subtle text-dark mt-2 py-0 px-2" style={{ fontSize: "0.75rem" }} onClick={() => handleSetDefault(addr._id)}>
-                            Thiết lập mặc định
-                          </button>
-                        )}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </div>
-          </div>
+            )}
 
-          {/* CỘT PHẢI: ĐƠN HÀNG ĐÃ ĐẶT */}
-          <div className="col-lg-6">
-            <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
-              <div className="card-body">
-                <div className="d-flex align-items-center gap-3 mb-4">
-                  <div className="bg-light text-dark rounded-circle d-flex align-items-center justify-content-center" style={{ width: "48px", height: "48px", fontSize: "20px" }}>
-                    📦
-                  </div>
-                  <div>
-                    <h4 className="fw-bold text-dark mb-0">Đơn hàng đã đặt</h4>
-                    <small className="text-muted">Lịch sử giao dịch gần đây</small>
-                  </div>
+            {/* TAB 3: ĐƠN MUA */}
+            {activeTab === "orders" && (
+              <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
+                <div className="border-bottom pb-3 mb-4">
+                  <h4 className="fw-bold text-dark mb-1">Đơn Hàng Của Tôi</h4>
+                  <p className="text-muted small mb-0">Bấm vào bất kỳ dòng nào để xem chi tiết đơn hàng</p>
                 </div>
 
                 <div className="table-responsive">
                   {orders.length > 0 ? (
-                    <table className="table table-hover align-middle custom-table">
-                      <thead>
-                        <tr className="text-muted small text-uppercase">
-                          <th className="border-0 pb-3">Mã đơn</th>
-                          <th className="border-0 pb-3">Tổng tiền</th>
-                          <th className="border-0 pb-3">Ngày đặt</th>
-                          <th className="border-0 pb-3">Trạng thái</th>
+                    <table className="table table-hover align-middle mb-0">
+                      <thead className="table-light">
+                        <tr className="small text-uppercase text-muted">
+                          <th className="py-3 px-3 rounded-start-2">Mã đơn</th>
+                          <th className="py-3">Ngày đặt</th>
+                          <th className="py-3">Tổng tiền</th>
+                          <th className="py-3 rounded-end-2">Trạng thái</th>
                         </tr>
                       </thead>
                       <tbody>
                         {orders.map((order) => (
-                          <tr key={order._id}>
-                            <td className="fw-bold text-dark py-3">
-                              #{order._id?.slice(-6).toUpperCase()}
-                            </td>
-                            <td className="py-3 text-danger fw-semibold">
-                              {Number(order.final_total || order.totalPrice || order.total)?.toLocaleString("vi-VN")}đ
+                          <tr 
+                            key={order._id}
+                            onClick={() => router.push(`/orders/${order._id}`)}
+                            style={{ cursor: "pointer" }}
+                            className="transition-all"
+                            title="Bấm để xem chi tiết đơn hàng"
+                          >
+                            <td className="py-3 px-3">
+                              <span className="fw-bold" style={{ color: "#d97706" }}>
+                                #{order._id?.slice(-6).toUpperCase()}
+                              </span>
                             </td>
                             <td className="text-muted py-3">
                               {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "Vừa xong"}
                             </td>
+                            <td className="py-3 fw-semibold" style={{ color: "#d97706" }}>
+                              {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
+                            </td>
                             <td className="py-3">
-                              <span className={`badge rounded-pill px-3 py-2 fw-medium ${
+                              <span className={`badge px-3 py-2 fw-medium ${
                                 order.status === "Hoàn thành" || order.status === "completed" ? "bg-success-subtle text-success" :
                                 order.status === "Đang xử lý" || order.status === "pending" ? "bg-warning-subtle text-warning" : 
                                 "bg-info-subtle text-info"
@@ -577,20 +676,15 @@ export default function Profile() {
                   ) : (
                     <div className="text-center py-5">
                       <p className="text-muted m-0">Bạn chưa có đơn hàng nào.</p>
-                      <Link href="/products" className="btn btn-sm btn-outline-dark rounded-pill px-4 mt-3">
+                      <Link href="/products" className="btn btn-sm text-white rounded-pill px-4 mt-3 shadow-sm" style={{ backgroundColor: "#d97706" }}>
                         Mua sắm ngay 🛒
                       </Link>
                     </div>
                   )}
                 </div>
-
-                {orders.length > 0 && (
-                  <Link href="/orders/history" className="btn btn-outline-dark w-100 py-2.5 rounded-3 fw-semibold mt-3 text-center d-block text-decoration-none">
-                    Xem toàn bộ chi tiết đơn hàng
-                  </Link>
-                )}
               </div>
-            </div>
+            )}
+
           </div>
         </div>
       </main>
@@ -599,25 +693,26 @@ export default function Profile() {
       {showAddressModal && (
         <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content rounded-4 border-0 shadow">
+            <div className="modal-content rounded-4 border-0 shadow-lg p-3">
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title fw-bold text-dark">
                   {editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
                 </h5>
-                <button type="button" className="btn-close" onClick={() => setShowAddressModal(false)}></button>
+                <button type="button" className="btn-close shadow-none" onClick={() => setShowAddressModal(false)}></button>
               </div>
               <form onSubmit={handleSaveAddress}>
-                <div className="modal-body p-4">
+                <div className="modal-body p-3 p-md-4">
                   <div className="row g-3">
                     <div className="col-md-6">
                       <label className="form-label small fw-semibold">Họ và tên người nhận *</label>
                       <input
                         type="text"
-                        className="form-control rounded-3"
+                        className="form-control rounded-2 shadow-none py-2 px-3"
                         placeholder="Nhập tên người nhận"
                         value={receiverName}
                         onChange={(e) => setReceiverName(e.target.value)}
                         required
+                        style={{ borderColor: "#d97706" }}
                       />
                     </div>
                     <div className="col-md-6">
@@ -625,17 +720,18 @@ export default function Profile() {
                       <input
                         type="tel"
                         maxLength={10}
-                        className="form-control rounded-3"
+                        className="form-control rounded-2 shadow-none py-2 px-3"
                         placeholder="Nhập số điện thoại 10 số"
                         value={receiverPhone}
                         onChange={(e) => setReceiverPhone(e.target.value.replace(/\D/g, ""))}
                         required
+                        style={{ borderColor: "#d97706" }}
                       />
                     </div>
 
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
-                      <select className="form-select rounded-3" value={selectedProvince} onChange={handleProvinceChange} required>
+                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={selectedProvince} onChange={handleProvinceChange} required style={{ borderColor: "#d97706" }}>
                         <option value="">-- Chọn Tỉnh/Thành --</option>
                         {provinces.map((p) => (
                           <option key={p.id} value={p.id}>
@@ -647,7 +743,7 @@ export default function Profile() {
 
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Quận / Huyện *</label>
-                      <select className="form-select rounded-3" value={selectedDistrict} onChange={handleDistrictChange} disabled={!selectedProvince} required>
+                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={selectedDistrict} onChange={handleDistrictChange} disabled={!selectedProvince} required style={{ borderColor: "#d97706" }}>
                         <option value="">-- Chọn Quận/Huyện --</option>
                         {districts.map((d) => (
                           <option key={d.id} value={d.id}>
@@ -659,7 +755,7 @@ export default function Profile() {
 
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Phường / Xã *</label>
-                      <select className="form-select rounded-3" value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} disabled={!selectedDistrict} required>
+                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} disabled={!selectedDistrict} required style={{ borderColor: "#d97706" }}>
                         <option value="">-- Chọn Phường/Xã --</option>
                         {wards.map((w) => (
                           <option key={w.id} value={w.id}>
@@ -673,17 +769,18 @@ export default function Profile() {
                       <label className="form-label small fw-semibold">Số nhà, tên đường *</label>
                       <input
                         type="text"
-                        className="form-control rounded-3"
+                        className="form-control rounded-2 shadow-none py-2 px-3"
                         placeholder="Ví dụ: 123 Đường CVPM Quang Trung"
                         value={houseNumber}
                         onChange={(e) => setHouseNumber(e.target.value)}
                         required
+                        style={{ borderColor: "#d97706" }}
                       />
                     </div>
 
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Loại địa chỉ</label>
-                      <select className="form-select rounded-3" value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)}>
+                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} style={{ borderColor: "#d97706" }}>
                         <option value="Nhà riêng">Nhà riêng</option>
                         <option value="Công ty">Công ty / Văn phòng</option>
                         <option value="Khác">Khác</option>
@@ -694,12 +791,13 @@ export default function Profile() {
                       <div className="form-check">
                         <input
                           type="checkbox"
-                          className="form-check-input"
+                          className="form-check-input shadow-none"
                           id="defaultCheck"
                           checked={isDefaultAddress}
                           onChange={(e) => setIsDefaultAddress(e.target.checked)}
+                          style={{ accentColor: "#d97706" }}
                         />
-                        <label className="form-check-label small text-dark" htmlFor="defaultCheck">
+                        <label className="form-check-label small text-dark fw-medium" htmlFor="defaultCheck">
                           Đặt làm địa chỉ nhận hàng mặc định
                         </label>
                       </div>
@@ -707,11 +805,11 @@ export default function Profile() {
                   </div>
                 </div>
 
-                <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setShowAddressModal(false)} disabled={submitting}>
+                <div className="modal-footer border-0 pt-0 pb-3 px-4">
+                  <button type="button" className="btn btn-light rounded-2 px-4 text-secondary fw-medium" onClick={() => setShowAddressModal(false)} disabled={submitting}>
                     Hủy bỏ
                   </button>
-                  <button type="submit" className="btn btn-dark rounded-pill px-4 fw-bold" disabled={submitting}>
+                  <button type="submit" className="btn text-white rounded-2 px-4 fw-bold shadow-sm" style={{ backgroundColor: "#d97706" }} disabled={submitting}>
                     {submitting ? "Đang lưu..." : "Lưu địa chỉ"}
                   </button>
                 </div>
@@ -720,15 +818,6 @@ export default function Profile() {
           </div>
         </div>
       )}
-
-      {/* Footer */}
-      <footer className="bg-white border-top text-muted py-4 mt-auto">
-        <div className="container text-center">
-          <p className="fw-bold text-dark mb-1">Nova-kicks</p>
-          <p className="small mb-2">123 CVPM Quang Trung, Quận 12, TP.HCM | Hotline: 0931839732</p>
-          <p className="small mb-0 text-light-emphasis">&copy; 2026 Nova-kicks. All rights reserved.</p>
-        </div>
-      </footer>
     </div>
   );
 }

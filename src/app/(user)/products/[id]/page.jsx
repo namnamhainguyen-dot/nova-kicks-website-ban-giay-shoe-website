@@ -658,7 +658,7 @@ export default function ProductDetailPage() {
             {/* KHU VỰC ĐÁNH GIÁ VÀ BÌNH LUẬN */}
             <div style={{ marginTop: '60px', paddingTop: '40px', borderTop: '1px solid #e5e7eb' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '24px' }}>
-                    Đánh giá ({reviews.length})
+                    Đánh giá sản phẩm({reviews.length})
                 </h2>
 
                 {currentUser && canReview && (
