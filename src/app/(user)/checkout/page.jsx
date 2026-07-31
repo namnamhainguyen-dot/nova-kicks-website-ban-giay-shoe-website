@@ -143,12 +143,10 @@ export default function Checkout() {
         const parsedUser = JSON.parse(savedUser);
         setCurrentUser(parsedUser);
 
-        // Hỗ trợ cả cấu trúc mảng `addresses` hoặc địa chỉ đơn `address`
         let userAddrs = [];
         if (Array.isArray(parsedUser.addresses) && parsedUser.addresses.length > 0) {
           userAddrs = parsedUser.addresses;
         } else if (parsedUser.address && parsedUser.address.trim() !== "") {
-          // Tự chuyển địa chỉ đơn lẻ thành 1 item mảng nếu schema cũ
           userAddrs = [
             {
               _id: "default_single",
@@ -164,7 +162,6 @@ export default function Checkout() {
         setSavedAddresses(userAddrs);
 
         if (userAddrs.length > 0) {
-          // Ưu tiên chọn địa chỉ mặc định (isDefault: true) hoặc item đầu tiên
           const defaultAddr = userAddrs.find((a) => a.isDefault) || userAddrs[0];
           setSelectedAddressId(defaultAddr._id);
           setCustomerName(defaultAddr.receiverName || parsedUser.fullname || "");
@@ -337,6 +334,55 @@ export default function Checkout() {
 
     setIsOrdering(true);
     const fullAddress = getFullDeliveryAddress();
+
+    // ── TỰ ĐỘNG CẬP NHẬT ĐỊA CHỈ MỚI VÀO PROFILE NẾU KHÁCH NHẬP ĐỊA CHỈ MỚI ──
+    let updatedAddressesList = savedAddresses;
+    let updatedUserPhone = currentUser?.phone || customerPhone;
+
+    if (currentUser && selectedAddressId === "new") {
+      const newAddrObj = {
+        _id: "addr_" + Date.now(),
+        label: "Địa chỉ mới",
+        receiverName: customerName,
+        receiverPhone: customerPhone,
+        detailAddress: detailAddress.trim(),
+        provinceId: selectedProvince,
+        districtId: selectedDistrict,
+        wardId: selectedWard,
+        fullAddress: fullAddress,
+        isDefault: savedAddresses.length === 0, // Nếu chưa có địa chỉ nào thì đặt làm mặc định
+      };
+
+      updatedAddressesList = [...savedAddresses, newAddrObj];
+      if (!currentUser.phone) {
+        updatedUserPhone = customerPhone;
+      }
+
+      try {
+        await fetch("/api/users/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            _id: currentUser._id || currentUser.id,
+            email: currentUser.email,
+            phone: updatedUserPhone,
+            addresses: updatedAddressesList,
+          }),
+        });
+
+        // Cập nhật lại localStorage của user ngay lập tức
+        const updatedUserPayload = {
+          ...currentUser,
+          phone: updatedUserPhone,
+          addresses: updatedAddressesList,
+        };
+        localStorage.setItem("user", JSON.stringify(updatedUserPayload));
+        setCurrentUser(updatedUserPayload);
+        setSavedAddresses(updatedAddressesList);
+      } catch (err) {
+        console.error("Lỗi tự động lưu địa chỉ mới vào profile:", err);
+      }
+    }
 
     const orderData = {
       email: currentUser?.email || "guest",

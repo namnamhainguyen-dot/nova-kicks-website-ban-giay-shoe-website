@@ -32,8 +32,25 @@ export default function UserActions() {
   useEffect(() => {
     setIsMounted(true);
     fetchUserData();
+
+    // Lắng nghe sự kiện đăng nhập/đăng xuất
     window.addEventListener("userLogin", fetchUserData);
-    return () => window.removeEventListener("userLogin", fetchUserData);
+
+    // Lắng nghe sự kiện cập nhật profile từ trang Profile để đổi tên ngay lập tức không cần F5
+    const handleProfileUpdate = (event) => {
+      if (event.detail) {
+        setUser(event.detail); // Cập nhật trực tiếp state user bằng dữ liệu mới
+      } else {
+        fetchUserData(); // Fallback fetch lại từ localStorage nếu thiếu detail
+      }
+    };
+    window.addEventListener("userProfileUpdated", handleProfileUpdate);
+
+    // Cleanup sự kiện khi component unmount
+    return () => {
+      window.removeEventListener("userLogin", fetchUserData);
+      window.removeEventListener("userProfileUpdated", handleProfileUpdate);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -65,7 +82,6 @@ export default function UserActions() {
       )}
       
       {user ? (
-        
         <li className="nav-item dropdown">
           <Link 
             className="nav-link dropdown-toggle fw-bold text-dark p-0" 

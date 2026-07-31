@@ -14,6 +14,7 @@ export default function Profile() {
   });
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false); // Thêm state loading khi submit modal
 
   // Validation
   const [phoneError, setPhoneError] = useState("");
@@ -175,6 +176,20 @@ export default function Profile() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
+    let rawId = user._id || user.id;
+
+    // Xử lý phòng hờ trường hợp _id bị lưu dạng Object của MongoDB
+    if (typeof rawId === "object" && rawId !== null) {
+      rawId = rawId.$oid || rawId.toString();
+    }
+    
+    const currentUserId = String(rawId || "").trim();
+
+    if (!currentUserId || currentUserId === "undefined" || currentUserId === "[object Object]") {
+      alert("Lỗi định danh: Không tìm thấy ID người dùng hợp lệ. Vui lòng đăng nhập lại!");
+      return;
+    }
+
     const phoneRegex = /^0\d{9}$/;
     if (!user.phone || !phoneRegex.test(user.phone)) {
       setPhoneError("Vui lòng nhập số điện thoại hợp lệ (10 chữ số).");
@@ -183,14 +198,12 @@ export default function Profile() {
 
     try {
       const payload = {
-        _id: user._id,
-        email: user.email,
         fullname: user.fullname?.trim() || "",
         phone: user.phone?.trim() || "",
         addresses: user.addresses || [],
       };
 
-      const res = await fetch("/api/users/update", {
+      const res = await fetch(`/api/users/${currentUserId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -200,29 +213,34 @@ export default function Profile() {
 
       if (res.ok) {
         alert("Cập nhật thông tin cá nhân thành công! 🎉");
-        localStorage.setItem("user", JSON.stringify({ ...user, ...payload }));
+        
+        const updatedUserData = { ...user, ...payload, _id: currentUserId };
+        localStorage.setItem("user", JSON.stringify(updatedUserData));
+
+        // Tự động làm mới lại trang để Header và mọi component đồng bộ ngay lập tức dữ liệu mới
+        window.location.reload();
       } else {
-        alert(`Lỗi: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
+        alert(`Lỗi từ server: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
       }
     } catch (error) {
       console.error("Lỗi kết nối khi cập nhật profile:", error);
-      alert("Không thể kết nối đến máy chủ!");
+      alert("Không thể kết nối đến máy chủ! Vui lòng kiểm tra lại terminal backend.");
     }
   };
 
-  // ── 6. QUẢN LÝ DỰ LIỆU ĐA ĐỊA CHỈ ──
+  // ── 6. QUẢN LÝ DỮ LIỆU ĐA ĐỊA CHỈ ──
   const syncAddressesToStorageAndServer = async (newAddresses) => {
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
 
     try {
-      await fetch("/api/users/update", {
+      await fetch(`/api/users/${user._id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          _id: user._id,
-          email: user.email,
+          fullname: user.fullname?.trim() || "",
+          phone: user.phone?.trim() || "",
           addresses: newAddresses,
         }),
       });
@@ -278,7 +296,7 @@ export default function Profile() {
   };
 
   // Lưu Địa chỉ (Thêm hoặc Sửa)
-  const handleSaveAddress = (e) => {
+  const handleSaveAddress = async (e) => {
     e.preventDefault();
 
     if (!receiverName.trim() || !receiverPhone.trim() || !houseNumber.trim()) {
@@ -296,6 +314,8 @@ export default function Profile() {
       alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
       return;
     }
+
+    setSubmitting(true);
 
     const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
     const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
@@ -349,7 +369,8 @@ export default function Profile() {
       updatedList.push(newAddressItem);
     }
 
-    syncAddressesToStorageAndServer(updatedList);
+    await syncAddressesToStorageAndServer(updatedList);
+    setSubmitting(false);
     setShowAddressModal(false);
   };
 
@@ -388,7 +409,7 @@ export default function Profile() {
         </div>
 
         <div className="row g-4">
-          {/* CỘT TÍNH: THÔNG TIN CÁ NHÂN & ĐA ĐỊA CHỈ */}
+          {/* CỘT TRÁI: THÔNG TIN CÁ NHÂN & ĐA ĐỊA CHỈ */}
           <div className="col-lg-6">
             {/* Khối Thông tin tài khoản */}
             <div className="card border-0 shadow-sm rounded-4 p-3 bg-white mb-4">
@@ -441,7 +462,7 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Khối Danh Sách Địa Chỉ Giao Hàng (Đa địa chỉ Shopee style) */}
+            {/* Khối Danh Sách Địa Chỉ Giao Hàng */}
             <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
               <div className="card-body">
                 <div className="d-flex align-items-center justify-content-between mb-4">
@@ -687,11 +708,11 @@ export default function Profile() {
                 </div>
 
                 <div className="modal-footer border-0 pt-0">
-                  <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setShowAddressModal(false)}>
+                  <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setShowAddressModal(false)} disabled={submitting}>
                     Hủy bỏ
                   </button>
-                  <button type="submit" className="btn btn-dark rounded-pill px-4 fw-bold">
-                    Lưu địa chỉ
+                  <button type="submit" className="btn btn-dark rounded-pill px-4 fw-bold" disabled={submitting}>
+                    {submitting ? "Đang lưu..." : "Lưu địa chỉ"}
                   </button>
                 </div>
               </form>
