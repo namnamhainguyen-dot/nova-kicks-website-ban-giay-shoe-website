@@ -32,7 +32,7 @@ export default function ProductChatbox({ products }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // CƠ CHẾ POLLING: Tải tin nhắn mới từ Admin mỗi 3 giây
+  // CƠ CHẾ POLLING + REFRESH TỨC THỜI: tải tin nhắn mới từ Admin mỗi 1 giây và khi có tín hiệu từ Admin
   useEffect(() => {
     if (!isOpen) return;
 
@@ -42,20 +42,19 @@ export default function ProductChatbox({ products }) {
         if (!res.ok) return;
 
         const dbMessages = await res.json();
-        
-        if (dbMessages && Array.isArray(dbMessages)) {
-          // Lọc danh sách câu trả lời từ Admin chưa có trong giao diện hiện tại
-          setMessages((prev) => {
-            const formattedDbMsgs = dbMessages.map((msg) => ({
-              role: msg.sender === "user" ? "user" : "bot",
-              text: msg.text,
-            }));
 
-            // Nếu dữ liệu DB nhiều hơn số tin nhắn hiện tại, cập nhật lại
-            if (formattedDbMsgs.length > prev.length) {
-              return formattedDbMsgs;
-            }
-            return prev;
+        if (dbMessages && Array.isArray(dbMessages)) {
+          const formattedDbMsgs = dbMessages.map((msg) => ({
+            role: msg.sender === "user" ? "user" : "bot",
+            text: msg.text,
+          }));
+
+          setMessages((prev) => {
+            const prevText = prev.map((msg) => `${msg.role}:${msg.text}`).join("||");
+            const nextText = formattedDbMsgs.map((msg) => `${msg.role}:${msg.text}`).join("||");
+
+            if (prevText === nextText) return prev;
+            return formattedDbMsgs;
           });
         }
       } catch (error) {
@@ -63,10 +62,23 @@ export default function ProductChatbox({ products }) {
       }
     };
 
-    fetchMessagesFromAdmin();
-    const interval = setInterval(fetchMessagesFromAdmin, 3000);
+    const handleRefresh = () => {
+      fetchMessagesFromAdmin();
+    };
 
-    return () => clearInterval(interval);
+    fetchMessagesFromAdmin();
+    const interval = setInterval(fetchMessagesFromAdmin, 1000);
+    window.addEventListener("chat-updated", handleRefresh);
+    window.addEventListener("storage", (event) => {
+      if (event.key === "chat_refresh") {
+        handleRefresh();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("chat-updated", handleRefresh);
+    };
   }, [isOpen, sessionId]);
 
   // XỬ LÝ GỬI TIN NHẮN
