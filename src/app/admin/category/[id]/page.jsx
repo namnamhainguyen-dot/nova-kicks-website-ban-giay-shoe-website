@@ -2,17 +2,26 @@
 
 import Link from "next/link";
 import { useEffect, useState, use } from "react";
+import { useParams } from "next/navigation";
 
 export default function CategoryDetail({ params: paramsPromise }) {
-  // Unwarp params trong Next.js App Router mới
-  const params = use(paramsPromise);
-  const categoryId = params.id;
+  // Lấy params an toàn: Dùng useParams() nếu ở client component hoặc kiểm tra xem paramsPromise có phải Promise không
+  const routeParams = useParams();
+  
+  // Nếu routeParams có id thì dùng, nếu không thì unwrap paramsPromise phòng trường hợp chạy trên Next.js 15
+  const params = routeParams?.id 
+    ? routeParams 
+    : (typeof paramsPromise?.then === "function" ? use(paramsPromise) : paramsPromise);
+    
+  const categoryId = params?.id;
 
   const [category, setCategory] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!categoryId) return;
+
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -153,7 +162,8 @@ export default function CategoryDetail({ params: paramsPromise }) {
                     <td>
                       <Link
                         href={`/admin/product/${p._id}/update`}
-                        className="btn btn-sm btn-outline-secondary">
+                        className="btn btn-sm btn-outline-secondary"
+                      >
                         ✎ Sửa
                       </Link>
                     </td>
