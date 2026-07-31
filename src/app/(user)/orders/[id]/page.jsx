@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react"; 
+import { useEffect, useState } from "react"; 
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -96,9 +96,9 @@ function OrderItemRow({ item, idx, isLast, orderStatus, onOpenReview }) {
 // ==========================================
 // COMPONENT CHÍNH: CHI TIẾT ĐƠN HÀNG
 // ==========================================
-export default function OrderDetailPage({ params }) {
-  const unwrappedParams = use(params);
-  const id = unwrappedParams?.id;
+export default function OrderDetailPage() {
+  const params = useParams();
+  const id = params?.id;
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -167,7 +167,7 @@ export default function OrderDetailPage({ params }) {
     setImages([...images, ...newImageUrls]);
   };
 
-  // Hàm gửi đánh giá lên API /api/comments đã được tối ưu hóa độ an toàn
+  // Hàm gửi đánh giá lên API /api/comments
   const handleSubmitReview = async () => {
     if (!currentProductToReview || !order) return;
 
