@@ -398,6 +398,7 @@ export default function Checkout() {
         price: item.price,
         color: item.selectedColor || null,
         size: item.selectedSize || null,
+        image: item.image || "", // 👈 Thêm dòng này vào đây
       })),
       total: total,
       discount: discountAmount,

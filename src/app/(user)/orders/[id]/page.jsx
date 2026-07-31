@@ -5,10 +5,16 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 // ==========================================
-// COMPONENT CON: TỰ ĐỘNG LẤY ẢNH TỪ API SẢN PHẨM NẾU TRONG ĐƠN HÀNG KHÔNG CÓ
+// COMPONENT CON: TỰ ĐỘNG LẤY ẢNH & KIỂM TRA TRẠNG THÁI ĐÁNH GIÁ
 // ==========================================
-function OrderItemRow({ item, idx, isLast, orderStatus, onOpenReview }) {
+function OrderItemRow({ item, idx, isLast, orderStatus, orderId, userId, onOpenReview, reviewedItems }) {
   const [imgUrl, setImgUrl] = useState("https://placehold.co/100x100?text=Loading...");
+  
+  const prodId = item.product_id || item.productId || item.product || item._id;
+  const itemKey = `${prodId}-${item.color || "none"}-${item.size || "none"}`;
+  
+  // Kiểm tra xem đã đánh giá chưa
+  const isReviewed = reviewedItems[itemKey] || reviewedItems[prodId];
 
   useEffect(() => {
     const existingImg = item.image || item.img || item.thumbnail || item.product_image;
@@ -17,13 +23,12 @@ function OrderItemRow({ item, idx, isLast, orderStatus, onOpenReview }) {
       return;
     }
 
-    const prodId = item.product_id || item.productId || item.product || item._id;
     if (prodId) {
       fetch(`/api/products/${prodId}`)
         .then((res) => res.json())
         .then((productData) => {
-          if (productData && productData.image) {
-            setImgUrl(productData.image);
+          if (productData && (productData.image || productData.img)) {
+            setImgUrl(productData.image || productData.img);
           } else {
             setImgUrl("https://placehold.co/100x100?text=No+Image");
           }
@@ -35,10 +40,7 @@ function OrderItemRow({ item, idx, isLast, orderStatus, onOpenReview }) {
     } else {
       setImgUrl("https://placehold.co/100x100?text=No+Image");
     }
-  }, [item]);
-
-  const prodIdKey = item.product_id || item.productId || item.product || item._id || idx;
-  const itemKey = `${prodIdKey}-${item.color || "none"}-${item.size || "none"}`;
+  }, [item, prodId]);
 
   return (
     <div key={itemKey} className={`py-3 ${isLast ? "" : "border-bottom"}`}>
@@ -77,15 +79,20 @@ function OrderItemRow({ item, idx, isLast, orderStatus, onOpenReview }) {
             {((item.price || 0) * (item.quantity || 1)).toLocaleString("vi-VN")}đ
           </span>
 
-          {/* ĐIỀU KIỆN: Chỉ hiển thị nút Đánh giá khi đơn hàng ở trạng thái "completed" hoặc "Đã giao" */}
           {(orderStatus === "completed" || orderStatus === "Đã giao") && (
-            <button
-              onClick={() => onOpenReview(item)}
-              className="btn btn-sm btn-outline-primary py-0 px-2"
-              style={{ fontSize: "0.75rem" }}
-            >
-              ⭐ Đánh giá
-            </button>
+            isReviewed ? (
+              <span className="text-muted small fw-medium fst-italic" style={{ fontSize: "0.75rem" }}>
+                ✓ Đã đánh giá
+              </span>
+            ) : (
+              <button
+                onClick={() => onOpenReview(item, imgUrl, itemKey)}
+                className="btn btn-sm btn-outline-primary py-0 px-2"
+                style={{ fontSize: "0.75rem" }}
+              >
+                ⭐ Đánh giá
+              </button>
+            )
           )}
         </div>
       </div>
@@ -103,26 +110,49 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // State cho Modal Đánh giá & Bình luận
+  const [reviewedItems, setReviewedItems] = useState({});
+
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [currentProductToReview, setCurrentProductToReview] = useState(null);
+  const [currentItemKey, setCurrentItemKey] = useState(null);
+  const [reviewModalImg, setReviewModalImg] = useState("https://placehold.co/100x100?text=Loading...");
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState("");
   const [images, setImages] = useState([]); 
   const [submitting, setSubmitting] = useState(false);
 
-  // Hàm fetch dữ liệu chi tiết đơn hàng từ API
   const fetchOrderDetails = () => {
     return fetch(`/api/orders/${id}`)
       .then((res) => {
-        if (!res.ok) {
-          throw new Error("Không tìm thấy đơn hàng");
-        }
+        if (!res.ok) throw new Error("Không tìm thấy đơn hàng");
         return res.json();
       })
       .then((data) => {
         if (data && data._id) {
           setOrder(data);
+          const uId = data.userId || data.user_id || data.user?._id || data.user;
+          if (uId) {
+            fetch(`/api/comments?orderId=${data._id}&userId=${uId}`)
+              .then(res => res.json())
+              .then(comments => {
+                if (Array.isArray(comments)) {
+                  const reviewedMap = {};
+                  comments.forEach(c => {
+                    const pId = c.productId || c.product_id;
+                    if (pId) reviewedMap[pId] = true;
+                    data.order_items?.forEach(item => {
+                      const itemPid = item.product_id || item.productId || item.product || item._id;
+                      if (itemPid === pId) {
+                        const iKey = `${itemPid}-${item.color || "none"}-${item.size || "none"}`;
+                        reviewedMap[iKey] = true;
+                      }
+                    });
+                  });
+                  setReviewedItems(reviewedMap);
+                }
+              })
+              .catch(err => console.log("Không thể tải danh sách đánh giá cũ:", err));
+          }
         } else {
           setOrder(null);
         }
@@ -135,15 +165,12 @@ export default function OrderDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-
     setLoading(true);
     fetchOrderDetails().finally(() => setLoading(false));
   }, [id]);
 
-  // Tự động quét cập nhật trạng thái mới nhất từ Database mỗi 4 giây (nếu đơn chưa thanh toán)
   useEffect(() => {
     if (!id || !order) return;
-
     const isAlreadyPaid = order.isPaid === true || order.isPaid === "true";
     if (isAlreadyPaid) return;
 
@@ -154,20 +181,6 @@ export default function OrderDetailPage() {
     return () => clearInterval(interval);
   }, [id, order]);
 
-  // Xử lý chọn ảnh (Giới hạn tối đa 3 ảnh)
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files);
-    
-    if (images.length + files.length > 3) {
-      alert("Chỉ được upload tối đa 3 ảnh sản phẩm thực tế!");
-      return;
-    }
-
-    const newImageUrls = files.map((file) => URL.createObjectURL(file));
-    setImages([...images, ...newImageUrls]);
-  };
-
-  // Hàm gửi đánh giá lên API /api/comments
   const handleSubmitReview = async () => {
     if (!currentProductToReview || !order) return;
 
@@ -213,10 +226,18 @@ export default function OrderDetailPage() {
       const result = await res.json();
       if (res.ok) {
         alert("Đánh giá sản phẩm thành công!");
+        
+        setReviewedItems(prev => ({
+          ...prev,
+          [currentItemKey]: true,
+          [prodId]: true
+        }));
+
         setShowReviewModal(false);
         setComment("");
         setImages([]);
         setCurrentProductToReview(null);
+        setCurrentItemKey(null);
       } else {
         alert(result.error || result.message || "Có lỗi xảy ra khi gửi đánh giá!");
       }
@@ -243,6 +264,7 @@ export default function OrderDetailPage() {
   const displayDiscount = order.discount || 0;
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
   const isPaid = order.isPaid === true || order.isPaid === "true";
+  const userId = order.userId || order.user_id || order.user?._id || order.user;
 
   return (
     <div className="container my-5" style={{ maxWidth: "700px" }}>
@@ -319,8 +341,13 @@ export default function OrderDetailPage() {
                 idx={idx} 
                 isLast={isLast} 
                 orderStatus={order.status}
-                onOpenReview={(prod) => {
+                orderId={order._id}
+                userId={userId}
+                reviewedItems={reviewedItems}
+                onOpenReview={(prod, resolvedImg, iKey) => {
                   setCurrentProductToReview(prod);
+                  setReviewModalImg(resolvedImg);
+                  setCurrentItemKey(iKey);
                   setShowReviewModal(true);
                 }}
               />
@@ -366,77 +393,145 @@ export default function OrderDetailPage() {
       {showReviewModal && (
         <div className="modal show d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }} tabIndex="-1">
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content rounded-4 shadow">
-              <div className="modal-header">
-                <h5 className="modal-title fw-bold">Đánh giá sản phẩm</h5>
-                <button type="button" className="btn-close" onClick={() => setShowReviewModal(false)}></button>
+            <div className="modal-content rounded-4 shadow border-0">
+              <div className="modal-header border-bottom px-4 py-3">
+                <h5 className="modal-title fw-bold text-dark fs-6">Đánh Giá Sản Phẩm</h5>
+                <button type="button" className="btn-close shadow-none" onClick={() => setShowReviewModal(false)}></button>
               </div>
-              <div className="modal-body">
-                <p className="fw-medium text-dark mb-3">Sản phẩm: {currentProductToReview?.name}</p>
+              <div className="modal-body p-4">
+                <div className="d-flex align-items-center mb-4 p-2 bg-light rounded-3">
+                  <div className="border rounded me-3 overflow-hidden bg-white d-flex align-items-center justify-content-center" style={{ width: "50px", height: "50px", flexShrink: 0 }}>
+                    <img 
+                      src={reviewModalImg} 
+                      alt="" 
+                      className="img-fluid object-fit-contain" 
+                      style={{ maxHeight: "100%", maxWidth: "100%" }}
+                      onError={(e) => {
+                        e.target.src = "https://placehold.co/100x100?text=No+Image";
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <span className="fw-bold d-block text-dark small text-truncate" style={{ maxWidth: "350px" }}>
+                      {currentProductToReview?.name || currentProductToReview?.product_name || "Sản phẩm"}
+                    </span>
+                    <span className="text-muted" style={{ fontSize: "0.75rem" }}>
+                      Phân loại hàng: {currentProductToReview?.color ? `Màu: ${currentProductToReview.color}` : ""} 
+                      {currentProductToReview?.color && currentProductToReview?.size ? ", " : ""} 
+                      {currentProductToReview?.size ? `Size: ${currentProductToReview.size}` : "Mặc định"}
+                    </span>
+                  </div>
+                </div>
 
-                <div className="mb-3">
-                  <label className="form-label small fw-bold">Chất lượng sản phẩm:</label>
-                  <select 
-                    className="form-select" 
-                    value={rating} 
-                    onChange={(e) => setRating(e.target.value)}
-                  >
-                    <option value={5}>⭐⭐⭐⭐⭐ - Tuyệt vời</option>
-                    <option value={4}>⭐⭐⭐⭐ - Hài lòng</option>
-                    <option value={3}>⭐⭐⭐ - Bình thường</option>
-                    <option value={2}>⭐⭐ - Tạm được</option>
-                    <option value={1}>⭐ - Không hài lòng</option>
-                  </select>
+                <div className="text-center mb-4">
+                  <label className="form-label small fw-bold text-muted d-block mb-2">Chất lượng sản phẩm</label>
+                  <div className="d-flex justify-content-center gap-2 mb-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className="btn p-0 border-0 shadow-none"
+                        onClick={() => setRating(star)}
+                        style={{ fontSize: "1.8rem", transition: "transform 0.1s" }}
+                      >
+                        {star <= rating ? "⭐" : "☆"}
+                      </button>
+                    ))}
+                  </div>
+                  <span className="badge bg-warning-subtle text-warning-emphasis fw-bold px-3 py-1 rounded-pill small">
+                    {rating === 5 && "Tuyệt vời ⭐⭐⭐⭐⭐"}
+                    {rating === 4 && "Hài lòng ⭐⭐⭐⭐"}
+                    {rating === 3 && "Bình thường ⭐⭐⭐"}
+                    {rating === 2 && "Tạm được ⭐⭐"}
+                    {rating === 1 && "Không hài lòng ⭐"}
+                  </span>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label small fw-bold">Nhận xét của bạn:</label>
                   <textarea 
-                    className="form-control" 
-                    rows="3" 
-                    placeholder="Hãy chia sẻ cảm nhận của bạn về sản phẩm này nhé..."
+                    className="form-control border-secondary-subtle shadow-none" 
+                    rows="4" 
+                    placeholder="Hãy chia sẻ những cảm nhận của bạn về chất lượng sản phẩm nhé..."
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
+                    style={{ fontSize: "0.9rem" }}
                   ></textarea>
                 </div>
 
-                <div className="mb-3">
-                  <label className="form-label small fw-bold">Ảnh thực tế sản phẩm (Tối đa 3 ảnh):</label>
-                  <input 
-                    type="file" 
-                    className="form-control" 
-                    multiple 
-                    accept="image/*"
-                    onChange={handleImageChange}
-                  />
-                  <div className="form-text text-muted">Đã chọn: {images.length}/3 ảnh</div>
-
-                  {images.length > 0 && (
-                    <div className="d-flex gap-2 mt-2">
-                      {images.map((img, i) => (
-                        <div key={i} className="position-relative border rounded overflow-hidden" style={{ width: "60px", height: "60px" }}>
-                          <img src={img} alt="preview" className="w-100 h-100 object-fit-cover" />
+                <div className="mb-2">
+                  <label className="form-label small fw-bold text-muted mb-2">Thêm Hình Ảnh / Video</label>
+                  <div className="d-flex flex-wrap gap-2 align-items-center">
+                    {images.map((mediaUrl, i) => {
+                      const isVideo = mediaUrl.includes("data:video") || mediaUrl.match(/\.(mp4|webm|ogg)$/i);
+                      return (
+                        <div key={i} className="position-relative border rounded overflow-hidden shadow-sm bg-black" style={{ width: "70px", height: "70px" }}>
+                          {isVideo ? (
+                            <video src={mediaUrl} className="w-100 h-100 object-fit-cover" />
+                          ) : (
+                            <img src={mediaUrl} alt="preview" className="w-100 h-100 object-fit-cover" />
+                          )}
+                          <button
+                            type="button"
+                            className="position-absolute top-0 end-0 btn btn-dark btn-sm p-0 d-flex align-items-center justify-content-center"
+                            style={{ width: "20px", height: "20px", fontSize: "10px", opacity: 0.8, zIndex: 2 }}
+                            onClick={() => setImages(images.filter((_, index) => index !== i))}
+                          >
+                            ✕
+                          </button>
                         </div>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
+
+                    <label className="border border-dashed rounded d-flex flex-column align-items-center justify-content-center bg-light text-muted cursor-pointer" style={{ width: "70px", height: "70px", cursor: "pointer" }}>
+                      <span style={{ fontSize: "1.2rem" }}>📷</span>
+                      <span style={{ fontSize: "0.65rem" }}>Thêm</span>
+                      <input 
+                        type="file" 
+                        className="d-none" 
+                        multiple 
+                        accept="image/*,video/*"
+                        onChange={async (e) => {
+                          const files = Array.from(e.target.files);
+                          
+                          const base64Promises = files.map((file) => {
+                            return new Promise((resolve, reject) => {
+                              const reader = new FileReader();
+                              reader.onload = () => resolve(reader.result);
+                              reader.onerror = (error) => reject(error);
+                              reader.readAsDataURL(file);
+                            });
+                          });
+
+                          try {
+                            const base64Files = await Promise.all(base64Promises);
+                            setImages([...images, ...base64Files]);
+                          } catch (error) {
+                            console.error("Lỗi đọc file ảnh:", error);
+                            alert("Không thể đọc file ảnh vừa chọn!");
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                  <div className="form-text text-muted mt-1" style={{ fontSize: "0.75rem" }}>Đã tải lên: {images.length} tệp (Ảnh hoặc Video)</div>
                 </div>
               </div>
-              <div className="modal-footer">
+
+              <div className="modal-footer border-top px-4 py-3 bg-light rounded-bottom-4">
                 <button 
                   type="button" 
-                  className="btn btn-secondary btn-sm" 
+                  className="btn btn-outline-secondary px-4 rounded-pill btn-sm" 
                   onClick={() => setShowReviewModal(false)}
                 >
-                  Hủy
+                  Trở Lại
                 </button>
                 <button 
                   type="button" 
-                  className="btn btn-primary btn-sm" 
+                  className="btn btn-danger px-4 rounded-pill btn-sm fw-bold" 
                   disabled={submitting}
                   onClick={handleSubmitReview}
                 >
-                  {submitting ? "Đang gửi..." : "Gửi đánh giá"}
+                  {submitting ? "Đang gửi..." : "Hoàn Thành"}
                 </button>
               </div>
             </div>

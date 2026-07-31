@@ -31,7 +31,7 @@ export default function ProductDetailPage() {
 
     // Lightbox State (Phóng to ảnh chính & ảnh bình luận)
     const [isZoomOpen, setIsZoomOpen] = useState(false);
-    const [zoomReviewImage, setZoomReviewImage] = useState(null); // State lưu ảnh bình luận đang được phóng to
+    const [zoomReviewImage, setZoomReviewImage] = useState(null);
 
     // Reviews State
     const [reviews, setReviews] = useState([]);
@@ -39,7 +39,7 @@ export default function ProductDetailPage() {
     const [newComment, setNewComment] = useState('');
     const [submittingReview, setSubmittingReview] = useState(false);
 
-    // Review Image State
+    // Review Image State (Đã bỏ giới hạn số lượng ảnh)
     const [newImages, setNewImages] = useState([]);
     const [imageFiles, setImageFiles] = useState([]);
 
@@ -272,16 +272,21 @@ export default function ProductDetailPage() {
         router.push('/cart');
     };
 
+    // Xử lý chuyển đổi ảnh bình luận sang dạng Base64 (Không cần API upload, không giới hạn số lượng ảnh)
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
-        if (imageFiles.length + files.length > 3) {
-            alert("Chỉ được upload tối đa 3 ảnh thực tế!");
-            return;
-        }
+        if (files.length === 0) return;
 
-        const newImageUrls = files.map((file) => URL.createObjectURL(file));
-        setImageFiles([...imageFiles, ...files]);
-        setNewImages([...newImages, ...newImageUrls]);
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result;
+                setNewImages(prev => [...prev, base64String]);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        setImageFiles(prev => [...prev, ...files]);
     };
 
     const handleRemoveImage = (index) => {
@@ -626,7 +631,7 @@ export default function ProductDetailPage() {
                 </div>
             )}
 
-            {/* LIGHTBOX MODAL PHÓNG TO ẢNH BÌNH LUẬN (MỚI THÊM) */}
+            {/* LIGHTBOX MODAL PHÓNG TO ẢNH BÌNH LUẬN */}
             {zoomReviewImage && (
                 <div 
                     onClick={() => setZoomReviewImage(null)}
@@ -718,7 +723,7 @@ export default function ProductDetailPage() {
 
                         <div style={{ marginTop: '16px' }}>
                             <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
-                                Ảnh thực tế sản phẩm (Tối đa 3 ảnh):
+                                Ảnh thực tế sản phẩm (Không giới hạn):
                             </label>
                             <input 
                                 type="file" 

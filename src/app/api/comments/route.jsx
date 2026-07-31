@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/libs/mongodb";
 import { ObjectId } from "mongodb";
 
-// --- PHƯƠNG THỨC GET ---
 export async function GET(request) {
   try {
     const client = await clientPromise;
@@ -56,7 +55,6 @@ export async function GET(request) {
   }
 }
 
-// --- PHƯƠNG THỨC POST ---
 export async function POST(request) {
   try {
     const client = await clientPromise;
@@ -71,28 +69,24 @@ export async function POST(request) {
       return NextResponse.json({ error: "Vui lòng cung cấp đầy đủ thông tin bắt buộc!" }, { status: 400 });
     }
 
-    const orderQueryId = ObjectId.isValid(orderId) ? new ObjectId(orderId) : orderId;
+    const cleanOrderId = typeof orderId === 'string' ? orderId.trim() : orderId;
+    const cleanProductId = typeof productId === 'string' ? productId.trim() : productId;
+
+    const orderQueryId = ObjectId.isValid(cleanOrderId) ? new ObjectId(cleanOrderId) : cleanOrderId;
     
-    // Tìm đơn hàng chỉ dựa vào orderId để đảm bảo tính ổn định cao nhất
     const order = await db.collection("orders").findOne({ _id: orderQueryId });
     
     if (!order) {
       return NextResponse.json({ error: "Không tìm thấy đơn hàng trong hệ thống!" }, { status: 404 });
     }
 
-    // Cho phép duyệt cả tiếng Anh ("completed") và tiếng Việt ("Đã giao")
     if (order.status !== "completed" && order.status !== "Đã giao") {
       return NextResponse.json({ error: `Bạn chỉ có thể đánh giá khi đơn hàng đã hoàn thành! (Trạng thái hiện tại: ${order.status})` }, { status: 400 });
     }
 
-    if (images && Array.isArray(images) && images.length > 3) {
-      return NextResponse.json({ error: "Chỉ được upload tối đa 3 ảnh sản phẩm thực tế!" }, { status: 400 });
-    }
-
-    const prodQueryId = ObjectId.isValid(productId) ? new ObjectId(productId) : productId;
+    const prodQueryId = ObjectId.isValid(cleanProductId) ? new ObjectId(cleanProductId) : cleanProductId;
     const userQueryId = userId && ObjectId.isValid(userId) ? new ObjectId(userId) : userId;
     
-    // Kiểm tra xem đã đánh giá sản phẩm trong đơn hàng này chưa
     const existingReview = await db.collection("reviews").findOne({
       productId: prodQueryId,
       orderId: orderQueryId
@@ -108,13 +102,12 @@ export async function POST(request) {
       orderId: orderQueryId,
       rating: Number(rating),
       comment: comment || "",
-      images: images || [],
+      images: Array.isArray(images) ? images : [],
       createdAt: new Date()
     };
 
     const insertResult = await db.collection("reviews").insertOne(newReview);
 
-    // Cập nhật lại điểm trung bình (averageRating) và số lượng đánh giá (reviewCount) cho sản phẩm
     const allReviewsForProduct = await db.collection("reviews").find({ productId: prodQueryId }).toArray();
     const totalRating = allReviewsForProduct.reduce((sum, item) => sum + item.rating, 0);
     const averageRating = Number((totalRating / allReviewsForProduct.length).toFixed(1));

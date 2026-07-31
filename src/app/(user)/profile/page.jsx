@@ -48,13 +48,37 @@ export default function Profile() {
   // Tab điều hướng
   const [activeTab, setActiveTab] = useState("address");
 
-  // 2. Tải thông tin người dùng & đơn hàng
+  // 2. Tải thông tin người dùng từ API Server & đơn hàng
   useEffect(() => {
     const fetchUserDataAndOrders = async () => {
       try {
         const savedUser = localStorage.getItem("user");
         if (savedUser) {
           const parsedUser = JSON.parse(savedUser);
+          
+          let rawId = parsedUser._id || parsedUser.id;
+          if (typeof rawId === "object" && rawId !== null) {
+            rawId = rawId.$oid || rawId.toString();
+          }
+          const currentUserId = String(rawId || "").trim();
+
+          // Gọi trực tiếp API lấy thông tin user mới nhất từ Database
+          if (currentUserId && currentUserId !== "undefined") {
+            try {
+              const resUser = await fetch(`/api/users/${currentUserId}`);
+              if (resUser.ok) {
+                const freshUserData = await resUser.json();
+                if (freshUserData) {
+                  parsedUser.addresses = freshUserData.addresses || parsedUser.addresses || [];
+                  parsedUser.phone = freshUserData.phone || parsedUser.phone;
+                  parsedUser.fullname = freshUserData.fullname || parsedUser.fullname;
+                  localStorage.setItem("user", JSON.stringify(parsedUser));
+                }
+              }
+            } catch (err) {
+              console.error("Không thể đồng bộ user từ server, dùng tạm dữ liệu local:", err);
+            }
+          }
 
           let userAddresses = parsedUser.addresses || [];
           if (userAddresses.length === 0 && parsedUser.address && parsedUser.address.trim() !== "") {
@@ -397,10 +421,8 @@ export default function Profile() {
   }
 
   return (
-    // Đổi màu nền tổng thể trang thành xám nhạt (#f1f5f9) để làm nổi bật khối nội dung trắng bên trên
     <div className="min-vh-100 d-flex flex-column text-secondary" style={{ backgroundColor: "#f1f5f9", fontFamily: "'Inter', sans-serif" }}>
       
-      {/* Kéo sát lên trên và tạo khoảng cách âm */}
       <main className="container mb-4 flex-grow-1 position-relative" style={{ marginTop: "-35px", zIndex: 2 }}>
         <div className="row g-4">
           
@@ -451,7 +473,7 @@ export default function Profile() {
           {/* CỘT PHẢI: NỘI DUNG CHÍNH */}
           <div className="col-lg-9">
             
-            {/* TAB 1: HỒ SƠ CÁ NHÂN */}
+            {/* TAB 1: HỒ SƠ CÁ NHÂN (Đã đổi sang Text thường, không dùng input readonly) */}
             {activeTab === "profile" && (
               <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
                 <div className="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
@@ -475,7 +497,7 @@ export default function Profile() {
                   <div className="mb-3 row align-items-center">
                     <label htmlFor="email" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Tên đăng nhập</label>
                     <div className="col-sm-9">
-                      <input type="email" className="form-control-plaintext bg-light px-3 py-2 rounded-2 text-dark" id="email" value={user.email || ""} disabled />
+                      <p className="mb-0 text-dark fw-medium py-2">{user.email || ""}</p>
                     </div>
                   </div>
 
@@ -485,7 +507,7 @@ export default function Profile() {
                       {isEditingProfile ? (
                         <input type="text" className="form-control rounded-2 shadow-none py-2 px-3" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required style={{ borderColor: "#d97706" }} />
                       ) : (
-                        <input type="text" className="form-control-plaintext bg-light px-3 py-2 rounded-2 text-dark" value={user.fullname || ""} disabled />
+                        <p className="mb-0 text-dark fw-medium py-2">{user.fullname || ""}</p>
                       )}
                     </div>
                   </div>
@@ -508,7 +530,7 @@ export default function Profile() {
                           {phoneError && <div className="invalid-feedback">{phoneError}</div>}
                         </>
                       ) : (
-                        <input type="text" className="form-control-plaintext bg-light px-3 py-2 rounded-2 text-dark" value={user.phone || "Chưa cập nhật"} disabled />
+                        <p className="mb-0 text-dark fw-medium py-2">{user.phone || "Chưa cập nhật"}</p>
                       )}
                     </div>
                   </div>
@@ -559,7 +581,6 @@ export default function Profile() {
                       <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white shadow-sm position-relative transition-all hover-shadow">
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                           
-                          {/* Thông tin bên trái */}
                           <div className="flex-grow-1">
                             <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
                               <span className="fw-bold text-dark fs-6">{addr.receiverName || user.fullname}</span>
@@ -581,7 +602,6 @@ export default function Profile() {
                             </div>
                           </div>
 
-                          {/* Thao tác bên phải */}
                           <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-md-top-0">
                             <div className="d-flex align-items-center gap-2">
                               <button 
@@ -621,46 +641,38 @@ export default function Profile() {
               </div>
             )}
 
-            {/* TAB 3: ĐƠN MUA */}
+            {/* TAB 3: ĐƠN MUA (Hiển thị chi tiết sản phẩm, phân loại và số lượng) */}
             {activeTab === "orders" && (
               <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
                 <div className="border-bottom pb-3 mb-4">
                   <h4 className="fw-bold text-dark mb-1">Đơn Hàng Của Tôi</h4>
-                  <p className="text-muted small mb-0">Bấm vào bất kỳ dòng nào để xem chi tiết đơn hàng</p>
+                  <p className="text-muted small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
                 </div>
 
-                <div className="table-responsive">
+                <div className="d-flex flex-column gap-3">
                   {orders.length > 0 ? (
-                    <table className="table table-hover align-middle mb-0">
-                      <thead className="table-light">
-                        <tr className="small text-uppercase text-muted">
-                          <th className="py-3 px-3 rounded-start-2">Mã đơn</th>
-                          <th className="py-3">Ngày đặt</th>
-                          <th className="py-3">Tổng tiền</th>
-                          <th className="py-3 rounded-end-2">Trạng thái</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {orders.map((order) => (
-                          <tr 
-                            key={order._id}
-                            onClick={() => router.push(`/orders/${order._id}`)}
-                            style={{ cursor: "pointer" }}
-                            className="transition-all"
-                            title="Bấm để xem chi tiết đơn hàng"
-                          >
-                            <td className="py-3 px-3">
+                    orders.map((order) => {
+                      // Lấy danh sách sản phẩm từ mảng items hoặc products của đơn hàng
+                      const itemsList = order.order_items || order.items || order.products || [];
+
+                      return (
+                        <div 
+                          key={order._id}
+                          className="border border-2 rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
+                        >
+                          {/* Header của từng đơn hàng: Mã đơn & Trạng thái */}
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="fw-bold text-dark">Mã đơn:</span>
                               <span className="fw-bold" style={{ color: "#d97706" }}>
                                 #{order._id?.slice(-6).toUpperCase()}
                               </span>
-                            </td>
-                            <td className="text-muted py-3">
-                              {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "Vừa xong"}
-                            </td>
-                            <td className="py-3 fw-semibold" style={{ color: "#d97706" }}>
-                              {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
-                            </td>
-                            <td className="py-3">
+                              <span className="text-muted ms-2">|</span>
+                              <span className="text-muted small">
+                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
+                              </span>
+                            </div>
+                            <div>
                               <span className={`badge px-3 py-2 fw-medium ${
                                 order.status === "Hoàn thành" || order.status === "completed" ? "bg-success-subtle text-success" :
                                 order.status === "Đang xử lý" || order.status === "pending" ? "bg-warning-subtle text-warning" : 
@@ -668,11 +680,87 @@ export default function Profile() {
                               }`}>
                                 {order.status === "completed" ? "Hoàn thành" : order.status === "pending" ? "Đang xử lý" : order.status || "Chờ xử lý"}
                               </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                            </div>
+                          </div>
+
+                          {/* Danh sách sản phẩm bên trong đơn hàng */}
+                          <div className="d-flex flex-column gap-3 mb-3">
+                            {itemsList.length > 0 ? (
+                              itemsList.map((item, idx) => {
+                                const itemName = item.name || item.productName || item.title || "Sản phẩm thời trang";
+                                const itemImage = item.image || item.img || item.imageUrl || item.photo || "https://placehold.co/80x80?text=No+Image";
+                                const itemPrice = Number(item.price || item.productPrice || 0);
+                                const itemQuantity = Number(item.quantity || item.qty || 1);
+                                const itemVariant = item.variant || item.size || item.color || "";
+
+                                return (
+                                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 bg-light p-2.5 rounded-3">
+                                    <div className="d-flex align-items-center gap-3 overflow-hidden">
+                                      <img 
+                                        src={itemImage} 
+                                        alt={itemName} 
+                                        className="rounded-2 border flex-shrink-0 object-fit-cover"
+                                        style={{ width: "60px", height: "60px" }}
+                                        onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
+                                      />
+                                      <div className="overflow-hidden">
+                                        <h6 className="fw-semibold text-dark text-truncate mb-1" style={{ fontSize: "0.95rem" }}>
+                                          {itemName}
+                                        </h6>
+                                        {itemVariant && (
+                                          <div className="text-muted small mb-1">
+                                            Phân loại: <span className="text-dark">{itemVariant}</span>
+                                          </div>
+                                        )}
+                                        <div className="text-muted small">
+                                          x{itemQuantity}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="text-end flex-shrink-0">
+                                      <div className="fw-semibold text-dark">
+                                        {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
+                                      </div>
+                                      {itemQuantity > 1 && (
+                                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                          ({itemPrice.toLocaleString("vi-VN")}đ/cái)
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-muted small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
+                            )}
+                          </div>
+
+                          {/* Footer của đơn hàng: Tổng tiền & Nút xem chi tiết */}
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
+                            <div className="small text-muted">
+                              Phương thức thanh toán: <span className="fw-medium text-dark">{order.paymentMethod || "Thanh toán khi nhận hàng (COD)"}</span>
+                            </div>
+                            <div className="d-flex align-items-center gap-3">
+                              <div>
+                                <span className="small text-muted me-2">Thành tiền:</span>
+                                <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
+                                  {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
+                                </span>
+                              </div>
+                              <button 
+                                onClick={() => router.push(`/orders/${order._id}`)}
+                                className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm"
+                                style={{ backgroundColor: "#d97706" }}
+                              >
+                                Xem chi tiết
+                              </button>
+                            </div>
+                          </div>
+
+                        </div>
+                      );
+                    })
                   ) : (
                     <div className="text-center py-5">
                       <p className="text-muted m-0">Bạn chưa có đơn hàng nào.</p>
