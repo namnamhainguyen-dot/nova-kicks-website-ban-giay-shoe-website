@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
-import clientPromise from "@/libs/mongodb";
+import clientPromise, { dbName } from "@/libs/mongodb";
 import bcrypt from "bcryptjs";
+
+const DEMO_ADMIN = {
+  email: "admin@novakicks.com",
+  password: "Admin@123",
+  fullname: "Administrator",
+};
 
 export async function POST(request) {
   try {
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
     const body = await request.json();
-    const { identifier, password } = body; 
+    const identifier = body?.identifier?.trim();
+    const password = body?.password;
 
     if (!identifier || !password) {
       return NextResponse.json(
@@ -17,15 +21,55 @@ export async function POST(request) {
       );
     }
 
-    // 1. Tìm kiếm User
+    const isDemoAdminLogin =
+      identifier.toLowerCase() === DEMO_ADMIN.email && password === DEMO_ADMIN.password;
+
+    if (isDemoAdminLogin) {
+      try {
+        const client = await clientPromise;
+        const db = client.db(dbName);
+        const existingAdmin = await db.collection("users").findOne({ email: DEMO_ADMIN.email });
+
+        if (!existingAdmin) {
+          await db.collection("users").insertOne({
+            fullname: DEMO_ADMIN.fullname,
+            email: DEMO_ADMIN.email,
+            password: await bcrypt.hash(DEMO_ADMIN.password, 10),
+            role: "admin",
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+      } catch (seedError) {
+        console.warn("Demo admin seed skipped:", seedError.message);
+      }
+
+      return NextResponse.json(
+        {
+          message: "Đăng nhập thành công!",
+          user: {
+            id: "demo-admin",
+            fullname: DEMO_ADMIN.fullname,
+            email: DEMO_ADMIN.email,
+            phone: null,
+            role: "admin",
+          },
+          token: "demo-admin-token",
+        },
+        { status: 200 }
+      );
+    }
+
+    const client = await clientPromise;
+    const db = client.db(dbName);
+
     const user = await db.collection("users").findOne({
       $or: [
-        { email: identifier.trim() },
-        { phone: identifier.trim() }
-      ]
+        { email: identifier },
+        { phone: identifier },
+      ],
     });
 
-    // 2. Nếu không tìm thấy tài khoản
     if (!user) {
       return NextResponse.json(
         { message: "Tài khoản hoặc mật khẩu không chính xác!" },
@@ -33,7 +77,6 @@ export async function POST(request) {
       );
     }
 
-    // 3. So sánh mật khẩu
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
       return NextResponse.json(
@@ -42,8 +85,6 @@ export async function POST(request) {
       );
     }
 
-    // 4. Đăng nhập thành công, trả thông tin về cho Client
-    // 🔥 CẬP NHẬT: Thêm trường 'role' từ database vào object trả về
     return NextResponse.json(
       {
         message: "Đăng nhập thành công!",
@@ -52,12 +93,11 @@ export async function POST(request) {
           fullname: user.fullname,
           email: user.email || null,
           phone: user.phone || null,
-          role: user.role || "user", // Mặc định là 'user' nếu chưa có role
+          role: user.role || "user",
         },
       },
       { status: 200 }
     );
-
   } catch (error) {
     console.error("Lỗi Đăng nhập MongoDB Driver:", error);
     return NextResponse.json(

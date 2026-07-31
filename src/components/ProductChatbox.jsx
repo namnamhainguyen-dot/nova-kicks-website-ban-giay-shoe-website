@@ -9,6 +9,7 @@ export default function ProductChatbox({ products }) {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [replyMode, setReplyMode] = useState("bot");
 
   // Tạo cố định 1 sessionId duy nhất cho phiên chat của khách hàng này (lưu trong localStorage để tránh reset khi reload trang)
   const [sessionId] = useState(() => {
@@ -87,7 +88,7 @@ export default function ProductChatbox({ products }) {
     if (!input.trim() || isLoading) return;
 
     const userText = input.trim();
-    const updatedMessages = [...messages, { role: "user", text: userText }];
+    const updatedMessages = [...messages, { role: "user", text: userText, mode: replyMode }];
 
     setMessages(updatedMessages);
     setInput("");
@@ -103,13 +104,36 @@ export default function ProductChatbox({ products }) {
           user: "Khách hàng",
           sender: "user",
           text: userText,
+          mode: replyMode,
         }),
       });
     } catch (err) {
       console.error("Lỗi đồng bộ tin nhắn lên Admin:", err);
     }
 
-    // 2. Gửi sang AI Gemini để nhận phản hồi & Lọc sản phẩm
+    // 2. Nếu chọn gửi cho admin thì không gọi bot, chỉ chờ admin trả lời
+    if (replyMode === "admin") {
+      setMessages((prev) => [
+        ...prev,
+        { role: "bot", text: "Đã chuyển tin nhắn cho admin. Admin sẽ phản hồi cho bạn sớm nhất có thể. 👨‍💼" },
+      ]);
+
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sessionId,
+          user: "Khách hàng",
+          sender: "admin",
+          text: `Tin nhắn cần hỗ trợ từ admin: ${userText}`,
+          mode: "admin",
+        }),
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // 3. Gửi sang AI Gemini để nhận phản hồi & Lọc sản phẩm
     const historyForAPI = updatedMessages.slice(0, -1).map((msg) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.text }],
@@ -140,8 +164,9 @@ export default function ProductChatbox({ products }) {
         body: JSON.stringify({
           sessionId: sessionId,
           user: "Khách hàng",
-          sender: "admin", // Lưu dưới vai trò bot/admin trả lời
+          sender: "admin",
           text: data.reply,
+          mode: "bot",
         }),
       });
 
@@ -218,35 +243,53 @@ export default function ProductChatbox({ products }) {
           </div>
 
           {/* Ô Nhập Tin Nhắn & Nút Gửi */}
-          <form onSubmit={handleSendMessage} className="card-footer p-2 bg-white border-top d-flex gap-2 align-items-center" style={{ borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
-            <input
-              type="text"
-              className="form-control form-control-sm rounded-pill px-3 py-2"
-              placeholder={isLoading ? "AI đang tính..." : "Nhập tin nhắn..."}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              disabled={isLoading}
-              style={{ border: "1px solid #dee2e6", boxShadow: "none" }}
-            />
-            <button
-              type="submit"
-              className="btn btn-sm d-flex align-items-center justify-content-center rounded-circle"
-              disabled={isLoading || !input.trim()}
-              style={{
-                backgroundColor: isLoading || !input.trim() ? "#e9ecef" : "#d87c3c",
-                borderColor: isLoading || !input.trim() ? "#e9ecef" : "#d87c3c",
-                color: isLoading || !input.trim() ? "#adb5bd" : "white",
-                width: "40px",
-                height: "40px",
-                flexShrink: 0,
-                transition: "all 0.2s",
-              }}
-              title="Gửi"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style={{ marginLeft: "-2px", marginTop: "1px" }}>
-                <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z" />
-              </svg>
-            </button>
+          <form onSubmit={handleSendMessage} className="card-footer p-2 bg-white border-top" style={{ borderBottomLeftRadius: "16px", borderBottomRightRadius: "16px" }}>
+            <div className="d-flex gap-2 mb-2">
+              <button
+                type="button"
+                className={`btn btn-sm flex-grow-1 ${replyMode === "bot" ? "btn-dark" : "btn-outline-dark"}`}
+                onClick={() => setReplyMode("bot")}
+              >
+                Bot trả lời
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm flex-grow-1 ${replyMode === "admin" ? "btn-warning" : "btn-outline-warning"}`}
+                onClick={() => setReplyMode("admin")}
+              >
+                Gửi cho Admin
+              </button>
+            </div>
+            <div className="d-flex gap-2 align-items-center">
+              <input
+                type="text"
+                className="form-control form-control-sm rounded-pill px-3 py-2"
+                placeholder={isLoading ? "Đang xử lý..." : replyMode === "admin" ? "Nhập câu hỏi cho admin..." : "Nhập tin nhắn..."}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                disabled={isLoading}
+                style={{ border: "1px solid #dee2e6", boxShadow: "none" }}
+              />
+              <button
+                type="submit"
+                className="btn btn-sm d-flex align-items-center justify-content-center rounded-circle"
+                disabled={isLoading || !input.trim()}
+                style={{
+                  backgroundColor: isLoading || !input.trim() ? "#e9ecef" : "#d87c3c",
+                  borderColor: isLoading || !input.trim() ? "#e9ecef" : "#d87c3c",
+                  color: isLoading || !input.trim() ? "#adb5bd" : "white",
+                  width: "40px",
+                  height: "40px",
+                  flexShrink: 0,
+                  transition: "all 0.2s",
+                }}
+                title="Gửi"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16" style={{ marginLeft: "-2px", marginTop: "1px" }}>
+                  <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576 6.636 10.07Zm6.787-8.201L1.591 6.602l4.339 2.76 7.494-7.493Z" />
+                </svg>
+              </button>
+            </div>
           </form>
         </div>
       )}

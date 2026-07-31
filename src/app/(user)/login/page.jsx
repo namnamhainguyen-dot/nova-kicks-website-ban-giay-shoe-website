@@ -12,6 +12,10 @@ export default function Login() {
     identifier: "",
     password: "",
   });
+  const DEMO_ADMIN = {
+    identifier: "admin@novakicks.com",
+    password: "Admin@123",
+  };
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -71,8 +75,14 @@ export default function Login() {
         throw new Error(data.message || "Xác thực tài khoản Google thất bại!");
       }
 
-      if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
-      if (data.token) localStorage.setItem("token", data.token);
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      }
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      }
 
       setSuccess("Đăng nhập bằng Google thành công! Đang chuyển hướng...");
 
@@ -97,8 +107,7 @@ export default function Login() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const submitLogin = async (identifier, password) => {
     setError("");
     setSuccess("");
     setLoading(true);
@@ -108,8 +117,8 @@ export default function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifier: formData.identifier.trim(),
-          password: formData.password,
+          identifier: identifier.trim(),
+          password,
         }),
       });
 
@@ -120,23 +129,41 @@ export default function Login() {
       }
 
       setSuccess("Đăng nhập thành công! Đang chuyển hướng...");
-      if (data.user) localStorage.setItem("user", JSON.stringify(data.user));
-      if (data.token) localStorage.setItem("token", data.token);
+      if (data.user) {
+        localStorage.setItem("user", JSON.stringify(data.user));
+        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      }
+      if (data.token) {
+        localStorage.setItem("token", data.token);
+        document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}`;
+      }
 
       setTimeout(() => {
-        if (data.user.role === "admin") {
-          router.push("/admin"); 
+        if (data.user?.role === "admin") {
+          router.push("/admin");
         } else {
           window.dispatchEvent(new Event("userLogin"));
           router.push("/");
         }
       }, 1000);
-
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await submitLogin(formData.identifier, formData.password);
+  };
+
+  const handleDemoAdminLogin = () => {
+    setFormData({
+      identifier: DEMO_ADMIN.identifier,
+      password: DEMO_ADMIN.password,
+    });
+    submitLogin(DEMO_ADMIN.identifier, DEMO_ADMIN.password);
   };
 
   return (
