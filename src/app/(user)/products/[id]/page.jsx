@@ -3,7 +3,6 @@
 import { useParams, useRouter } from 'next/navigation';
 import { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { CartContext } from "@/components/CartContext";
 
 export default function ProductDetailPage() {
@@ -29,24 +28,22 @@ export default function ProductDetailPage() {
     const [currentImage, setCurrentImage] = useState('/placeholder.png');
     const [stockAvailable, setStockAvailable] = useState(0);
 
-    // Lightbox State (Phóng to ảnh chính & ảnh bình luận)
+    // Lightbox State
     const [isZoomOpen, setIsZoomOpen] = useState(false);
-    const [zoomReviewImage, setZoomReviewImage] = useState(null); // State lưu ảnh bình luận đang được phóng to
+    const [zoomReviewImage, setZoomReviewImage] = useState(null);
 
     // Reviews State
     const [reviews, setReviews] = useState([]);
     const [newRating, setNewRating] = useState(5);
     const [newComment, setNewComment] = useState('');
     const [submittingReview, setSubmittingReview] = useState(false);
-
-    // Review Image State
     const [newImages, setNewImages] = useState([]);
     const [imageFiles, setImageFiles] = useState([]);
-
     const [canReview, setCanReview] = useState(false);
     const [eligibleOrders, setEligibleOrders] = useState([]);
     const [selectedOrderId, setSelectedOrderId] = useState('');
 
+    // Lấy user từ localStorage
     useEffect(() => {
         try {
             const savedUser = localStorage.getItem('user');
@@ -60,6 +57,7 @@ export default function ProductDetailPage() {
         }
     }, []);
 
+    // Fetch reviews
     const fetchReviews = useCallback(async () => {
         if (!id) return;
         try {
@@ -76,6 +74,7 @@ export default function ProductDetailPage() {
         }
     }, [id]);
 
+    // Check user eligibility for review
     const checkUserEligibility = useCallback(async (userId, productId) => {
         if (!userId || !productId) return;
         try {
@@ -101,6 +100,7 @@ export default function ProductDetailPage() {
         }
     }, []);
 
+    // Fetch product data
     useEffect(() => {
         if (!id) return;
 
@@ -156,6 +156,7 @@ export default function ProductDetailPage() {
         return () => { isMounted = false; };
     }, [id, fetchReviews, checkUserEligibility]);
 
+    // Image handlers
     const changeImageSmoothly = useCallback((newImageSrc) => {
         if (!newImageSrc || newImageSrc === currentImage) return;
         setIsImageChanging(true);
@@ -181,7 +182,7 @@ export default function ProductDetailPage() {
 
     const handleColorChange = (color) => {
         setSelectedColor(color);
-        setQuantity(1); 
+        setQuantity(1);
 
         const matchedVariant = product?.variants?.find(v => v.color === color);
         if (matchedVariant) {
@@ -203,6 +204,7 @@ export default function ProductDetailPage() {
         return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
     }, [product, selectedColor]);
 
+    // Quantity handlers
     const handleIncreaseQuantity = () => {
         if (quantity < stockAvailable) setQuantity(prev => prev + 1);
     };
@@ -231,8 +233,9 @@ export default function ProductDetailPage() {
         }
     };
 
+    // 🛒 ADD TO CART
     const handleAddToCart = () => {
-        if (stockAvailable <= 0 || isAdmin) return; 
+        if (stockAvailable <= 0 || isAdmin) return;
         const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
 
         const newCart = [...cart];
@@ -250,7 +253,7 @@ export default function ProductDetailPage() {
                 _id: product._id,
                 name: product.name,
                 price: product.price,
-                image: currentImage, 
+                image: currentImage,
                 selectedSize,
                 selectedColor,
                 quantity: buyQuantity,
@@ -266,12 +269,31 @@ export default function ProductDetailPage() {
         setTimeout(() => setAddedToCart(false), 2000);
     };
 
+    // 🚀 BUY NOW - Chuyển thẳng đến checkout
     const handleBuyNow = () => {
         if (stockAvailable <= 0 || isAdmin) return;
-        handleAddToCart();
-        router.push('/cart');
+        const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
+
+        // Tạo sản phẩm để thanh toán ngay
+        const checkoutItem = {
+            _id: product._id,
+            name: product.name,
+            price: product.price,
+            image: currentImage,
+            selectedSize: selectedSize,
+            selectedColor: selectedColor,
+            quantity: buyQuantity,
+            categoryID: product.categoryID || '',
+        };
+        
+        // Lưu vào sessionStorage để checkout đọc được
+        sessionStorage.setItem('checkout_items', JSON.stringify([checkoutItem]));
+        
+        // Chuyển hướng thẳng đến checkout
+        router.push('/checkout');
     };
 
+    // Review handlers
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
         if (imageFiles.length + files.length > 3) {
@@ -331,6 +353,7 @@ export default function ProductDetailPage() {
         return (sum / reviews.length).toFixed(1);
     }, [reviews]);
 
+    // Loading state
     if (loading) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '12px' }}>
@@ -356,6 +379,7 @@ export default function ProductDetailPage() {
 
     return (
         <div style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif' }}>
+            {/* Breadcrumb */}
             <nav style={{ marginBottom: '28px', fontSize: '13px', color: '#6b7280' }}>
                 <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Trang chủ</Link>
                 <span style={{ margin: '0 8px' }}>›</span>
@@ -365,7 +389,7 @@ export default function ProductDetailPage() {
             </nav>
 
             <div style={{ display: 'flex', gap: '50px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                {/* Khu vực ảnh chính */}
+                {/* Image Section */}
                 <div style={{ flex: '1 1 45%', minWidth: '300px', position: 'sticky', top: '20px' }}>
                     <div 
                         onClick={() => setIsZoomOpen(true)}
@@ -399,7 +423,7 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
 
-                {/* Thông tin chi tiết sản phẩm */}
+                {/* Product Info */}
                 <div style={{ flex: '1 1 50%', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
                     <h1 style={{
                         fontSize: '28px', fontWeight: '800', color: '#030712', margin: '0 0 10px 0', 
@@ -420,6 +444,7 @@ export default function ProductDetailPage() {
                         </p>
                     </div>
 
+                    {/* Color Variants */}
                     {product.variants?.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '12px' }}>
@@ -463,6 +488,7 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
+                    {/* Sizes */}
                     {availableSizes.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
@@ -490,6 +516,7 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
+                    {/* Quantity */}
                     <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
                             Số lượng
@@ -559,6 +586,7 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
+                    {/* Action Buttons */}
                     <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
                         <button
                             onClick={handleAddToCart}
@@ -588,6 +616,7 @@ export default function ProductDetailPage() {
                         </button>
                     </div>
 
+                    {/* Description */}
                     <div style={{ marginTop: '32px', paddingTop: '24px', borderTop: '1px solid #f3f4f6' }}>
                         <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#030712', marginBottom: '10px' }}>Mô tả sản phẩm</h3>
                         <p style={{ color: '#4b5563', fontSize: '14px', lineHeight: '1.8', whiteSpace: 'pre-line', margin: 0 }}>
@@ -597,7 +626,7 @@ export default function ProductDetailPage() {
                 </div>
             </div>
 
-            {/* LIGHTBOX MODAL PHÓNG TO ẢNH CHÍNH */}
+            {/* LIGHTBOX - Product Image */}
             {isZoomOpen && (
                 <div 
                     onClick={() => setIsZoomOpen(false)}
@@ -626,7 +655,7 @@ export default function ProductDetailPage() {
                 </div>
             )}
 
-            {/* LIGHTBOX MODAL PHÓNG TO ẢNH BÌNH LUẬN (MỚI THÊM) */}
+            {/* LIGHTBOX - Review Image */}
             {zoomReviewImage && (
                 <div 
                     onClick={() => setZoomReviewImage(null)}
@@ -655,10 +684,10 @@ export default function ProductDetailPage() {
                 </div>
             )}
 
-            {/* KHU VỰC ĐÁNH GIÁ VÀ BÌNH LUẬN */}
+            {/* REVIEWS SECTION */}
             <div style={{ marginTop: '60px', paddingTop: '40px', borderTop: '1px solid #e5e7eb' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '24px' }}>
-                    Đánh giá sản phẩm({reviews.length})
+                    Đánh giá sản phẩm ({reviews.length})
                 </h2>
 
                 {currentUser && canReview && (
@@ -807,7 +836,6 @@ export default function ProductDetailPage() {
                                         {rev.comment}
                                     </p>
 
-                                    {/* Hiển thị ảnh đánh giá kèm sự kiện click để phóng to */}
                                     {rev.images && rev.images.length > 0 && (
                                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px', marginLeft: '46px', flexWrap: 'wrap' }}>
                                             {rev.images.map((imgUrl, imgIdx) => (

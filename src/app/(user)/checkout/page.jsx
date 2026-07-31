@@ -16,10 +16,9 @@ export default function Checkout() {
   const [currentUser, setCurrentUser] = useState(null);
 
   // ── 2. ĐỊA CHỈ HÀNH CHÍNH & DANH SÁCH ĐỊA CHỈ ĐÃ LƯU ──
-  const [savedAddresses, setSavedAddresses] = useState([]); // Mảng các địa chỉ đã lưu
-  const [selectedAddressId, setSelectedAddressId] = useState("new"); // ID địa chỉ được chọn ('new' = nhập mới)
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("new");
 
-  // Địa chỉ mới (Form động)
   const [provinces, setProvinces] = useState([]);
   const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
@@ -92,9 +91,10 @@ export default function Checkout() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Lấy sản phẩm cần thanh toán
+    // 1. Lấy sản phẩm cần thanh toán (Ưu tiên từ sessionStorage)
     const storedItems = sessionStorage.getItem("checkout_items");
     let parsedCheckoutItems = [];
+    
     if (storedItems) {
       try {
         parsedCheckoutItems = JSON.parse(storedItems);
@@ -105,6 +105,7 @@ export default function Checkout() {
         console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
       }
     } else if (cart && cart.length > 0) {
+      // Fallback: lấy từ giỏ hàng nếu không có sessionStorage
       setCheckoutItems(cart);
     }
 
@@ -174,7 +175,7 @@ export default function Checkout() {
         console.error("Lỗi đọc dữ liệu user từ localStorage:", e);
       }
     }
-  }, [setCart]);
+  }, [setCart, cart]);
 
   // ── XỬ LÝ KHI ĐỔI ĐỊA CHỈ ĐÃ LƯU ──
   const handleSelectSavedAddress = (addr) => {
@@ -350,7 +351,7 @@ export default function Checkout() {
         districtId: selectedDistrict,
         wardId: selectedWard,
         fullAddress: fullAddress,
-        isDefault: savedAddresses.length === 0, // Nếu chưa có địa chỉ nào thì đặt làm mặc định
+        isDefault: savedAddresses.length === 0,
       };
 
       updatedAddressesList = [...savedAddresses, newAddrObj];
@@ -370,7 +371,6 @@ export default function Checkout() {
           }),
         });
 
-        // Cập nhật lại localStorage của user ngay lập tức
         const updatedUserPayload = {
           ...currentUser,
           phone: updatedUserPhone,
@@ -428,6 +428,7 @@ export default function Checkout() {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
 
+        // Xóa sản phẩm đã mua khỏi giỏ hàng
         const remainingCart = cart.filter(
           (cartItem) =>
             !checkoutItems.some(
@@ -443,6 +444,7 @@ export default function Checkout() {
           localStorage.setItem("cart", JSON.stringify(remainingCart));
         }
 
+        // Xóa sessionStorage
         sessionStorage.removeItem("checkout_items");
         setIsSuccess(true);
       } else {
@@ -543,7 +545,7 @@ export default function Checkout() {
                   )}
                 </div>
 
-                {/* Địa chỉ giao hàng (Nhiều địa chỉ) */}
+                {/* Địa chỉ giao hàng */}
                 <div className="mb-4">
                   <label className="form-label fw-semibold small">
                     Địa chỉ giao hàng <span className="text-danger">*</span>
@@ -597,7 +599,7 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  {/* Form chọn Tỉnh/Huyện/Xã (Hiện khi bấm nhập địa chỉ mới hoặc chưa có địa chỉ nào) */}
+                  {/* Form chọn Tỉnh/Huyện/Xã */}
                   {(selectedAddressId === "new" || savedAddresses.length === 0) && (
                     <div className="border p-3 rounded bg-light">
                       <div className="mb-3">
