@@ -140,9 +140,18 @@ export default function CategoryManagement() {
                     <td>
                       <span className="text-secondary small fw-mono">{cat.id || "N/A"}</span>
                     </td>
+                    
+                    {/* ĐOẠN ĐÃ ĐƯỢC CẬP NHẬT Ở ĐÂY */}
                     <td>
-                      <span className="fw-bold text-dark">{cat.name}</span>
+                      <Link 
+                        href={`/admin/category/${cat._id}`} 
+                        className="fw-bold text-dark text-decoration-none"
+                        title="Xem các sản phẩm thuộc danh mục này"
+                      >
+                        {cat.name} <i className="bi bi-box-arrow-up-right ms-1 small text-muted"></i>
+                      </Link>
                     </td>
+
                     <td>
                       <small className="text-muted text-truncate d-inline-block" style={{ maxWidth: "250px" }}>
                         {cat.description || "Chưa có mô tả"}
