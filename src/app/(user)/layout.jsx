@@ -3,10 +3,10 @@ import { WishlistProvider } from "@/components/WishlistContext";
 import clientPromise from "@/libs/mongodb";
 import Link from "next/link";
 import Image from "next/image";
-import UserActions from "@/components/UserActions"; // 1. IMPORT COMPONENT HÀNH ĐỘNG THÀNH VIÊN
-import ProductChatbox from "@/components/ProductChatbox"; // ⚡ 2. IMPORT PRODUCT CHATBOX
-import NavbarLinks from "@/components/NavbarLinks"; // Import component NavbarLinks
+import UserActions from "@/components/UserActions";
+import NavbarLinks from "@/components/NavbarLinks";
 import { Toaster } from "react-hot-toast";
+
 async function getCategories() {
   try {
     const client = await clientPromise;
@@ -22,29 +22,11 @@ async function getCategories() {
   } catch (error) {
     console.error("Lỗi khi lấy danh mục từ MongoDB:", error);
     return [];
-// ── HÀM LẤY DANH SÁCH SẢN PHẨM ĐỂ TRUYỀN CHO CHATBOX AI ──
-async function getProducts() {
-  try {
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-    const productsList = await db.collection("products").find({}).toArray();
-    
-    return productsList.map(prod => ({
-      ...prod,
-      _id: String(prod._id)
-    }));
-  } catch (error) {
-    console.error("Lỗi lấy sản phẩm cho Chatbox:", error);
-    return [];
-  }
-}
   }
 }
 
 export default async function Layout({ children }) {
-  // Lấy danh mục và sản phẩm từ database
   const categories = await getCategories();
-  const products = await getProducts();
 
   return (
     <html lang="vi">
@@ -118,7 +100,7 @@ export default async function Layout({ children }) {
           }
           
           main { 
-            padding-top: 112px; 
+            padding-top: 148px; /* Tăng padding-top để tránh bị che bởi cả thanh thông báo và navbar */
             background-color: var(--background); 
             flex: 1;
             animation: fadeInMain 0.6s ease;
@@ -129,10 +111,63 @@ export default async function Layout({ children }) {
             to { opacity: 1; transform: translateY(0); }
           }
           
+          /* ── THANH THÔNG BÁO PHÍA TRÊN (ANNOUNCEMENT BAR) ── */
+          .nk-announcement-bar {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 1001;
+            background: linear-gradient(90deg, #111111, var(--accent-dark), #111111);
+            background-size: 200% auto;
+            color: #ffffff;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.72rem;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            animation: gradientShift 6s ease infinite;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          }
+
+          @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+          }
+
+          .nk-announcement-content {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            text-align: center;
+            overflow: hidden;
+            white-space: nowrap;
+          }
+
+          .nk-announcement-content span {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+          }
+
+          .nk-announcement-content a {
+            color: var(--gold);
+            text-decoration: underline;
+            font-weight: 700;
+            transition: color 0.2s;
+          }
+
+          .nk-announcement-content a:hover {
+            color: #ffffff;
+          }
+          
           /* ── NAVBAR CHÍNH NÂNG CẤP ── */
           .nk-nav {
             position: fixed;
-            top: 0; left: 0; right: 0;
+            top: 36px; /* Đẩy xuống ngay dưới thanh thông báo */
+            left: 0; right: 0;
             z-index: 1000;
             background: rgba(255, 255, 255, 0.88) !important;
             backdrop-filter: blur(20px) saturate(1.2);
@@ -252,13 +287,14 @@ export default async function Layout({ children }) {
           /* ── CATEGORIES BAR NÂNG CẤP ── */
           .nk-categories-bar {
             position: fixed;
-            top: 72px; left: 0; right: 0;
+            top: 108px; /* 36px (Announcement) + 72px (Navbar) */
+            left: 0; right: 0;
             z-index: 999;
             background: rgba(255, 255, 255, 0.92) !important;
             backdrop-filter: blur(12px) saturate(1.1);
             -webkit-backdrop-filter: blur(12px) saturate(1.1);
             border-bottom: 1px solid var(--border-light);
-            height: 48px;
+            height: 40px;
             display: flex;
             align-items: center;
           }
@@ -363,7 +399,6 @@ export default async function Layout({ children }) {
             color: var(--text-primary);
           }
 
-          /* ── HIỆU ỨNG ANIMATION CHO DROPDOWN MENU ── */
           .nk-actions .nav-item.dropdown {
             position: relative;
           }
@@ -374,7 +409,6 @@ export default async function Layout({ children }) {
             right: 0;
             left: auto;
             min-width: 160px;
-            
             display: block;
             opacity: 0;
             visibility: hidden;
@@ -409,15 +443,8 @@ export default async function Layout({ children }) {
             transition: transform 0.3s ease;
           }
           
-.nk-footer-brand:hover {
-  transform: scale(1.02);
-}
-
-.nav-item.dropdown:hover > .dropdown-menu { display: block; margin-top: 0; }
-.dropdown-menu { display: none; transition: all 0.3s ease; animation: fadeIn 0.3s ease; }
-
-.nk-card {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          .nk-footer-brand:hover {
+            transform: scale(1.02);
           }
           
           .nk-footer-links { 
@@ -425,53 +452,36 @@ export default async function Layout({ children }) {
             padding: 0; 
             margin: 0; 
           }
-.nk-footer-links li { 
-  margin-bottom: 0.6rem; 
-}
-
-.nk-footer-links a { 
-  color: var(--text-secondary); 
-  text-decoration: none; 
-  font-size: 0.85rem; 
-  transition: all 0.3s ease;
-}
-
-.card-product .overflow-hidden, .nk-card .p-3, .nk-card .p-4 {
+          
+          .nk-footer-links li { 
+            margin-bottom: 0.6rem; 
+          }
+          
+          .nk-footer-links a { 
+            color: var(--text-secondary); 
+            text-decoration: none; 
+            font-size: 0.85rem; 
+            transition: all 0.3s ease;
             position: relative;
             padding-left: 0;
           }
-.nk-footer-links a::before {
-  content: '→';
-  opacity: 0;
-  margin-right: 0;
-  transition: all 0.3s ease;
-  display: inline-block;
-}
-
-section:nth-of-type(4) .nk-card .p-4::before {
-  content: 'HOT';
-  position: absolute;
-  top: 12px; left: 12px; z-index: 10;
-  background: #111111; color: #ffffff;
-  font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
-  padding: 3px 8px; font-family: var(--font-body);
-}
-
-.img-hover-scale {
-  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          
+          .nk-footer-links a::before {
+            content: '→';
+            opacity: 0;
+            margin-right: 0;
+            transition: all 0.3s ease;
+            display: inline-block;
           }
           
           .nk-footer-links a:hover {
             color: var(--accent);
             padding-left: 16px;
           }
-.nk-footer-links a:hover::before {
-  opacity: 1;
-  margin-right: 8px;
-}
-
-.glass-card {
-  transition: transform 0.4s ease, box-shadow 0.4s ease;
+          
+          .nk-footer-links a:hover::before {
+            opacity: 1;
+            margin-right: 8px;
           }
           
           .nk-footer-label { 
@@ -541,11 +551,12 @@ section:nth-of-type(4) .nk-card .p-4::before {
           
           /* ── RESPONSIVE ── */
           @media (max-width: 768px) {
-            main { padding-top: 100px; }
-            .nk-nav { height: 64px; }
+            main { padding-top: 132px; }
+            .nk-announcement-bar { font-size: 0.62rem; height: 32px; }
+            .nk-nav { top: 32px; height: 64px; }
             .nk-categories-bar { 
-              top: 64px;
-              height: 40px;
+              top: 96px; /* 32px + 64px */
+              height: 36px;
               overflow-x: auto;
             }
             .nk-categories-list { 
@@ -595,6 +606,20 @@ section:nth-of-type(4) .nk-card .p-4::before {
         <CartProvider>
           <WishlistProvider>
             
+            {/* ── THANH THÔNG BÁO PHÍA TRÊN (ANNOUNCEMENT BAR) ── */}
+            <div className="nk-announcement-bar">
+              <div className="nk-announcement-content">
+                <span>
+                  <i className="fas fa-bolt" style={{ color: 'var(--gold)' }}></i>
+                  FREESHIP TOÀN QUỐC CHO ĐƠN HÀNG TỪ 500K — MIỄN PHÍ ĐỔI TRẢ TRONG 30 NGÀY
+                </span>
+                <span className="d-none d-md-inline-flex">|</span>
+                <span className="d-none d-md-inline-flex">
+                  HOTLINE HỖ TRỢ: <a href="tel:0931839732">0931.839.732</a>
+                </span>
+              </div>
+            </div>
+
             {/* ── NAVBAR CHÍNH NÂNG CẤP ── */}
             <nav className="nk-nav" id="mainNav" suppressHydrationWarning>
               <div className="container">
@@ -614,8 +639,7 @@ section:nth-of-type(4) .nk-card .p-4::before {
                   <span className="brand-dot"></span>
                 </Link>
 
-{/* Sử dụng component NavbarLinks đã được tách rời */}
-<NavbarLinks />
+                <NavbarLinks />
 
                 <UserActions />
               </div>
@@ -646,9 +670,6 @@ section:nth-of-type(4) .nk-card .p-4::before {
             <main>
               {children}
             </main>
-
-            {/* 🤖 CHÈN PRODUCT CHATBOX VÀO ĐÂY ĐỂ XUẤT HIỆN Ở TẤT CẢ TRANG ── */}
-            <ProductChatbox products={products} />
 
           </WishlistProvider>
         </CartProvider>
