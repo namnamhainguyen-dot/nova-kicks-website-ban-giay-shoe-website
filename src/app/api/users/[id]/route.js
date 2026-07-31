@@ -1,48 +1,57 @@
 import clientPromise from "@/libs/mongodb";
-import { ObjectId } from "mongodb";
 import { NextResponse } from "next/server";
+import { ObjectId } from "mongodb";
 
-// GET: Lấy thông tin user (Ẩn các trường nhạy cảm)
-export async function GET(request, { params }) {
-  try {
-    const { id } = await params;
-    if (!ObjectId.isValid(id)) return NextResponse.json({ error: "ID sai" }, { status: 400 });
-
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-    
-    // Ẩn: password, resetToken, hoặc bất kỳ trường nào bạn muốn
-    const user = await db.collection("users").findOne(
-      { _id: new ObjectId(id) },
-      { projection: { password: 0, resetToken: 0 } } 
-    );
-    
-    if (!user) return NextResponse.json({ error: "Không tìm thấy" }, { status: 404 });
-    return NextResponse.json(user);
-  } catch (error) {
-    return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
+function getValidObjectId(idStr) {
+  if (!idStr || typeof idStr !== "string" || !ObjectId.isValid(idStr)) {
+    return null;
   }
+  return new ObjectId(idStr);
 }
 
-// PATCH: Cập nhật an toàn (Ngăn người dùng tự sửa role/status từ client)
-export async function PATCH(request, { params }) {
+export async function PUT(request, { params }) {
   try {
-    const { id } = await params;
-    const body = await request.json();
-    
-    // Loại bỏ các trường không cho phép người dùng tự sửa trực tiếp
-    const { password, email, ...updateData } = body; 
-
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    const result = await db.collection("users").updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const id = resolvedParams?.id;
+
+    const queryId = getValidObjectId(id);
+    if (!queryId) {
+      return NextResponse.json(
+        { message: "ID người dùng không hợp lệ" },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json();
+
+    // Loại bỏ các field không nên update đè
+    delete body._id;
+    delete body.password;
+
+    body.updatedAt = new Date();
+
+    const result = await db.collection("users").findOneAndUpdate(
+      { _id: queryId },
+      { $set: body },
+      { returnDocument: "after", projection: { password: 0 } }
     );
 
-    return NextResponse.json({ success: true });
+    if (!result) {
+      return NextResponse.json(
+        { message: "Không tìm thấy người dùng để cập nhật" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ error: "Lỗi cập nhật" }, { status: 500 });
+    console.error("Lỗi PUT /api/users/[id]:", error);
+    return NextResponse.json(
+      { message: "Lỗi máy chủ khi cập nhật thông tin" },
+      { status: 500 }
+    );
   }
 }

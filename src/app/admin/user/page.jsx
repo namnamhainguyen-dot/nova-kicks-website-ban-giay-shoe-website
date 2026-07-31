@@ -18,19 +18,27 @@ export default function UserManagement() {
 
   // Hàm lấy Tên an toàn
   const getDisplayName = (user) => {
-    if (user.fullname) return user.fullname;
-    if (user.name) return user.name;
-    if (user.email) return user.email.split("@")[0];
+    if (user?.fullname) return user.fullname;
+    if (user?.name) return user.name;
+    if (user?.email) return user.email.split("@")[0];
     return "Người dùng";
   };
 
-  // 1. Lấy danh sách từ /api/accounts
+  // Check trạng thái hoạt động (khớp với "active", "hoạt động", true, "1")
+  const isUserActive = (status) => {
+    if (typeof status === "boolean") return status;
+    const s = String(status).toLowerCase();
+    return s === "hoạt động" || s === "active" || s === "1";
+  };
+
+  // 1. Lấy danh sách từ /api/users
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchUsers = async () => {
       try {
-        const res = await fetch("/api/accounts");
-        
-        // Tránh lỗi "Unexpected token '<'" bằng cách kiểm tra res.ok trước
+        const res = await fetch("/api/users", { signal: controller.signal });
+
         if (!res.ok) {
           console.error("API trả về lỗi HTTP:", res.status);
           setUsers([]);
@@ -40,65 +48,63 @@ export default function UserManagement() {
         const data = await res.json();
         setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("Lỗi parse JSON hoặc mất mạng:", error);
+        if (error.name !== "AbortError") {
+          console.error("Lỗi fetch users:", error);
+        }
       } finally {
         setLoading(false);
       }
     };
+
     fetchUsers();
+    return () => controller.abort();
   }, []);
 
-  // 2. Xóa tài khoản
-  const handleDelete = async (user) => {
-    const id = getAccountId(user);
-    if (!id) return alert("Không tìm thấy ID!");
-    if (!confirm(`Bạn chắc chắn muốn xóa "${getDisplayName(user)}"?`)) return;
-
-    try {
-      const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setUsers((prev) => prev.filter((u) => getAccountId(u) !== id));
-        alert("Đã xóa thành công!");
-      } else {
-        alert("Xóa thất bại!");
-      }
-    } catch (error) {
-      alert("Lỗi kết nối máy chủ!");
-    }
-  };
-
-  // 3. Đổi trạng thái
+  // 2. Đổi trạng thái Hoạt động / Bị cấm (Optimistic UI Update)
   const toggleStatus = async (user) => {
     const id = getAccountId(user);
     if (!id) return;
 
-    const currentStatus = user.status === "Hoạt động" || user.status === "active";
-    const newStatus = currentStatus ? "Bị cấm" : "Hoạt động";
+    const currentActive = isUserActive(user.status);
 
-    // Cập nhật giao diện trước (Optimistic Update)
+    let newStatus;
+    if (typeof user.status === "boolean") {
+      newStatus = !currentActive;
+    } else if (user.status === "Hoạt động" || user.status === "Bị cấm") {
+      newStatus = currentActive ? "Bị cấm" : "Hoạt động";
+    } else {
+      newStatus = currentActive ? "inactive" : "active";
+    }
+
+    // Optimistic UI Update
     setUsers((prev) =>
       prev.map((u) => (getAccountId(u) === id ? { ...u, status: newStatus } : u))
     );
 
     try {
-      const res = await fetch(`/api/accounts/${id}`, {
+      const res = await fetch(`/api/users/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ _id: id, status: newStatus }),
+        body: JSON.stringify({ status: newStatus }),
       });
 
       if (!res.ok) {
-        // Trả lại trạng thái cũ nếu server lỗi
+        // Revert nếu server báo lỗi
         setUsers((prev) =>
           prev.map((u) => (getAccountId(u) === id ? { ...u, status: user.status } : u))
         );
         alert("Không thể cập nhật trạng thái!");
       }
     } catch (error) {
+      // Revert nếu lỗi mạng
+      setUsers((prev) =>
+        prev.map((u) => (getAccountId(u) === id ? { ...u, status: user.status } : u))
+      );
       alert("Lỗi kết nối server!");
     }
   };
 
+  // 3. Lọc dữ liệu theo từ khóa tìm kiếm
   const filteredUsers = users.filter((user) => {
     const name = getDisplayName(user).toLowerCase();
     const email = (user.email || "").toLowerCase();
@@ -156,14 +162,14 @@ export default function UserManagement() {
                     </td>
                   </tr>
                 ) : (
-                  filteredUsers.map((user) => {
+                  filteredUsers.map((user, index) => {
                     const userId = getAccountId(user);
                     const name = getDisplayName(user);
-                    const isActive = user.status === "Hoạt động" || user.status === "active";
+                    const active = isUserActive(user.status);
                     const roleUpper = (user.role || "MEMBER").toUpperCase();
 
                     return (
-                      <tr key={userId}>
+                      <tr key={userId || index}>
                         <td className="ps-4">
                           <div className="d-flex align-items-center gap-3">
                             <img
@@ -179,13 +185,21 @@ export default function UserManagement() {
                             />
                             <div>
                               <div className="fw-bold text-dark">{name}</div>
-                              <small className="text-muted">ID: {userId.slice(-6)}</small>
+                              <small className="text-muted">
+                                ID: {userId ? userId.slice(-6) : "N/A"}
+                              </small>
                             </div>
                           </div>
                         </td>
                         <td className="text-secondary">{user.email || "—"}</td>
                         <td>
-                          <span className={`badge px-3 py-2 ${roleUpper === "ADMIN" ? "bg-dark" : "bg-primary-subtle text-primary"}`}>
+                          <span
+                            className={`badge px-3 py-2 ${
+                              roleUpper === "ADMIN"
+                                ? "bg-dark"
+                                : "bg-primary-subtle text-primary"
+                            }`}
+                          >
                             {roleUpper}
                           </span>
                         </td>
@@ -195,21 +209,25 @@ export default function UserManagement() {
                               className="form-check-input cursor-pointer"
                               type="checkbox"
                               role="switch"
-                              checked={isActive}
+                              checked={active}
                               onChange={() => toggleStatus(user)}
                             />
-                            <span className={`ms-1 small ${isActive ? "text-success" : "text-danger"}`}>
-                              {isActive ? "Hoạt động" : "Bị cấm"}
+                            <span
+                              className={`ms-1 small ${
+                                active ? "text-success" : "text-danger"
+                              }`}
+                            >
+                              {active ? "Hoạt động" : "Bị cấm"}
                             </span>
                           </div>
                         </td>
                         <td className="text-end pe-4">
-                          <Link href={`/admin/user/edit/${userId}`} className="btn btn-sm btn-outline-secondary me-2">
+                          <Link
+                            href={`/admin/user/edit/${userId}`}
+                            className="btn btn-sm btn-outline-secondary"
+                          >
                             Sửa
                           </Link>
-                          <button onClick={() => handleDelete(user)} className="btn btn-sm btn-outline-danger">
-                            Xóa
-                          </button>
                         </td>
                       </tr>
                     );

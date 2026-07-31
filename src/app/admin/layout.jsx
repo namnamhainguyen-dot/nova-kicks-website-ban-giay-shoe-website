@@ -47,7 +47,7 @@ export default function Layout({ children }) {
             </li>
 
             <li className="nav-item mb-2">
-              <Link href="/admin/account" className="nav-link">
+              <Link href="/admin/user" className="nav-link">
                 Quản lý người dùng
               </Link>
             </li>

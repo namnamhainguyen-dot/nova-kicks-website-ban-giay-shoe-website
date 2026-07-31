@@ -7,8 +7,7 @@ import Link from "next/link";
 export default function AddAccount() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    id: "",
-    name: "",
+    fullname: "",
     email: "",
     password: "",
     role: "MEMBER",
@@ -24,36 +23,47 @@ export default function AddAccount() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name.trim()) return alert("Tên hiển thị không được để trống!");
+    if (!formData.fullname.trim()) return alert("Tên hiển thị không được để trống!");
     if (!formData.email.trim()) return alert("Email không được để trống!");
     if (!formData.password.trim()) return alert("Mật khẩu không được để trống!");
 
     setSubmitting(true);
     try {
-      const res = await fetch("/api/accounts", {
+      const avatarUrl =
+        formData.avatar.trim() ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          formData.fullname.trim()
+        )}&background=random`;
+
+      // Gửi request tới /api/users
+      const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          id: formData.id.trim(),
-          name: formData.name.trim(),
+          fullname: formData.fullname.trim(),
+          name: formData.fullname.trim(), // Bổ sung name dự phòng nếu Schema dùng name
           email: formData.email.trim(),
           password: formData.password,
           role: formData.role,
           status: formData.status,
-          avatar: formData.avatar.trim() || "https://i.pravatar.cc/80?img=32",
+          avatar: avatarUrl,
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
+
       if (res.ok) {
         alert("Tạo tài khoản thành công!");
-        router.push("/admin/account");
+        router.push("/admin/user");
         router.refresh();
       } else {
-        const errorData = await res.json();
-        alert(errorData.message || "Lỗi khi tạo tài khoản.");
+        // Hiển thị chi tiết lỗi trả về từ backend
+        const errorMsg = data.message || data.error || "Không thể tạo tài khoản.";
+        alert(`Tạo thất bại (${res.status}): ${errorMsg}`);
       }
     } catch (error) {
-      alert("Lỗi kết nối máy chủ khi tạo tài khoản.");
+      console.error("Lỗi gửi form:", error);
+      alert("Lỗi kết nối máy chủ khi tạo tài khoản!");
     } finally {
       setSubmitting(false);
     }
@@ -69,35 +79,74 @@ export default function AddAccount() {
       <div className="card border-0 shadow-sm rounded-4">
         <div className="card-body p-4">
           <form onSubmit={handleSubmit}>
-            <div className="row">
-              <div className="col-md-6 mb-3">
-                <label className="form-label small fw-bold text-secondary">Mã nhân viên / ID</label>
-                <input type="text" className="form-control" name="id" placeholder="VD: NK-8821" value={formData.id} onChange={handleChange} />
-              </div>
-              <div className="col-md-6 mb-3">
-                <label className="form-label small fw-bold text-secondary">Tên hiển thị <span className="text-danger">*</span></label>
-                <input type="text" className="form-control" name="name" placeholder="Nhập họ và tên..." value={formData.name} onChange={handleChange} required />
-              </div>
-            </div>
             <div className="mb-3">
-              <label className="form-label small fw-bold text-secondary">Địa chỉ Email <span className="text-danger">*</span></label>
-              <input type="email" className="form-control" name="email" placeholder="example@gmail.com" value={formData.email} onChange={handleChange} required />
-            </div>
-
-            <div className="mb-3">
-              <label className="form-label small fw-bold text-secondary">Mật khẩu khởi tạo <span className="text-danger">*</span></label>
-              <input type="password" className="form-control" name="password" placeholder="Nhập mật khẩu..." value={formData.password} onChange={handleChange} required />
+              <label className="form-label small fw-bold text-secondary">
+                Tên hiển thị <span className="text-danger">*</span>
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                name="fullname"
+                placeholder="Nhập họ và tên..."
+                value={formData.fullname}
+                onChange={handleChange}
+                required
+              />
             </div>
 
             <div className="mb-3">
-              <label className="form-label small fw-bold text-secondary">Đường dẫn ảnh đại diện (Avatar URL)</label>
-              <input type="text" className="form-control" name="avatar" placeholder="https://..." value={formData.avatar} onChange={handleChange} />
+              <label className="form-label small fw-bold text-secondary">
+                Địa chỉ Email <span className="text-danger">*</span>
+              </label>
+              <input
+                type="email"
+                className="form-control"
+                name="email"
+                placeholder="example@gmail.com"
+                value={formData.email}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label small fw-bold text-secondary">
+                Mật khẩu khởi tạo <span className="text-danger">*</span>
+              </label>
+              <input
+                type="password"
+                className="form-control"
+                name="password"
+                placeholder="Nhập mật khẩu..."
+                value={formData.password}
+                onChange={handleChange}
+                required
+              />
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label small fw-bold text-secondary">
+                Đường dẫn ảnh đại diện (Avatar URL)
+              </label>
+              <input
+                type="text"
+                className="form-control"
+                name="avatar"
+                placeholder="https://..."
+                value={formData.avatar}
+                onChange={handleChange}
+              />
             </div>
 
             <div className="row">
               <div className="col-md-6 mb-4">
                 <label className="form-label small fw-bold text-secondary">Vai trò</label>
-                <select className="form-select" name="role" value={formData.role} onChange={handleChange}>
+                <select
+                  className="form-select"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                >
                   <option value="MEMBER">MEMBER (Người dùng)</option>
                   <option value="ADMIN">ADMIN (Quản trị viên)</option>
                 </select>
@@ -105,7 +154,12 @@ export default function AddAccount() {
 
               <div className="col-md-6 mb-4">
                 <label className="form-label small fw-bold text-secondary">Trạng thái kích hoạt</label>
-                <select className="form-select" name="status" value={formData.status} onChange={handleChange}>
+                <select
+                  className="form-select"
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                >
                   <option value="active">Hoạt động (Active)</option>
                   <option value="inactive">Khóa (Inactive)</option>
                 </select>
@@ -113,7 +167,9 @@ export default function AddAccount() {
             </div>
 
             <div className="d-flex justify-content-end gap-2 border-top pt-3">
-              <Link href="/admin/account" className="btn btn-light px-4">Hủy</Link>
+              <Link href="/admin/user" className="btn btn-light px-4">
+                Hủy
+              </Link>
               <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
                 {submitting ? "Đang tạo..." : "Tạo tài khoản"}
               </button>
