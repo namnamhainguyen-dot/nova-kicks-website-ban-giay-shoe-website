@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react"; 
+import { useEffect, useState, useCallback } from "react"; 
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -78,46 +78,44 @@ function OrderItemRow({ item, idx, isLast }) {
 // COMPONENT CHÍNH: CHI TIẾT ĐƠN HÀNG
 // ==========================================
 export default function OrderDetailPage({ params }) {
-  const unwrappedParams = use(params);
-  const id = unwrappedParams?.id;
+  // 🌟 Lấy ID an toàn qua useParams() của Next.js (Khắc phục hoàn toàn lỗi use(params))
+  const routeParams = useParams();
+  const id = routeParams?.id || params?.id;
 
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Hàm fetch dữ liệu chi tiết đơn hàng từ API
-  const fetchOrderDetails = () => {
-    return fetch(`/api/orders/${id}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error("Không tìm thấy đơn hàng");
-        }
-        return res.json();
-      })
-      .then((data) => {
-        if (data && data._id) {
-          setOrder(data);
-        } else {
-          setOrder(null);
-        }
-      })
-      .catch((err) => {
-        console.error("Lỗi khi lấy chi tiết đơn hàng:", err);
+  // 🌟 Bọc hàm fetch bằng useCallback để tránh re-creation thừa
+  const fetchOrderDetails = useCallback(async () => {
+    if (!id) return;
+    try {
+      const res = await fetch(`/api/orders/${id}`);
+      if (!res.ok) throw new Error("Không tìm thấy đơn hàng");
+      const data = await res.json();
+      
+      if (data && data._id) {
+        setOrder(data);
+      } else {
         setOrder(null);
-      });
-  };
+      }
+    } catch (err) {
+      console.error("Lỗi khi lấy chi tiết đơn hàng:", err);
+      setOrder(null);
+    }
+  }, [id]);
 
+  // Lấy dữ liệu lần đầu khi vào trang
   useEffect(() => {
     if (!id) return;
-
     setLoading(true);
     fetchOrderDetails().finally(() => setLoading(false));
-  }, [id]);
+  }, [id, fetchOrderDetails]);
 
   // Tự động quét cập nhật trạng thái mới nhất từ Database mỗi 4 giây (nếu đơn chưa thanh toán)
   useEffect(() => {
     if (!id || !order) return;
 
-    // Ép kiểu an toàn cho isPaid (chấp nhận cả true và "true")
+    // Ép kiểu an toàn cho isPaid
     const isAlreadyPaid = order.isPaid === true || order.isPaid === "true";
     if (isAlreadyPaid) return;
 
@@ -126,7 +124,7 @@ export default function OrderDetailPage({ params }) {
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [id, order]);
+  }, [id, order, fetchOrderDetails]);
 
   const statusLabels = {
     pending: { text: "Chờ xác nhận hệ thống", color: "text-warning" },
@@ -142,7 +140,7 @@ export default function OrderDetailPage({ params }) {
   const displayDiscount = order.discount || 0;
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
 
-  // 🌟 ÉP KIỂU AN TOÀN CHO TRẠNG THÁI THANH TOÁN (Tránh lỗi kiểu dữ liệu String/Boolean từ DB)
+  // Ép kiểu an toàn cho trạng thái thanh toán
   const isPaid = order.isPaid === true || order.isPaid === "true";
 
   return (
@@ -170,7 +168,7 @@ export default function OrderDetailPage({ params }) {
           </div>
         </div>
 
-        {/* 🌟 BANNER TRẠNG THÁI THANH TOÁN - CHUYỂN SANG MÀU XANH LÁ HOÀN TOÀN KHI ĐÃ THANH TOÁN */}
+        {/* Banner trạng thái thanh toán */}
         <div className={`p-3 text-center border-bottom ${isPaid ? "bg-success-subtle text-success" : "bg-warning-subtle text-warning-emphasis"}`}>
           <div className="d-flex align-items-center justify-content-center gap-2 fw-bold text-uppercase">
             {isPaid ? (
@@ -205,7 +203,6 @@ export default function OrderDetailPage({ params }) {
               {order.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}
             </div>
 
-            {/* 🌟 TRẠNG THÁI THANH TOÁN CHI TIẾT - ĐỔI MÀU XANH LÁ BẮT MẮT KHI ĐÃ THANH TOÁN */}
             <div className="col-4 text-muted">Thanh toán:</div>
             <div className={`col-8 fw-bold ${isPaid ? "text-success" : "text-danger"}`}>
               {isPaid ? "✓ Đã thanh toán thành công (VietQR)" : "Chưa thanh toán"}

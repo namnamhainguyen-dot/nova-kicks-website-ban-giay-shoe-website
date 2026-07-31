@@ -2,12 +2,11 @@ import clientPromise from "@/libs/mongodb";
 import nodemailer from "nodemailer";
 
 // ── CẤU HÌNH GỬI MAIL (NODEMAILER) ──
-// Nhớ thêm EMAIL_USER và EMAIL_PASS vào file .env.local nhé!
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: process.env.EMAIL_USER, // ví dụ: shopcuaban@gmail.com
-    pass: process.env.EMAIL_PASS, // Mật khẩu ứng dụng Gmail (16 ký tự viết liền)
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
@@ -23,19 +22,19 @@ export async function GET(request) {
     // 2. Khởi tạo bộ lọc tìm kiếm mặc định (Trống = Lấy tất cả cho Admin)
     let queryFilter = {};
 
-    // 3. Nếu có tham số email gửi lên (Trang cá nhân đang gọi)
+    // 3. Lọc đơn hàng theo email khách hàng nếu có
     if (email) {
       if (email === "guest") {
-        return Response.json([]); // Nếu là guest không có tài khoản, trả về mảng rỗng
+        return Response.json([]);
       }
-      queryFilter.email = email; // Gán bộ lọc tìm kiếm theo đúng email này
+      queryFilter.email = email;
     }
 
-    // 4. Tìm kiếm trong Database dựa theo bộ lọc queryFilter linh hoạt
+    // 4. Lấy danh sách đơn hàng từ MongoDB
     const orders = await db
       .collection("orders")
       .find(queryFilter)
-      .sort({ createdAt: -1 }) // Đơn hàng mới nhất lên đầu
+      .sort({ createdAt: -1 })
       .toArray();
 
     const normalized = orders.map((order) => ({
@@ -71,10 +70,10 @@ export async function POST(request) {
       discount,
       final_total,
       applied_voucher,
-      paymentMethod, // Nhận thêm phương thức thanh toán từ frontend gửi lên
+      paymentMethod,
     } = body;
 
-    // 1. Tạo đối tượng đơn hàng mới lưu vào MongoDB
+    // 1. Tạo đối tượng đơn hàng mới
     const newOrder = {
       email: email || "guest",
       name,
@@ -91,80 +90,210 @@ export async function POST(request) {
       createdAt: new Date(),
     };
 
-    // 2. Lưu trực tiếp đơn hàng vào MongoDB
+    // 2. Lưu đơn hàng vào MongoDB
     const result = await db.collection("orders").insertOne(newOrder);
     const orderId = String(result.insertedId);
 
-    // ── 3. XỬ LÝ THANH TOÁN GIẢ LẬP ──
+    // 3. Xử lý thanh toán giả lập
     let paymentUrl = null;
     if (paymentMethod === "vnpay") {
-      // Điều hướng người dùng đến trang QR Code giả lập của bạn trên Frontend
       paymentUrl = `/checkout/payment-simulation?orderId=${orderId}&total=${final_total || total}`;
     }
 
-    // ── 4. TIẾN HÀNH GỬI MAIL THÔNG BÁO (CHẠY BẤT ĐỒNG BỘ) ──
-    // Gom HTML danh sách sản phẩm
-    const itemsHtml = order_items.map(item => `
+    // 4. Tạo giao diện HTML danh sách sản phẩm
+    const itemsHtml = order_items
+      .map(
+        (item) => `
       <tr>
-        <td style="padding: 10px; border-bottom: 1px solid #eee;">
-          <strong>${item.name}</strong> 
-          ${item.color ? `<br/><span style="color: #666; font-size: 12px;">Màu: ${item.color}</span>` : ""}
-          ${item.size ? `<span style="color: #666; font-size: 12px;"> | Size: ${item.size}</span>` : ""}
-        </td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
-        <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${item.price.toLocaleString("vi-VN")}đ</td>
-      </tr>
-    `).join("");
-
-    // Khung HTML email đẹp mắt mang phong cách Nova Kicks
-    const emailTemplate = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-        <div style="background-color: #111111; color: #ffffff; padding: 30px 20px; text-align: center;">
-          <h1 style="margin: 0; font-size: 24px; letter-spacing: 2px;">NOVA KICKS</h1>
-          <p style="margin: 5px 0 0; font-size: 14px; color: #aaaaaa;">Cảm ơn bạn đã đặt hàng tại shop chúng tôi!</p>
-        </div>
-        
-        <div style="padding: 24px; background-color: #ffffff;">
-          <h3 style="color: #111111; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 0;">📦 THÔNG TIN ĐƠN HÀNG #${orderId}</h3>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Khách hàng:</strong> ${name}</p>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Số điện thoại:</strong> ${phone}</p>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Địa chỉ giao:</strong> ${location_id}</p>
-          <p style="margin: 6px 0; font-size: 14px;"><strong>Thanh toán:</strong> ${paymentMethod === "cod" ? "Thanh toán COD khi nhận hàng" : "Thanh toán Online bằng mã QR (Giả lập)"}</p>
-          ${note ? `<p style="margin: 6px 0; font-size: 14px;"><strong>Ghi chú:</strong> ${note}</p>` : ""}
-
-          <h3 style="color: #111111; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-top: 24px;">👟 CHI TIẾT SẢN PHẨM</h3>
-          <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #f8f9fa; font-size: 13px;">
-                <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Sản phẩm</th>
-                <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">SL</th>
-                <th style="padding: 10px; text-align: right; border-bottom: 2px solid #ddd;">Đơn giá</th>
-              </tr>
-            </thead>
-            <tbody style="font-size: 13px; color: #333;">
-              ${itemsHtml}
-            </tbody>
-          </table>
-
-          <div style="margin-top: 20px; text-align: right; font-size: 14px; line-height: 1.6;">
-            <p style="margin: 4px 0;">Tổng tiền hàng: <strong>${total.toLocaleString("vi-VN")}đ</strong></p>
-            ${discount > 0 ? `<p style="margin: 4px 0; color: #dc3545;">Mã giảm giá: <strong>-${discount.toLocaleString("vi-VN")}đ</strong></p>` : ""}
-            <p style="margin: 4px 0; font-size: 18px; color: #111111;"><strong>Tổng thanh toán: <span style="color: #dc3545;">${final_total.toLocaleString("vi-VN")}đ</span></strong></p>
+        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0;">
+          <div style="display: flex; align-items: center;">
+            ${
+              item.image
+                ? `<img src="${item.image}" alt="${item.name}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; margin-right: 12px; border: 1px solid #eee;" />`
+                : ""
+            }
+            <div>
+              <div style="font-weight: 600; color: #111111; font-size: 14px;">${item.name}</div>
+              <div style="color: #777777; font-size: 12px; margin-top: 2px;">
+                ${item.color ? `Màu: <strong>${item.color}</strong>` : ""} 
+                ${item.color && item.size ? " | " : ""}
+                ${item.size ? `Size: <strong>${item.size}</strong>` : ""}
+              </div>
+            </div>
           </div>
-        </div>
-        
-        <div style="background-color: #f9f9f9; text-align: center; padding: 15px; font-size: 12px; color: #888888; border-top: 1px solid #eeeeee;">
-          Đơn hàng đang được hệ thống chuẩn bị và đóng gói. Mọi thắc mắc vui lòng liên hệ hotline hỗ trợ khách hàng của Nova Kicks.
-        </div>
-      </div>
+        </td>
+        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0; text-align: center; font-weight: 600; color: #333333; font-size: 14px;">
+          x${item.quantity}
+        </td>
+        <td style="padding: 14px 10px; border-bottom: 1px solid #f0f0f0; text-align: right; font-weight: 600; color: #111111; font-size: 14px;">
+          ${item.price.toLocaleString("vi-VN")}đ
+        </td>
+      </tr>
+    `
+      )
+      .join("");
+
+    // 5. Template Email giao diện mới
+    const emailTemplate = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      </head>
+      <body style="margin: 0; padding: 0; background-color: #f4f4f6; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f4f6; padding: 30px 10px;">
+          <tr>
+            <td align="center">
+              <table role="presentation" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.06); border: 1px solid #eaeaea;">
+                
+                <!-- HEADER BANNER -->
+                <tr>
+                  <td style="background-color: #0d0d0d; padding: 36px 20px; text-align: center;">
+                    <div style="display: inline-block; background: #222; padding: 6px 16px; border-radius: 20px; color: #e50914; font-size: 11px; font-weight: 800; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 12px;">
+                      Xác Nhận Đơn Hàng
+                    </div>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 900; letter-spacing: 3px; font-family: Arial, sans-serif;">
+                      NOVA KICKS<span style="color: #e50914;">.</span>
+                    </h1>
+                    <p style="margin: 8px 0 0; color: #999999; font-size: 14px;">Cảm ơn bạn đã tin tưởng chọn lựa phong cách của chúng tôi.</p>
+                  </td>
+                </tr>
+
+                <!-- THÔNG TIN ĐƠN HÀNG GIỚI THIỆU -->
+                <tr>
+                  <td style="padding: 30px 30px 20px 30px;">
+                    <div style="background-color: #f8f9fa; border-radius: 12px; padding: 20px; border-left: 4px solid #111111;">
+                      <div style="font-size: 12px; color: #666666; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Mã đơn hàng</div>
+                      <div style="font-size: 20px; font-weight: 800; color: #111111; margin-top: 4px;">#${orderId}</div>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- THÔNG TIN KHÁCH HÀNG -->
+                <tr>
+                  <td style="padding: 0 30px 20px 30px;">
+                    <h3 style="margin: 0 0 14px 0; font-size: 15px; color: #111111; text-transform: uppercase; letter-spacing: 0.5px;">📍 Thông tin giao hàng</h3>
+                    <table width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px; color: #444444; line-height: 1.6;">
+                      <tr>
+                        <td style="padding: 4px 0; width: 120px; color: #777777;">Người nhận:</td>
+                        <td style="padding: 4px 0; font-weight: 600; color: #111111;">${name}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 4px 0; color: #777777;">Số điện thoại:</td>
+                        <td style="padding: 4px 0; font-weight: 600; color: #111111;">${phone}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 4px 0; color: #777777;">Địa chỉ:</td>
+                        <td style="padding: 4px 0; font-weight: 500;">${location_id}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 4px 0; color: #777777;">Thanh toán:</td>
+                        <td style="padding: 4px 0;">
+                          <span style="display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; ${
+                            paymentMethod === "cod"
+                              ? "background-color: #e3f2fd; color: #0d47a1;"
+                              : "background-color: #e8f5e9; color: #1b5e20;"
+                          }">
+                            ${
+                              paymentMethod === "cod"
+                                ? "COD (Thanh toán khi nhận hàng)"
+                                : "Chuyển khoản QR (Đã thanh toán giả lập)"
+                            }
+                          </span>
+                        </td>
+                      </tr>
+                      ${
+                        note
+                          ? `
+                      <tr>
+                        <td style="padding: 4px 0; color: #777777;">Ghi chú:</td>
+                        <td style="padding: 4px 0; font-style: italic; color: #666666;">"${note}"</td>
+                      </tr>
+                      `
+                          : ""
+                      }
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- DANH SÁCH SẢN PHẨM -->
+                <tr>
+                  <td style="padding: 10px 30px 20px 30px;">
+                    <h3 style="margin: 0 0 14px 0; font-size: 15px; color: #111111; text-transform: uppercase; letter-spacing: 0.5px;">👟 Chi tiết sản phẩm</h3>
+                    <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
+                      <thead>
+                        <tr style="border-bottom: 2px solid #111111;">
+                          <th align="left" style="padding: 8px 10px; font-size: 12px; color: #666666; text-transform: uppercase;">Sản phẩm</th>
+                          <th align="center" style="padding: 8px 10px; font-size: 12px; color: #666666; text-transform: uppercase;">SL</th>
+                          <th align="right" style="padding: 8px 10px; font-size: 12px; color: #666666; text-transform: uppercase;">Thành tiền</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${itemsHtml}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- BẢNG TỔNG TIỀN -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <div style="background-color: #fcfcfc; border: 1px solid #f0f0f0; border-radius: 12px; padding: 20px;">
+                      <table width="100%" cellspacing="0" cellpadding="0" style="font-size: 14px; color: #555555; line-height: 1.8;">
+                        <tr>
+                          <td>Tạm tính:</td>
+                          <td align="right" style="font-weight: 600; color: #111111;">${total.toLocaleString("vi-VN")}đ</td>
+                        </tr>
+                        ${
+                          discount > 0
+                            ? `
+                        <tr>
+                          <td>Mã giảm giá ${applied_voucher ? `(${applied_voucher})` : ""}:</td>
+                          <td align="right" style="font-weight: 600; color: #e50914;">-${discount.toLocaleString("vi-VN")}đ</td>
+                        </tr>
+                        `
+                            : ""
+                        }
+                        <tr>
+                          <td style="padding-top: 10px; font-size: 16px; font-weight: 800; color: #111111; border-top: 1px dashed #e0e0e0;">Tổng thanh toán:</td>
+                          <td align="right" style="padding-top: 10px; font-size: 20px; font-weight: 900; color: #e50914; border-top: 1px dashed #e0e0e0;">${final_total.toLocaleString("vi-VN")}đ</td>
+                        </tr>
+                      </table>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- FOOTER -->
+                <tr>
+                  <td style="background-color: #fafafa; padding: 24px 30px; text-align: center; border-top: 1px solid #eeeeee;">
+                    <p style="margin: 0 0 8px 0; font-size: 13px; color: #666666; font-weight: 500;">
+                      Đơn hàng đang được đóng gói và chuẩn bị giao tới bạn.
+                    </p>
+                    <p style="margin: 0; font-size: 12px; color: #999999;">
+                      Nếu bạn có câu hỏi, vui lòng phản hồi lại email này hoặc gọi hotline hỗ trợ.
+                    </p>
+                    <div style="margin-top: 16px; font-size: 11px; color: #bbbbbb; text-transform: uppercase; letter-spacing: 1px;">
+                      © ${new Date().getFullYear()} Nova Kicks. All rights reserved.
+                    </div>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
     `;
 
-    // Xác định email gửi đến (Nếu là guest hoặc email không hợp lệ thì dự phòng gửi về mail quản trị để test)
-    const receiverEmail = email && email !== "guest" && email.includes("@") 
-      ? email 
-      : process.env.EMAIL_USER; 
+    // 6. Xác định địa chỉ email nhận thư
+    const receiverEmail =
+      email && email !== "guest" && email.includes("@")
+        ? email
+        : process.env.EMAIL_USER;
 
-    // Gửi mail không chặn luồng chính (không sử dụng 'await' nếu muốn phản hồi nhanh, hoặc dùng await để chắc chắn thành công)
+    // 7. Gửi mail bất đồng bộ
     try {
       await transporter.sendMail({
         from: `"Nova Kicks Shop" <${process.env.EMAIL_USER}>`,
@@ -174,19 +303,16 @@ export async function POST(request) {
       });
     } catch (mailError) {
       console.error("Lỗi gửi email:", mailError);
-      // Vẫn tiếp tục tạo đơn bình thường kể cả khi gửi mail lỗi
     }
 
-    // 5. Trả về thông tin cho Client
+    // 8. Phản hồi kết quả cho client
     return Response.json({
       success: true,
       _id: orderId,
-      paymentUrl: paymentUrl // Trả về URL để Client điều hướng sang trang QR nếu chọn vnpay
+      paymentUrl: paymentUrl,
     });
-
   } catch (error) {
     console.error("Lỗi khi tạo đơn hàng:", error);
-
     return Response.json(
       { error: "Failed to create order" },
       { status: 500 }
