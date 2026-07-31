@@ -2,11 +2,23 @@ import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
 import '../(user)/layout.jsx'; 
 
+const formatDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const year = date.getUTCFullYear();
+  return `${day}/${month}/${year}`;
+};
 
 export default async function Menu() {
   // Lấy dữ liệu mới nhất từ database
   const res = await fetch('http://localhost:3000/api/products', { cache: 'no-store' });
   const productList = await res.json();
+
+  const newsRes = await fetch('http://localhost:3000/api/news', { cache: 'no-store' });
+  const newsData = await newsRes.json();
+  const newsArticles = Array.isArray(newsData?.data) ? newsData.data.slice(0, 3) : [];
 
   const isArray = Array.isArray(productList);
   const displayProducts = isArray ? productList : [];
@@ -236,27 +248,20 @@ export default async function Menu() {
       <section className="container my-5 pt-4 border-top" style={{ borderColor: "var(--border-light)" }}>
         <h4 className="text-uppercase text-center fw-black tracking-widest mb-5 fs-4">TIN TỨC & BIÊN TẬP</h4>
         <div className="row g-4">
-          <div className="col-md-4">
-            <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
-              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
+          {newsArticles.length > 0 ? newsArticles.map((article) => (
+            <div className="col-md-4" key={article._id}>
+              <Link href={`/news/${article._id}`} className="text-decoration-none text-dark">
+                <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
+                  <img src={article.image || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800&auto=format&fit=crop'} className="w-100 h-100 object-fit-cover" alt={article.title} />
+                </div>
+                <h6 className="fw-bold text-uppercase">{article.title}</h6>
+                <p className="small" style={{ color: "var(--text-secondary)" }}>{article.summary}</p>
+                <small className="text-muted">{formatDate(article.createdAt)}</small>
+              </Link>
             </div>
-            <h6 className="fw-bold text-uppercase">Nghệ thuật chế tác giày thủ công</h6>
-            <p className="small" style={{ color: "var(--text-secondary)" }}>Từng đường kim mũi chỉ tạo nên giá trị độc bản bền bỉ cùng thời gian thực tế.</p>
-          </div>
-          <div className="col-md-4">
-            <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
-              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-metcon-10-nam-xanh-den-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
-            </div>
-            <h6 className="fw-bold text-uppercase">Xu hướng Techwear 2026</h6>
-            <p className="small" style={{ color: "var(--text-secondary)" }}>Khám phá phong cách đường phố tối giản kết hợp công nghệ tối tân nhất.</p>
-          </div>
-          <div className="col-md-4">
-            <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
-              <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg" className="w-100 h-100 object-fit-cover" alt="News" />
-            </div>
-            <h6 className="fw-bold text-uppercase">Đế giày cấu trúc tương lai</h6>
-            <p className="small" style={{ color: "var(--text-secondary)" }}>Công nghệ phản hồi lực tiên tiến bảo vệ đôi chân trên mọi bề mặt địa hình.</p>
-          </div>
+          )) : (
+            <div className="col-12 text-center text-muted">Chưa có bài viết nào.</div>
+          )}
         </div>
       </section>
 

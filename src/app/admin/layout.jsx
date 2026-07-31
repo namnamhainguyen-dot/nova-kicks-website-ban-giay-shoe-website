@@ -65,6 +65,12 @@ export default function Layout({ children }) {
             </li>
 
             <li className="nav-item mb-2">
+              <Link href="/admin/news" className="nav-link">
+                Quản lý tin tức
+              </Link>
+            </li>
+
+            <li className="nav-item mb-2">
               <Link href="/admin/chat" className="nav-link text-white">
                 Hỗ trợ trực tiếp
               </Link>
