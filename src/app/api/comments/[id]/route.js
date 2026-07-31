@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import clientPromise from "@/libs/mongodb";
 import { ObjectId } from "mongodb";
 
-export async function PUT(request, { params }) {
+export async function PUT(request, context) {
   try {
-    const resolvedParams = await params;
-    const { id } = resolvedParams;
+    // Ép kiểu hoặc await an toàn cho params tránh lỗi Next.js
+    const params = await context?.params;
+    const id = params?.id;
 
     if (!id) {
       return NextResponse.json({ error: "ID bình luận không hợp lệ" }, { status: 400 });
@@ -13,8 +14,6 @@ export async function PUT(request, { params }) {
 
     const client = await clientPromise;
     const db = client.db();
-    
-    // Đồng bộ trỏ vào collection "reviews" giống như bên file GET
     const collection = db.collection("reviews");
 
     let comment = null;
@@ -32,10 +31,37 @@ export async function PUT(request, { params }) {
 
     const newHiddenState = comment.isHidden ? false : true;
 
+    // Cập nhật trạng thái ẩn/hiện
     await collection.updateOne(
       { _id: comment._id },
       { $set: { isHidden: newHiddenState, updatedAt: new Date() } }
     );
+
+    // Tính lại điểm trung bình cho sản phẩm (chỉ tính các review không bị ẩn)
+    if (comment.productId) {
+      const prodId = ObjectId.isValid(comment.productId) ? new ObjectId(comment.productId) : comment.productId;
+      
+      const activeReviews = await collection.find({ 
+        productId: prodId, 
+        isHidden: { $ne: true } 
+      }).toArray();
+
+      let averageRating = 0;
+      if (activeReviews.length > 0) {
+        const totalRating = activeReviews.reduce((sum, item) => sum + item.rating, 0);
+        averageRating = Number((totalRating / activeReviews.length).toFixed(1));
+      }
+
+      await db.collection("products").updateOne(
+        { _id: prodId },
+        { 
+          $set: { 
+            averageRating: averageRating,
+            reviewCount: activeReviews.length 
+          } 
+        }
+      );
+    }
 
     return NextResponse.json({
       message: "Cập nhật trạng thái thành công",

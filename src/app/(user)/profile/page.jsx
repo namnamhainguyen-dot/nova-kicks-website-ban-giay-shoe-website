@@ -424,7 +424,7 @@ export default function Profile() {
                       value={user.phone || ""}
                       onChange={handleInputChange}
                     />
-                    <label htmlFor="phone" className="text-muted">Số điện thoại chính</label>
+                    <label htmlFor="phone" className="text-muted">Số điện thoại</label>
                   </div>
                   {phoneError ? (
                     <div className="text-danger small mb-3 ms-1" style={{ fontSize: "0.8rem" }}>

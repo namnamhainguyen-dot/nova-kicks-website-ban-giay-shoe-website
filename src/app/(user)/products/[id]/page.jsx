@@ -26,8 +26,12 @@ export default function ProductDetailPage() {
     const [hoveredColor, setHoveredColor] = useState(null);
     const [isImageChanging, setIsImageChanging] = useState(false);
     const [quantity, setQuantity] = useState(1);
-    const [currentImage, setCurrentImage] = useState('');
+    const [currentImage, setCurrentImage] = useState('/placeholder.png');
     const [stockAvailable, setStockAvailable] = useState(0);
+
+    // Lightbox State (Phóng to ảnh chính & ảnh bình luận)
+    const [isZoomOpen, setIsZoomOpen] = useState(false);
+    const [zoomReviewImage, setZoomReviewImage] = useState(null); // State lưu ảnh bình luận đang được phóng to
 
     // Reviews State
     const [reviews, setReviews] = useState([]);
@@ -35,7 +39,14 @@ export default function ProductDetailPage() {
     const [newComment, setNewComment] = useState('');
     const [submittingReview, setSubmittingReview] = useState(false);
 
-    // Lấy thông tin User từ localStorage an toàn
+    // Review Image State
+    const [newImages, setNewImages] = useState([]);
+    const [imageFiles, setImageFiles] = useState([]);
+
+    const [canReview, setCanReview] = useState(false);
+    const [eligibleOrders, setEligibleOrders] = useState([]);
+    const [selectedOrderId, setSelectedOrderId] = useState('');
+
     useEffect(() => {
         try {
             const savedUser = localStorage.getItem('user');
@@ -49,27 +60,47 @@ export default function ProductDetailPage() {
         }
     }, []);
 
-    // Hàm riêng để fetch danh sách đánh giá
     const fetchReviews = useCallback(async () => {
-    if (!id) return;
-    try {
-        const resReviews = await fetch(`/api/products/${id}/reviews`, { cache: 'no-store' });
-        if (resReviews.ok) {
-            const reviewsData = await resReviews.json();
-            
-            // Lọc chỉ giữ lại những bình luận hiển thị (loại bỏ các bình luận đã bị ẩn)
-            const visibleReviews = Array.isArray(reviewsData) 
-                ? reviewsData.filter(rev => !rev.isHidden && rev.status !== 'hidden') 
-                : [];
-
-            setReviews(visibleReviews);
+        if (!id) return;
+        try {
+            const resReviews = await fetch(`/api/products/${id}/reviews`, { cache: 'no-store' });
+            if (resReviews.ok) {
+                const reviewsData = await resReviews.json();
+                const visibleReviews = Array.isArray(reviewsData) 
+                    ? reviewsData.filter(rev => !rev.isHidden && rev.status !== 'hidden') 
+                    : [];
+                setReviews(visibleReviews);
+            }
+        } catch (err) {
+            console.error("Lỗi tải danh sách đánh giá:", err);
         }
-    } catch (err) {
-        console.error("Lỗi tải danh sách đánh giá:", err);
-    }
-}, [id]);
+    }, [id]);
 
-    // Fetch dữ liệu sản phẩm & đánh giá lần đầu
+    const checkUserEligibility = useCallback(async (userId, productId) => {
+        if (!userId || !productId) return;
+        try {
+            const res = await fetch(`/api/orders?userId=${userId}`, { cache: 'no-store' });
+            if (res.ok) {
+                const orders = await res.json();
+                const validOrders = orders.filter(order => {
+                    const isDelivered = order.status === 'Đã giao' || order.status === 'completed';
+                    const hasProduct = order.items?.some(item => 
+                        item.productId === productId || item._id === productId || item.product === productId
+                    );
+                    return isDelivered && hasProduct;
+                });
+
+                if (validOrders.length > 0) {
+                    setCanReview(true);
+                    setEligibleOrders(validOrders);
+                    setSelectedOrderId(validOrders[0]._id || validOrders[0].id);
+                }
+            }
+        } catch (err) {
+            console.error("Lỗi kiểm tra quyền đánh giá:", err);
+        }
+    }, []);
+
     useEffect(() => {
         if (!id) return;
 
@@ -78,28 +109,39 @@ export default function ProductDetailPage() {
 
         const fetchProductData = async () => {
             try {
-                const [resProduct] = await Promise.all([
-                    fetch(`/api/products/${id}`, { cache: 'no-store' }),
-                ]);
-
+                const resProduct = await fetch(`/api/products/${id}`, { cache: 'no-store' });
                 if (!resProduct.ok) throw new Error("Không thể tải sản phẩm");
 
                 const productData = await resProduct.json();
 
                 if (isMounted) {
                     setProduct(productData);
-                    setCurrentImage(productData.image || '/placeholder.png');
+                    const defaultImg = productData.image || productData.images?.[0] || '/placeholder.png';
+                    setCurrentImage(defaultImg);
 
                     if (productData.variants && productData.variants.length > 0) {
                         const firstVariant = productData.variants[0];
                         setSelectedColor(firstVariant.color || '');
                         setStockAvailable(firstVariant.quantity ?? 0);
-                        if (firstVariant.image) setCurrentImage(firstVariant.image);
+                        if (firstVariant.image) {
+                            setCurrentImage(firstVariant.image);
+                        }
                         if (firstVariant.sizes?.length > 0) setSelectedSize(firstVariant.sizes[0]);
                     } else {
                         setStockAvailable(productData.quantity ?? 0);
                         if (productData.sizes?.length > 0) setSelectedSize(productData.sizes[0]);
                     }
+
+                    try {
+                        const savedUser = localStorage.getItem('user');
+                        if (savedUser) {
+                            const user = JSON.parse(savedUser);
+                            const uid = user?._id || user?.id;
+                            if (uid) {
+                                checkUserEligibility(uid, id);
+                            }
+                        }
+                    } catch (e) {}
                 }
             } catch (err) {
                 console.error("Lỗi tải chi tiết sản phẩm:", err);
@@ -109,12 +151,11 @@ export default function ProductDetailPage() {
         };
 
         fetchProductData();
-        fetchReviews(); // Lấy bình luận từ API
+        fetchReviews();
 
         return () => { isMounted = false; };
-    }, [id, fetchReviews]);
+    }, [id, fetchReviews, checkUserEligibility]);
 
-    // Đổi ảnh mượt
     const changeImageSmoothly = useCallback((newImageSrc) => {
         if (!newImageSrc || newImageSrc === currentImage) return;
         setIsImageChanging(true);
@@ -127,14 +168,14 @@ export default function ProductDetailPage() {
     const handleColorHover = (color) => {
         setHoveredColor(color);
         const matchedVariant = product?.variants?.find(v => v.color === color);
-        const targetImage = matchedVariant?.image || product?.image;
+        const targetImage = matchedVariant?.image || product?.image || '/placeholder.png';
         changeImageSmoothly(targetImage);
     };
 
     const handleColorMouseLeave = () => {
         setHoveredColor(null);
         const matchedVariant = product?.variants?.find(v => v.color === selectedColor);
-        const targetImage = matchedVariant?.image || product?.image;
+        const targetImage = matchedVariant?.image || product?.image || '/placeholder.png';
         changeImageSmoothly(targetImage);
     };
 
@@ -231,33 +272,51 @@ export default function ProductDetailPage() {
         router.push('/cart');
     };
 
-    // Gửi bình luận mới
+    const handleImageChange = (e) => {
+        const files = Array.from(e.target.files);
+        if (imageFiles.length + files.length > 3) {
+            alert("Chỉ được upload tối đa 3 ảnh thực tế!");
+            return;
+        }
+
+        const newImageUrls = files.map((file) => URL.createObjectURL(file));
+        setImageFiles([...imageFiles, ...files]);
+        setNewImages([...newImages, ...newImageUrls]);
+    };
+
+    const handleRemoveImage = (index) => {
+        setImageFiles(imageFiles.filter((_, i) => i !== index));
+        setNewImages(newImages.filter((_, i) => i !== index));
+    };
+
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || !currentUser) return;
+        if (!newComment.trim() || !currentUser || !canReview) return;
 
         setSubmittingReview(true);
         try {
-            const userName = currentUser?.name || currentUser?.fullName || currentUser?.email?.split('@')[0] || 'Khách hàng';
-            
-            const res = await fetch(`/api/products/${id}/reviews`, {
+            const res = await fetch(`/api/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    productId: id,
+                    orderId: selectedOrderId,
                     rating: newRating,
                     comment: newComment.trim(),
-                    userName: userName,
                     userId: currentUser?._id || currentUser?.id,
+                    images: newImages,
                 }),
             });
 
+            const data = await res.json();
             if (res.ok) {
                 setNewComment('');
                 setNewRating(5);
-                // Gọi lại API lấy tất cả bình luận để đồng bộ đánh giá mới từ Server
+                setNewImages([]);
+                setImageFiles([]);
                 await fetchReviews();
             } else {
-                alert('Có lỗi xảy ra khi gửi bình luận.');
+                alert(data.error || 'Có lỗi xảy ra khi gửi bình luận.');
             }
         } catch (err) {
             console.error("Lỗi gửi bình luận:", err);
@@ -306,12 +365,16 @@ export default function ProductDetailPage() {
             </nav>
 
             <div style={{ display: 'flex', gap: '50px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                {/* Khung Ảnh Sản Phẩm */}
+                {/* Khu vực ảnh chính */}
                 <div style={{ flex: '1 1 45%', minWidth: '300px', position: 'sticky', top: '20px' }}>
-                    <div style={{
-                        width: '100%', borderRadius: '20px', overflow: 'hidden', border: '1px solid #e5e7eb',
-                        backgroundColor: '#f9fafb', position: 'relative', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
-                    }}>
+                    <div 
+                        onClick={() => setIsZoomOpen(true)}
+                        style={{
+                            width: '100%', borderRadius: '20px', overflow: 'hidden', border: '1px solid #e5e7eb',
+                            backgroundColor: '#f9fafb', position: 'relative', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)',
+                            cursor: 'zoom-in',
+                        }}
+                    >
                         <img
                             src={currentImage}
                             alt={product.name}
@@ -336,7 +399,7 @@ export default function ProductDetailPage() {
                     </div>
                 </div>
 
-                {/* Thông tin Chi tiết */}
+                {/* Thông tin chi tiết sản phẩm */}
                 <div style={{ flex: '1 1 50%', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
                     <h1 style={{
                         fontSize: '28px', fontWeight: '800', color: '#030712', margin: '0 0 10px 0', 
@@ -357,7 +420,6 @@ export default function ProductDetailPage() {
                         </p>
                     </div>
 
-                    {/* Chọn màu sắc */}
                     {product.variants?.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '12px' }}>
@@ -401,7 +463,6 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Kích thước */}
                     {availableSizes.length > 0 && (
                         <div style={{ marginBottom: '24px' }}>
                             <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
@@ -429,7 +490,6 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Số lượng */}
                     <div style={{ marginBottom: '24px' }}>
                         <h3 style={{ fontSize: '14px', fontWeight: '700', textTransform: 'uppercase', color: '#111827', marginBottom: '10px' }}>
                             Số lượng
@@ -499,7 +559,6 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Nút thao tác */}
                     <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
                         <button
                             onClick={handleAddToCart}
@@ -538,74 +597,184 @@ export default function ProductDetailPage() {
                 </div>
             </div>
 
+            {/* LIGHTBOX MODAL PHÓNG TO ẢNH CHÍNH */}
+            {isZoomOpen && (
+                <div 
+                    onClick={() => setIsZoomOpen(false)}
+                    style={{
+                        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', zIndex: 9999, padding: '20px', backdropFilter: 'blur(5px)'
+                    }}
+                >
+                    <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+                        <button
+                            onClick={() => setIsZoomOpen(false)}
+                            style={{
+                                position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none',
+                                color: '#fff', fontSize: '28px', cursor: 'pointer', fontWeight: 'bold'
+                            }}
+                        >
+                            ✕
+                        </button>
+                        <img 
+                            src={currentImage} 
+                            alt={product.name} 
+                            style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', display: 'block' }}
+                        />
+                    </div>
+                </div>
+            )}
+
+            {/* LIGHTBOX MODAL PHÓNG TO ẢNH BÌNH LUẬN (MỚI THÊM) */}
+            {zoomReviewImage && (
+                <div 
+                    onClick={() => setZoomReviewImage(null)}
+                    style={{
+                        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+                        backgroundColor: 'rgba(0, 0, 0, 0.85)', display: 'flex', alignItems: 'center',
+                        justifyContent: 'center', zIndex: 9999, padding: '20px', backdropFilter: 'blur(5px)'
+                    }}
+                >
+                    <div style={{ position: 'relative', maxWidth: '90vw', maxHeight: '90vh' }}>
+                        <button
+                            onClick={() => setZoomReviewImage(null)}
+                            style={{
+                                position: 'absolute', top: '-40px', right: '0', background: 'none', border: 'none',
+                                color: '#fff', fontSize: '28px', cursor: 'pointer', fontWeight: 'bold'
+                            }}
+                        >
+                            ✕
+                        </button>
+                        <img 
+                            src={zoomReviewImage} 
+                            alt="Review zoom" 
+                            style={{ maxWidth: '100%', maxHeight: '85vh', objectFit: 'contain', borderRadius: '12px', display: 'block' }}
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* KHU VỰC ĐÁNH GIÁ VÀ BÌNH LUẬN */}
             <div style={{ marginTop: '60px', paddingTop: '40px', borderTop: '1px solid #e5e7eb' }}>
                 <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', marginBottom: '24px' }}>
                     Đánh giá & Bình luận ({reviews.length})
                 </h2>
 
-                {/* Form gửi bình luận */}
-                <form onSubmit={handleReviewSubmit} style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '40px' }}>
-                    <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '12px' }}>
-                        Viết đánh giá của bạn
-                    </h3>
+                {currentUser && canReview && (
+                    <form onSubmit={handleReviewSubmit} style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '40px' }}>
+                        <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '12px' }}>
+                            Viết đánh giá của bạn
+                        </h3>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                        <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500' }}>Đánh giá:</span>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    onClick={() => setNewRating(star)}
-                                    style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: 0 }}
+                        {eligibleOrders.length > 1 && (
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
+                                    Chọn đơn hàng để đánh giá:
+                                </label>
+                                <select 
+                                    value={selectedOrderId} 
+                                    onChange={(e) => setSelectedOrderId(e.target.value)}
+                                    style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #d1d5db', fontSize: '13px', width: '100%', maxWidth: '300px' }}
                                 >
-                                    {star <= newRating ? '⭐' : '☆'}
-                                </button>
-                            ))}
+                                    {eligibleOrders.map((ord, idx) => (
+                                        <option key={ord._id || ord.id || idx} value={ord._id || ord.id}>
+                                            Đơn hàng #{String(ord._id || ord.id).slice(-6)} - Ngày: {new Date(ord.createdAt || Date.now()).toLocaleDateString('vi-VN')}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                            <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500' }}>Đánh giá:</span>
+                            <div style={{ display: 'flex', gap: '4px' }}>
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        onClick={() => setNewRating(star)}
+                                        style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: 0 }}
+                                    >
+                                        {star <= newRating ? '⭐' : '☆'}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
 
-                    <textarea
-                        rows={4}
-                        placeholder={currentUser ? "Chia sẻ cảm nhận của bạn về sản phẩm này..." : "Vui lòng đăng nhập để để lại đánh giá..."}
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        disabled={!currentUser || submittingReview}
-                        style={{
-                            width: '100%', padding: '12px 16px', borderRadius: '10px',
-                            border: '1px solid #d1d5db', fontSize: '14px', outline: 'none',
-                            fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
-                            backgroundColor: !currentUser ? '#f3f4f6' : '#fff'
-                        }}
-                    />
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                        <button
-                            type="submit"
-                            disabled={!currentUser || submittingReview || !newComment.trim()}
+                        <textarea
+                            rows={4}
+                            placeholder="Chia sẻ cảm nhận của bạn về sản phẩm này..."
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            disabled={submittingReview}
                             style={{
-                                backgroundColor: (!currentUser || !newComment.trim()) ? '#9ca3af' : '#111827',
-                                color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px',
-                                fontWeight: '600', fontSize: '14px', cursor: (!currentUser || !newComment.trim()) ? 'not-allowed' : 'pointer',
-                                transition: 'background-color 0.2s',
+                                width: '100%', padding: '12px 16px', borderRadius: '10px',
+                                border: '1px solid #d1d5db', fontSize: '14px', outline: 'none',
+                                fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
+                                backgroundColor: '#fff'
                             }}
-                        >
-                            {submittingReview ? 'Đang gửi...' : 'Gửi bình luận'}
-                        </button>
-                    </div>
-                </form>
+                        />
 
-                {/* Danh sách bình luận từ TẤT CẢ người dùng */}
+                        <div style={{ marginTop: '16px' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#374151', display: 'block', marginBottom: '6px' }}>
+                                Ảnh thực tế sản phẩm (Tối đa 3 ảnh):
+                            </label>
+                            <input 
+                                type="file" 
+                                multiple 
+                                accept="image/*"
+                                onChange={handleImageChange}
+                                style={{ fontSize: '13px', color: '#4b5563' }}
+                            />
+                            
+                            {newImages.length > 0 && (
+                                <div style={{ display: 'flex', gap: '10px', marginTop: '10px', flexWrap: 'wrap' }}>
+                                    {newImages.map((imgSrc, index) => (
+                                        <div key={index} style={{ position: 'relative', width: '65px', height: '65px', borderRadius: '8px', overflow: 'hidden', border: '1px solid #d1d5db' }}>
+                                            <img src={imgSrc} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveImage(index)}
+                                                style={{
+                                                    position: 'absolute', top: '2px', right: '2px', backgroundColor: 'rgba(0,0,0,0.6)',
+                                                    color: '#fff', border: 'none', borderRadius: '50%', width: '18px', height: '18px',
+                                                    fontSize: '10px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                }}
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                            <button
+                                type="submit"
+                                disabled={submittingReview || !newComment.trim()}
+                                style={{
+                                    backgroundColor: !newComment.trim() ? '#9ca3af' : '#111827',
+                                    color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px',
+                                    fontWeight: '600', fontSize: '14px', cursor: !newComment.trim() ? 'not-allowed' : 'pointer',
+                                    transition: 'background-color 0.2s',
+                                }}
+                            >
+                                {submittingReview ? 'Đang gửi...' : 'Gửi bình luận'}
+                            </button>
+                        </div>
+                    </form>
+                )}
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {reviews.length === 0 ? (
                         <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic' }}>
-                            Chưa có bình luận nào cho sản phẩm này. Hãy là người đầu tiên đánh giá!
+                            Chưa có bình luận nào cho sản phẩm này.
                         </p>
                     ) : (
                         reviews.map((rev, idx) => {
-                            // Xử lý lấy tên linh hoạt cho nhiều kiểu dữ liệu từ backend trả về
-                            const nameDisplay = rev.userName || rev.user?.name || rev.user?.email?.split('@')[0] || 'Khách hàng';
+                            const nameDisplay = rev.userId?.fullname || rev.userId?.name || rev.userName || 'Khách hàng';
                             const firstLetter = nameDisplay.charAt(0).toUpperCase();
 
                             return (
@@ -637,6 +806,24 @@ export default function ProductDetailPage() {
                                     <p style={{ color: '#374151', fontSize: '14px', lineHeight: '1.6', margin: '8px 0 0 46px' }}>
                                         {rev.comment}
                                     </p>
+
+                                    {/* Hiển thị ảnh đánh giá kèm sự kiện click để phóng to */}
+                                    {rev.images && rev.images.length > 0 && (
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', marginLeft: '46px', flexWrap: 'wrap' }}>
+                                            {rev.images.map((imgUrl, imgIdx) => (
+                                                <div 
+                                                    key={imgIdx} 
+                                                    onClick={() => setZoomReviewImage(imgUrl)}
+                                                    style={{ 
+                                                        width: '65px', height: '65px', borderRadius: '8px', overflow: 'hidden', 
+                                                        border: '1px solid #e5e7eb', cursor: 'zoom-in', position: 'relative' 
+                                                    }}
+                                                >
+                                                    <img src={imgUrl} alt="review-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             );
                         })

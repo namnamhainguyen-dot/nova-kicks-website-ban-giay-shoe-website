@@ -65,6 +65,7 @@ export default function UserActions() {
       )}
       
       {user ? (
+        
         <li className="nav-item dropdown">
           <Link 
             className="nav-link dropdown-toggle fw-bold text-dark p-0" 
