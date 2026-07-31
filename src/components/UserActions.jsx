@@ -1,12 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useContext } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { CartContext } from "@/components/CartContext"; // Đường dẫn trỏ tới CartContext của bạn
 
 export default function UserActions() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Lấy dữ liệu giỏ hàng từ CartContext (tên biến có thể là cart hoặc cartItems tùy theo file Context của bạn)
+  const { cart } = useContext(CartContext) || {}; 
+
+  // Tính tổng số lượng sản phẩm trong giỏ hàng
+  const totalItems = Array.isArray(cart) 
+    ? cart.reduce((sum, item) => sum + (item.quantity || 1), 0) 
+    : 0;
 
   const fetchUserData = () => {
     const storedUser = localStorage.getItem("user");
@@ -20,6 +30,7 @@ export default function UserActions() {
   };
 
   useEffect(() => {
+    setIsMounted(true);
     fetchUserData();
     window.addEventListener("userLogin", fetchUserData);
     return () => window.removeEventListener("userLogin", fetchUserData);
@@ -32,28 +43,42 @@ export default function UserActions() {
     router.push("/login");
   };
 
+  if (!isMounted) {
+    return <ul className="nk-actions"></ul>;
+  }
+
   return (
     <ul className="nk-actions">
-      {/* 🔥 CẬP NHẬT: Chỉ hiện khi user là null hoặc role không phải admin */}
       {(!user || user.role !== 'admin') && (
-        <>
-          <li><Link href="/cart">Giỏ hàng</Link></li>
-        </>
+        <li>
+          <Link href="/cart" className="position-relative text-dark text-decoration-none" title="Giỏ hàng">
+            <i className="fas fa-shopping-bag" style={{ fontSize: "1rem" }}></i>
+            
+            {/* Badge hiển thị số lượng */}
+            {totalItems > 0 && (
+              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "0.55rem" }}>
+                {totalItems}
+              </span>
+            )}
+          </Link>
+        </li>
       )}
       
       {user ? (
         <li className="nav-item dropdown">
           <Link 
-            className="nav-link fw-bold text-dark" 
+            className="nav-link dropdown-toggle fw-bold text-dark p-0" 
             href="#" 
             id="userDropdown" 
+            role="button" 
+            data-bs-toggle="dropdown" 
+            aria-expanded="false"
             style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
           >
             👋 Chào, {user.fullname}
           </Link>
           
           <ul className="dropdown-menu dropdown-menu-end rounded-0 shadow-sm" aria-labelledby="userDropdown">
-            {/* Nếu là admin, có thể thêm link vào trang quản trị */}
             {user.role === 'admin' && (
               <li>
                 <Link className="dropdown-item small text-primary fw-bold" href="/admin">
@@ -70,7 +95,7 @@ export default function UserActions() {
             <li><hr className="dropdown-divider" /></li>
             <li>
               <button 
-                className="dropdown-item small text-danger" 
+                className="dropdown-item small text-danger bg-transparent border-0 w-100 text-start" 
                 onClick={handleLogout}
               >
                 Đăng xuất
