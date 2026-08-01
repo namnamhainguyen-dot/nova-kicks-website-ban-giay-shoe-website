@@ -7,7 +7,7 @@ import UserActions from "@/components/UserActions";
 import NavbarLinks from "@/components/NavbarLinks";
 import { Toaster } from "react-hot-toast";
 import Script from "next/script";
-import "./global.css";
+import "../global.css";
 
 async function getCategories() {
   try {
