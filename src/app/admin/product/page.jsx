@@ -3,16 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState, useMemo } from "react";
 
-const CATEGORIES_DATA = [
-  { oid: "6a2932c7044b3063b3d05171", id: "CAT-G001", name: "NIKE" },
-  { oid: "6a2932c7044b3063b3d05172", id: "CAT-G002", name: "Giày Tây / Giày Công Sở" },
-  { oid: "6a2932c7044b3063b3d05173", id: "CAT-G003", name: "Giày Cao Gót" },
-  { oid: "6a2932c7044b3063b3d05174", id: "CAT-G004", name: "Sandal & Dép" },
-  { oid: "6a3166d279a15e51f78006a5", id: "CAT-G005", name: "TÔNG LÀO" },
-];
-
 export default function Product() {
   const [productList, setProductList] = useState([]);
+  const [categoriesData, setCategoriesData] = useState([]); // State lưu danh mục từ API
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -25,22 +18,40 @@ export default function Product() {
 
   // --- Pagination states ---
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10; // Số lượng sản phẩm trên mỗi trang
+  const itemsPerPage = 10;
 
   useEffect(() => {
-    fetchProducts();
+    fetchInitialData();
   }, []);
 
-  const fetchProducts = async () => {
+  // Gọi đồng thời API lấy sản phẩm và danh mục
+  const fetchInitialData = async () => {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/products");
-      if (!res.ok) throw new Error("Không thể tải danh sách sản phẩm.");
-      const data = await res.json();
-      setProductList(Array.isArray(data) ? data : []);
+      const [resProducts, resCategories] = await Promise.all([
+        fetch("/api/products"),
+        fetch("/api/categories") // Đảm bảo endpoint API danh mục của bạn là /api/categories
+      ]);
+
+      if (!resProducts.ok) throw new Error("Không thể tải danh sách sản phẩm.");
+      
+      const productsData = await resProducts.json();
+      setProductList(Array.isArray(productsData) ? productsData : (productsData.data || []));
+
+      if (resCategories.ok) {
+        const categoriesResult = await resCategories.json();
+        const catList = Array.isArray(categoriesResult) ? categoriesResult : (categoriesResult.data || []);
+        // Chuẩn hóa dữ liệu sang dạng có oid để khớp logic bên dưới
+        const formattedCategories = catList.map(cat => ({
+          oid: cat._id || cat.oid,
+          id: cat.id || cat.code,
+          name: cat.name
+        }));
+        setCategoriesData(formattedCategories);
+      }
     } catch (err) {
-      setError(err?.message || "Lỗi khi tải sản phẩm.");
+      setError(err?.message || "Lỗi khi tải dữ liệu.");
     } finally {
       setLoading(false);
     }
@@ -50,7 +61,7 @@ export default function Product() {
   
   const getCategory = (product) => {
     const pCatId = product.categoryId || product.categoryID;
-    const found = CATEGORIES_DATA.find((cat) => cat.oid === pCatId);
+    const found = categoriesData.find((cat) => cat.oid === pCatId);
     return found ? found.name : "Chưa phân loại";
   };
 
@@ -96,12 +107,10 @@ export default function Product() {
     return list;
   }, [productList, searchName, categoryFilter, priceMin, priceMax, stockFilter, sortBy]);
 
-  // Reset về trang 1 mỗi khi bộ lọc thay đổi
   useEffect(() => {
     setCurrentPage(1);
   }, [searchName, categoryFilter, priceMin, priceMax, stockFilter, sortBy]);
 
-  // --- Phân chia danh sách theo trang hiện tại ---
   const totalPages = Math.ceil(filteredList.length / itemsPerPage);
   const paginatedList = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -202,7 +211,7 @@ export default function Product() {
                 onChange={(e) => setCategoryFilter(e.target.value)}
               >
                 <option value="all">Tất cả danh mục</option>
-                {CATEGORIES_DATA.map((cat) => (
+                {categoriesData.map((cat) => (
                   <option key={cat.oid} value={cat.oid}>
                     {cat.name}
                   </option>
@@ -395,7 +404,6 @@ export default function Product() {
             <strong>{filteredList.length.toLocaleString()}</strong> sản phẩm phù hợp
           </div>
 
-          {/* Thanh phân trang */}
           {totalPages > 1 && (
             <nav>
               <ul className="pagination pagination-sm mb-0">
