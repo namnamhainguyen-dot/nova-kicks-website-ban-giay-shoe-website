@@ -9,7 +9,7 @@ export async function getTablesAction() {
     
     const tableList = await db.collection("tables").find({}).toArray();
 
-    // Chuyển đổi ObjectId thành dạng string thuần để tránh lỗi Serialization của React Client Component
+    // Chuyển ObjectId thành string để tránh lỗi của React
     return JSON.parse(JSON.stringify(tableList));
   } catch (error) {
     console.error("[Server Action Error] getTablesAction:", error);
