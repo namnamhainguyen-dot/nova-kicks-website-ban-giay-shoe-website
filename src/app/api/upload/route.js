@@ -1,33 +1,41 @@
-import { NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import path from 'path';
+import { NextResponse } from "next/server";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(request) {
   try {
     const formData = await request.formData();
-    const file = formData.get('file');
+    const file = formData.get("file");
 
     if (!file) {
       return NextResponse.json(
-        { error: 'Không có file được upload' },
+        { error: "Không có file được upload" },
         { status: 400 }
       );
     }
 
-    // Kiểm tra loại file
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    const validTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+      "image/gif",
+    ];
+
     if (!validTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Chỉ hỗ trợ file ảnh (JPEG, PNG, WEBP, GIF)' },
+        { error: "Định dạng ảnh không hợp lệ" },
         { status: 400 }
       );
     }
 
-    // Kiểm tra kích thước file (tối đa 5MB)
-    const maxSize = 5 * 1024 * 1024; // 5MB
-    if (file.size > maxSize) {
+    if (file.size > 5 * 1024 * 1024) {
       return NextResponse.json(
-        { error: 'Kích thước file vượt quá 5MB' },
+        { error: "Ảnh không được lớn hơn 5MB" },
         { status: 400 }
       );
     }
@@ -35,42 +43,36 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Tạo tên file duy nhất
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(7);
-    const ext = path.extname(file.name);
-    const fileName = `${timestamp}-${random}${ext}`;
-    
-    // Đường dẫn thư mục upload
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    const filePath = path.join(uploadDir, fileName);
-    
-    // Tạo thư mục nếu chưa tồn tại
-    await mkdir(uploadDir, { recursive: true });
-    
-    // Lưu file
-    await writeFile(filePath, buffer);
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            folder: "nova-kicks",
+            resource_type: "image",
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        )
+        .end(buffer);
+    });
 
-    // Trả về URL của ảnh
-    const url = `/uploads/${fileName}`;
-    
-    return NextResponse.json({ 
-      success: true, 
-      url,
-      message: 'Upload ảnh thành công' 
+    return NextResponse.json({
+      success: true,
+      url: result.secure_url,
+      public_id: result.public_id,
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error(error);
+
     return NextResponse.json(
-      { error: 'Lỗi khi upload ảnh: ' + error.message },
-      { status: 500 }
+      {
+        error: error.message,
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
-
-// Cấu hình để hỗ trợ file lớn
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
