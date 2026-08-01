@@ -338,7 +338,7 @@ const handleConfirmAction = () => {
               <thead className="table-light">
                 <tr>
                   <th scope="col" className="ps-3" style={{ width: "10%" }}>Mã đơn</th>
-                  <th scope="col" style={{ width: "13%" }}>Ngày tạo</th>
+
                   <th scope="col" style={{ width: "18%" }}>Khách hàng</th>
                   <th scope="col" style={{ width: "22%" }}>Sản phẩm</th>
                   <th scope="col" style={{ width: "12%" }}>Tổng tiền</th>
