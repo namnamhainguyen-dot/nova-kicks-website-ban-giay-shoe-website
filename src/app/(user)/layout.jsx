@@ -1,12 +1,12 @@
 import { CartProvider } from "@/components/CartContext";
 import { WishlistProvider } from "@/components/WishlistContext";
+import ToastProvider from "@/components/ToastProvider";
 import clientPromise from "@/libs/mongodb";
 import Link from "next/link";
 import Image from "next/image";
 import UserActions from "@/components/UserActions";
 import NavbarLinks from "@/components/NavbarLinks";
 import { Toaster } from "react-hot-toast";
-
 
 import Script from "next/script";
 import "../global.css";
@@ -56,6 +56,7 @@ export default async function Layout({ children }) {
         />
       </head>
       <body className="d-flex flex-column min-vh-100">
+        <ToastProvider />
         <Toaster 
           position="bottom-right" 
 
@@ -82,6 +83,7 @@ export default async function Layout({ children }) {
             },
           }}
         />
+
 
         <CartProvider>
           <WishlistProvider>
