@@ -12,10 +12,10 @@ const formatDate = (value) => {
 
 export default async function Menu() {
   // Lấy dữ liệu mới nhất từ database
-  const res = await fetch('http://localhost:3000/api/products', { cache: 'no-store' });
+  const res = await fetch('/api/products', { cache: 'no-store' });
   const productList = await res.json();
 
-  const newsRes = await fetch('http://localhost:3000/api/news', { cache: 'no-store' });
+  const newsRes = await fetch('/api/news', { cache: 'no-store' });
   const newsData = await newsRes.json();
   const newsArticles = Array.isArray(newsData?.data) ? newsData.data.slice(0, 3) : [];
 

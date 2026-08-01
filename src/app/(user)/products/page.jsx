@@ -5,8 +5,8 @@ import Link from "next/link";
 // 1. Hàm lấy danh sách sản phẩm từ API
 async function getProducts(categoryID) {
   const url = categoryID 
-    ? `http://localhost:3000/api/products?categoryID=${categoryID}`
-    : "http://localhost:3000/api/products";
+    ? `/api/products?categoryID=${categoryID}`
+    : "/api/products";
 
   const res = await fetch(url, {
     cache: "no-store",
