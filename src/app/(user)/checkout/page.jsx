@@ -42,6 +42,10 @@ export default function Checkout() {
   const [voucherError, setVoucherError] = useState("");
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+  
+  // State mới cho danh sách Voucher gợi ý & Popover Hover
+  const [availableVouchers, setAvailableVouchers] = useState([]);
+  const [showVoucherDropdown, setShowVoucherDropdown] = useState(false);
 
   // ── FETCH TỈNH / THÀNH PHỐ ──
   useEffect(() => {
@@ -49,6 +53,20 @@ export default function Checkout() {
       .then((res) => res.json())
       .then((data) => setProvinces(data || []))
       .catch((err) => console.error("Lỗi lấy danh sách tỉnh thành:", err));
+  }, []);
+
+  // ── FETCH DANH SÁCH VOUCHER KHẢ DỤNG ──
+  useEffect(() => {
+    fetch("/api/vouchers")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setAvailableVouchers(data);
+        } else if (data.vouchers && Array.isArray(data.vouchers)) {
+          setAvailableVouchers(data.vouchers);
+        }
+      })
+      .catch((err) => console.error("Lỗi lấy danh sách voucher:", err));
   }, []);
 
   // ── FETCH QUẬN / HUYỆN ──
@@ -105,7 +123,6 @@ export default function Checkout() {
         console.error("Lỗi đọc checkout_items từ sessionStorage:", e);
       }
     } else if (cart && cart.length > 0) {
-      // Fallback: lấy từ giỏ hàng nếu không có sessionStorage
       setCheckoutItems(cart);
     }
 
@@ -214,10 +231,8 @@ export default function Checkout() {
     }
   };
 
-  const handleApplyVoucher = async (e) => {
-    if (e) e.preventDefault();
-
-    if (!voucherCode.trim()) {
+  const executeApplyVoucherCode = async (codeToApply) => {
+    if (!codeToApply.trim()) {
       setVoucherError("Vui lòng nhập mã giảm giá!");
       return;
     }
@@ -230,7 +245,7 @@ export default function Checkout() {
       const res = await fetch("/api/vouchers/apply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: voucherCode.trim().toUpperCase() }),
+        body: JSON.stringify({ code: codeToApply.trim().toUpperCase() }),
       });
 
       const result = await res.json();
@@ -272,6 +287,17 @@ export default function Checkout() {
     } finally {
       setIsValidatingVoucher(false);
     }
+  };
+
+  const handleApplyVoucher = (e) => {
+    if (e) e.preventDefault();
+    executeApplyVoucherCode(voucherCode);
+  };
+
+  const handleSelectSuggestedVoucher = (code) => {
+    setVoucherCode(code);
+    setShowVoucherDropdown(false);
+    executeApplyVoucherCode(code);
   };
 
   const handleRemoveVoucher = () => {
@@ -336,7 +362,6 @@ export default function Checkout() {
     setIsOrdering(true);
     const fullAddress = getFullDeliveryAddress();
 
-    // ── TỰ ĐỘNG CẬP NHẬT ĐỊA CHỈ MỚI VÀO PROFILE NẾU KHÁCH NHẬP ĐỊA CHỈ MỚI ──
     let updatedAddressesList = savedAddresses;
     let updatedUserPhone = currentUser?.phone || customerPhone;
 
@@ -398,7 +423,7 @@ export default function Checkout() {
         price: item.price,
         color: item.selectedColor || null,
         size: item.selectedSize || null,
-        image: item.image || "", // 👈 Thêm dòng này vào đây
+        image: item.image || "",
       })),
       total: total,
       discount: discountAmount,
@@ -429,7 +454,6 @@ export default function Checkout() {
         const orderId = result._id || result.id || (result.data && result.data._id);
         if (orderId) setCreatedOrderId(orderId);
 
-        // Xóa sản phẩm đã mua khỏi giỏ hàng
         const remainingCart = cart.filter(
           (cartItem) =>
             !checkoutItems.some(
@@ -445,7 +469,6 @@ export default function Checkout() {
           localStorage.setItem("cart", JSON.stringify(remainingCart));
         }
 
-        // Xóa sessionStorage
         sessionStorage.removeItem("checkout_items");
         setIsSuccess(true);
       } else {
@@ -782,31 +805,93 @@ export default function Checkout() {
                   })}
                 </div>
 
-                {/* Nhập Voucher */}
-                <div className="mb-4 bg-light p-3 rounded-3">
-                  <label className="form-label fw-bold text-secondary small mb-2">🎟️ Mã giảm giá (Voucher)</label>
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control form-control-sm text-uppercase fw-bold"
-                      placeholder="NHẬP MÃ GIẢM GIÁ"
-                      value={voucherCode}
-                      onChange={(e) => setVoucherCode(e.target.value)}
-                      disabled={!!appliedVoucher}
-                    />
-                    {appliedVoucher ? (
-                      <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
-                        Hủy bỏ
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-dark btn-sm fw-semibold"
-                        type="button"
-                        onClick={handleApplyVoucher}
-                        disabled={isValidatingVoucher}
+                {/* Nhập Voucher + DROPDOWN GỢI Ý KHI HOVER */}
+                <div className="mb-4 bg-light p-3 rounded-3 position-relative">
+                  <div className="mb-2">
+                    <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
+                  </div>
+
+                  <div 
+                    className="position-relative"
+                    onMouseEnter={() => setShowVoucherDropdown(true)}
+                    onMouseLeave={() => setShowVoucherDropdown(false)}
+                  >
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm text-uppercase fw-bold"
+                        placeholder="NHẬP HOẶC CHỌN MÃ"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value)}
+                        onFocus={() => setShowVoucherDropdown(true)}
+                        disabled={!!appliedVoucher}
+                      />
+                      {appliedVoucher ? (
+                        <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
+                          Hủy bỏ
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-dark btn-sm fw-semibold"
+                          type="button"
+                          onClick={handleApplyVoucher}
+                          disabled={isValidatingVoucher}
+                        >
+                          {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* DROPDOWN POPUP HIỆN DANH SÁCH VOUCHER KHẢ DỤNG */}
+                    {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
+                      <div 
+                        className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
+                        style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
                       >
-                        {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
-                      </button>
+                        <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
+                        
+                        {/* Đã thêm .sort() để đẩy Voucher đủ điều kiện lên đầu */}
+                        {[...availableVouchers]
+                          .sort((a, b) => {
+                            const aEligible = total >= (a.min_order_value || 0);
+                            const bEligible = total >= (b.min_order_value || 0);
+                            return bEligible - aEligible; // True (1) lên trước, False (0) xuống sau
+                          })
+                          .map((v) => {
+                            const isEligible = total >= (v.min_order_value || 0);
+                            return (
+                              <div
+                                key={v._id || v.code}
+                                className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
+                                  isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
+                                }`}
+                                style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
+                                onClick={() => isEligible && handleSelectSuggestedVoucher(v.code)}
+                              >
+                                <div>
+                                  <div className="fw-bold text-primary small d-flex align-items-center gap-1">
+                                    🏷️ {v.code}
+                                    {isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>}
+                                  </div>
+                                  <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                    {v.discount_type === "percentage" 
+                                      ? `Giảm ${v.discount_value}%` 
+                                      : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
+                                    {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
+                                  style={{ fontSize: "0.7rem", padding: "2px 8px" }}
+                                  disabled={!isEligible}
+                                >
+                                  {isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
                     )}
                   </div>
 
@@ -814,52 +899,33 @@ export default function Checkout() {
                   {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
                 </div>
 
-                {/* Chi tiết tiền */}
-                <div className="d-flex justify-content-between mb-2 small">
-                  <span className="text-muted">Tạm tính đơn hàng:</span>
-                  <span className="text-dark fw-medium">{total.toLocaleString("vi-VN")}đ</span>
-                </div>
-
-                {discountAmount > 0 && (
-                  <div className="d-flex justify-content-between mb-2 small">
-                    <span className="text-muted">Giảm giá (Voucher):</span>
-                    <span className="text-danger fw-bold">-{discountAmount.toLocaleString("vi-VN")}đ</span>
+                {/* TỔNG TIỀN */}
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted">Tạm tính:</span>
+                    <span className="fw-semibold">{total.toLocaleString("vi-VN")}đ</span>
                   </div>
-                )}
 
-                <div className="d-flex justify-content-between mb-3 small">
-                  <span className="text-muted">Phí vận chuyển:</span>
-                  <span className="text-success fw-medium">Miễn phí (Toàn quốc)</span>
-                </div>
-                <hr />
-                <div className="d-flex justify-content-between align-items-center mb-4">
-                  <span className="h5 mb-0 fw-bold">Tổng thanh toán:</span>
-                  <span className="h4 mb-0 fw-bold text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
-                </div>
+                  {discountAmount > 0 && (
+                    <div className="d-flex justify-content-between mb-2 text-success">
+                      <span>Giảm giá (Voucher):</span>
+                      <span className="fw-semibold">-{discountAmount.toLocaleString("vi-VN")}đ</span>
+                    </div>
+                  )}
 
-                {/* Nút Đặt hàng trên Desktop */}
-                <div className="d-none d-lg-block">
+                  <div className="d-flex justify-content-between mb-3 pt-2 border-top">
+                    <span className="fw-bold fs-5">Tổng cộng:</span>
+                    <span className="fw-bold fs-5 text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
+                  </div>
+
                   <button
                     type="submit"
-                    className="btn btn-dark btn-lg w-100 py-3 fw-bold shadow-sm rounded-pill"
+                    className="btn btn-dark w-100 btn-lg py-3 fw-bold shadow-sm rounded-pill d-none d-lg-block"
                     disabled={isOrdering}
                   >
-                    {isOrdering ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                        Đang xử lý đặt hàng...
-                      </>
-                    ) : (
-                      "XÁC NHẬN ĐẶT HÀNG"
-                    )}
+                    {isOrdering ? "Đang xử lý đơn hàng..." : "Xác Nhận Đặt Hàng"}
                   </button>
-                  <div className="text-center mt-3">
-                    <Link href="/cart" className="text-secondary text-decoration-none small">
-                      ← Quay lại chỉnh sửa giỏ hàng
-                    </Link>
-                  </div>
                 </div>
-
               </div>
             </div>
           </div>
