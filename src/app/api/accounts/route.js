@@ -12,14 +12,21 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .toArray();
 
-    const sanitizedUsers = users.map((user) => ({
-      ...user,
-      _id: user._id.toString(),
-      name: user.fullname || user.name || user.email || "Không rõ",
-      role: user.role || "MEMBER",
-      status: user.status || "active",
-      avatar: user.avatar || "https://i.pravatar.cc/80?img=32",
-    }));
+    const sanitizedUsers = users.map((user) => {
+      const stringId = user._id.toString();
+      // Tự động sinh mã NV-XXXXXX từ _id nếu trong DB bị trống
+      const autoEmployeeCode = user.id || user.code || `NV-${stringId.slice(-6).toUpperCase()}`;
+
+      return {
+        ...user,
+        _id: stringId,
+        id: autoEmployeeCode, // Mã nhân viên trả về cho giao diện
+        name: user.fullname || user.name || user.email || "Không rõ",
+        role: user.role || "MEMBER",
+        status: user.status || "active",
+        avatar: user.avatar || "https://i.pravatar.cc/80?img=32",
+      };
+    });
 
     return NextResponse.json(sanitizedUsers, { status: 200 });
   } catch (error) {
@@ -46,7 +53,12 @@ export async function POST(request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Tạo ngẫu nhiên chuỗi mã nhân viên mới
+    const randomCode = `NV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
     const newUser = {
+      id: randomCode, // Lưu mã nhân viên tự động vào DB
       fullname: name || email.split("@")[0],
       name: name || email.split("@")[0],
       email: email.trim(),

@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
-import { MongoClient, ObjectId } from "mongodb";
-
-// Chuỗi kết nối lấy từ file .env hoặc điền trực tiếp
-const uri = process.env.MONGODB_URI || "CHUOI_KET_NOI_MONGODB_CUA_BAN";
-const client = new MongoClient(uri);
+import { ObjectId } from "mongodb";
+import clientPromise, { dbName } from "@/libs/mongodb";
 
 async function connectDB() {
-  await client.connect();
-  // Thay 'test' bằng tên Database thật của bạn nếu cần
-  return client.db("test").collection("users"); 
+  const client = await clientPromise;
+  return client.db(dbName).collection("users");
 }
 
 // 1. GET: Lấy danh sách tất cả tài khoản

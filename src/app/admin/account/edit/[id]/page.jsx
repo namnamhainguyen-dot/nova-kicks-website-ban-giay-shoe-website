@@ -30,8 +30,11 @@ export default function EditAccount() {
           const currentAccount = accounts.find((acc) => acc._id === id);
           
           if (currentAccount) {
+            // Tự động sinh mã nhân viên nếu trong DB bị trống/N/A
+            const autoCode = currentAccount.id || currentAccount.code || `NV-${id.slice(-6).toUpperCase()}`;
+
             setFormData({
-              id: currentAccount.id || "",
+              id: autoCode,
               name: currentAccount.name || "",
               email: currentAccount.email || "",
               role: currentAccount.role || "MEMBER",
@@ -99,9 +102,17 @@ export default function EditAccount() {
         <div className="card-body p-4">
           <form onSubmit={handleSubmit}>
             <div className="row">
+              {/* Mã nhân viên: Đã đóng khóa không cho chỉnh sửa và hiển thị tự động */}
               <div className="col-md-6 mb-3">
                 <label className="form-label small fw-bold text-secondary">Mã nhân viên / ID</label>
-                <input type="text" className="form-control" name="id" value={formData.id} onChange={handleChange} />
+                <input 
+                  type="text" 
+                  className="form-control bg-light fw-bold text-primary" 
+                  name="id" 
+                  value={formData.id} 
+                  readOnly 
+                  disabled 
+                />
               </div>
               <div className="col-md-6 mb-3">
                 <label className="form-label small fw-bold text-secondary">Tên hiển thị <span className="text-danger">*</span></label>
