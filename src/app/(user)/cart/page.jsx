@@ -3,7 +3,7 @@ import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import Link from "next/link";
-// ✅ Import trực tiếp Server Action
+// ✅ Sửa đường dẫn import cho đúng cấu trúc src/
 import { getTablesAction } from "@/app/actions/tables"; 
 
 export default function Cart() {
@@ -13,12 +13,10 @@ export default function Cart() {
   const [selectedItems, setSelectedItems] = useState([]); 
   const router = useRouter();
 
-  // ✅ Gọi Server Action trực tiếp - Không dùng fetch
   useEffect(() => {
     async function fetchLocations() {
       try {
         setIsLoading(true);
-        // Gọi hàm DB trực tiếp từ Server Action
         const locations = await getTablesAction();
         setLocationList(Array.isArray(locations) ? locations : []);
       } catch (err) {
