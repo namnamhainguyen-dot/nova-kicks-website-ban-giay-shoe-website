@@ -1,11 +1,11 @@
 import { CartProvider } from "@/components/CartContext";
 import { WishlistProvider } from "@/components/WishlistContext";
+import ToastProvider from "@/components/ToastProvider";
 import clientPromise from "@/libs/mongodb";
 import Link from "next/link";
 import Image from "next/image";
 import UserActions from "@/components/UserActions";
 import NavbarLinks from "@/components/NavbarLinks";
-import { Toaster } from "react-hot-toast";
 import Script from "next/script";
 
 async function getCategories() {
@@ -575,31 +575,7 @@ export default async function Layout({ children }) {
         />
       </head>
       <body className="d-flex flex-column min-vh-100">
-        <Toaster
-          position="bottom-right"
-          reverseOrder={false}
-          toastOptions={{
-            style: {
-              borderRadius: "12px",
-              background: "#fff",
-              boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
-              padding: "14px 20px",
-              fontFamily: "'Inter', sans-serif",
-            },
-            success: {
-              iconTheme: {
-                primary: "#d87c3c",
-                secondary: "#fff",
-              },
-            },
-            error: {
-              iconTheme: {
-                primary: "#c73a2b",
-                secondary: "#fff",
-              },
-            },
-          }}
-        />
+        <ToastProvider />
 
         <CartProvider>
           <WishlistProvider>

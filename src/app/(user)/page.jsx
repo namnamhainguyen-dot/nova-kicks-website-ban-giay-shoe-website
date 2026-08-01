@@ -1,6 +1,5 @@
-import Link from 'next/link'; 
+import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
-import '../(user)/layout.jsx'; 
 
 const formatDate = (value) => {
   if (!value) return '';

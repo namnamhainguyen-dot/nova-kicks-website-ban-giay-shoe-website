@@ -24,22 +24,7 @@ export default function AccountManagement() {
     fetchAccounts();
   }, []);
 
-  // 2. Xóa tài khoản (Sử dụng _id của MongoDB)
-  const handleDelete = async (id) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) return;
-
-    try {
-      const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        setAccounts(accounts.filter((acc) => acc._id !== id));
-        alert("Đã xóa tài khoản thành công!");
-      }
-    } catch (error) {
-      alert("Lỗi khi xóa tài khoản.");
-    }
-  };
-
-  // 3. Thay đổi nhanh trạng thái (Hoạt động / Bị cấm)
+  // 2. Thay đổi nhanh trạng thái (Hoạt động / Bị cấm)
   const toggleStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";
     try {
@@ -58,6 +43,17 @@ export default function AccountManagement() {
     } catch (error) {
       console.error("Lỗi khi cập nhật trạng thái:", error);
     }
+  };
+
+  // 3. Hàm tạo Mã nhân viên tự động hiển thị nếu trong DB chưa có
+  const getEmployeeCode = (acc) => {
+    if (acc.code) return acc.code;
+    if (acc.id && acc.id !== "N/A") return acc.id;
+    // Tự động tạo mã dựa trên 6 ký tự cuối của MongoDB _id
+    if (acc._id) {
+      return `NV-${acc._id.slice(-6).toUpperCase()}`;
+    }
+    return "NV-0001";
   };
 
   // 4. Tìm kiếm tài khoản theo tên hoặc email
@@ -130,13 +126,16 @@ export default function AccountManagement() {
                         />
                         <div>
                           <div className="fw-semibold text-dark">{acc.name}</div>
-                          <div className="text-muted small">Mã: {acc.id || "N/A"}</div>
+                          {/* Mã nhân viên được tự động sinh và hiển thị chuẩn đẹp */}
+                          <div className="text-muted small">
+                            Mã: <span className="fw-medium text-primary">{getEmployeeCode(acc)}</span>
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="text-secondary">{acc.email}</td>
                     <td>
-                      <span className={`badge px-2 py-1.5 rounded-2 ${acc.role === "ADMIN" ? "bg-dark" : "bg-light text-dark border"}`}>
+                      <span className={`badge px-2 py-1.5 rounded-2 ${acc.role === "ADMIN" || acc.role === "admin" ? "bg-dark" : "bg-light text-dark border"}`}>
                         {acc.role}
                       </span>
                     </td>
@@ -158,16 +157,10 @@ export default function AccountManagement() {
                     <td className="text-end pe-4">
                       <Link
                         href={`/admin/account/edit/${acc._id}`}
-                        className="btn btn-sm btn-outline-primary me-2"
+                        className="btn btn-sm btn-outline-primary"
                       >
                         <i className="bi bi-pencil"></i> Sửa
                       </Link>
-                      <button
-                        onClick={() => handleDelete(acc._id)}
-                        className="btn btn-sm btn-outline-danger"
-                      >
-                        <i className="bi bi-trash"></i> Xóa
-                      </button>
                     </td>
                   </tr>
                 ))
