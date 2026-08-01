@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
+import clientPromise, { dbName } from "@/lib/mongodb"; // Import helper kết nối MongoDB
+
+// Bắt buộc Next.js không static-render trang này (để dữ liệu luôn mới nhất)
+export const dynamic = 'force-dynamic';
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -11,13 +15,24 @@ const formatDate = (value) => {
 };
 
 export default async function Menu() {
-  // Lấy dữ liệu mới nhất từ database
-  const res = await fetch('/api/products', { cache: 'no-store' });
-  const productList = await res.json();
+  // ✅ TRUY VẤN TRỰC TIẾP TỪ DATABASE (Thay thế cho fetch)
+  const client = await clientPromise;
+  const db = client.db(dbName);
 
-  const newsRes = await fetch('/api/news', { cache: 'no-store' });
-  const newsData = await newsRes.json();
-  const newsArticles = Array.isArray(newsData?.data) ? newsData.data.slice(0, 3) : [];
+  // 1. Lấy danh sách sản phẩm
+  const productsFromDb = await db.collection('products').find({}).toArray();
+  // Map lại _id từ ObjectId thành String để tránh lỗi Serialization của Next.js
+  const productList = productsFromDb.map(p => ({
+    ...p,
+    _id: p._id.toString()
+  }));
+
+  // 2. Lấy danh sách tin tức
+  const newsFromDb = await db.collection('news').find({}).sort({ createdAt: -1 }).limit(3).toArray();
+  const newsArticles = newsFromDb.map(n => ({
+    ...n,
+    _id: n._id.toString()
+  }));
 
   const isArray = Array.isArray(productList);
   const displayProducts = isArray ? productList : [];
@@ -27,13 +42,10 @@ export default async function Menu() {
   const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
 
   // PHÂN CHIA DỮ LIỆU ĐỘNG CHUẨN XÁC
-  // 1. Lọc các sản phẩm có cấu hình Flash Sale từ Database
   const flashSaleData = displayProducts.filter(p => p.isFlashSale === true);
-  
-  // 2. Các khu vực khác lấy các sản phẩm thông thường (để giao diện phong phú và không trùng với Flash Sale)
   const regularProducts = displayProducts.filter(p => !p.isFlashSale);
   const newArrivalsData = regularProducts.slice(0, 4); 
-  const hotProductsData = regularProducts.slice(4, 12); // Lấy tối đa 8 sản phẩm tiếp theo
+  const hotProductsData = regularProducts.slice(4, 12); 
 
   return (
     <main className="min-vh-100" style={{ paddingTop: "70px", backgroundColor: "var(--background)" }}>
@@ -155,7 +167,6 @@ export default async function Menu() {
           <div className="row g-4">
             {flashSaleData.length > 0 ? (
               flashSaleData.map((p) => {
-                // Sử dụng originalPrice thực tế từ DB, nếu thiếu sẽ tự fallback để tránh lỗi giao diện
                 const oldPrice = p.originalPrice ? Number(p.originalPrice) : Number(p.price) * 1.35; 
                 return (
                   <div key={p._id} className="col-sm-6 col-md-3">
@@ -175,7 +186,6 @@ export default async function Menu() {
                 );
               })
             ) : (
-              /* Dữ liệu dự phòng (Placeholder) khi chưa bật sản phẩm nào làm Flash Sale */
               [1, 2, 3, 4].map((item, index) => (
                 <div key={index} className="col-sm-6 col-md-3">
                   <Link href={`/products`} className="text-decoration-none d-block h-100">
