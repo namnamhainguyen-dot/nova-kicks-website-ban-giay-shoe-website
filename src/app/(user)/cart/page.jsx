@@ -3,21 +3,33 @@ import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useState } from "react";
 import Link from "next/link";
-// ✅ Sửa đường dẫn import cho đúng cấu trúc src/
-import { getTablesAction } from "@/app/actions/tables"; 
 
 export default function Cart() {
-  const { cart = [], setCart } = useContext(CartContext);
+  const { cart, setCart } = useContext(CartContext);
   const [locationList, setLocationList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedItems, setSelectedItems] = useState([]); 
+  const [selectedItems, setSelectedItems] = useState([]); // Chứa index các sản phẩm được chọn mua
   const router = useRouter();
 
+  // Lấy danh sách cửa hàng / điểm nhận hàng từ API khi mount
   useEffect(() => {
     async function fetchLocations() {
       try {
         setIsLoading(true);
-        const locations = await getTablesAction();
+        
+        // ✅ Chuyển sang đường dẫn tương đối để chạy mượt cả trên Localhost & Vercel
+        const res = await fetch("/api/tables");
+
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+
+        const contentType = res.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          throw new Error("Server không trả về JSON");
+        }
+
+        const locations = await res.json();
         setLocationList(Array.isArray(locations) ? locations : []);
       } catch (err) {
         console.error("Lỗi lấy danh sách cửa hàng:", err);
@@ -30,19 +42,21 @@ export default function Cart() {
     fetchLocations();
   }, []);
 
-  // Sync selected items
+  // Mặc định tick chọn tất cả sản phẩm khi giỏ hàng thay đổi số lượng dòng
   useEffect(() => {
-    if (cart.length > 0 && selectedItems.length === 0) {
-      setSelectedItems(cart.map((_, index) => index));
-    }
-  }, [cart]);
+    setSelectedItems(cart.map((_, index) => index));
+  }, [cart.length]);
 
+  // Tick / bỏ tick 1 sản phẩm
   const toggleSelectItem = (index) => {
     setSelectedItems((prev) =>
-      prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]
+      prev.includes(index)
+        ? prev.filter((i) => i !== index)
+        : [...prev, index]
     );
   };
 
+  // Tick / bỏ tick tất cả sản phẩm
   const toggleSelectAll = () => {
     if (selectedItems.length === cart.length) {
       setSelectedItems([]);
@@ -53,6 +67,7 @@ export default function Cart() {
 
   const isAllSelected = cart.length > 0 && selectedItems.length === cart.length;
 
+  // Cập nhật số lượng sản phẩm dựa trên INDEX của mảng
   const handleQuantity = (index, value) => {
     const newQuantity = parseInt(value, 10);
     if (isNaN(newQuantity) || newQuantity < 1) return;
@@ -64,21 +79,20 @@ export default function Cart() {
     }
   };
 
+  // Xóa một sản phẩm dựa trên INDEX của mảng
   const handleRemove = (index) => {
     const newCart = cart.filter((_, i) => i !== index);
     setCart(newCart);
-    setSelectedItems((prev) =>
-      prev.filter((i) => i !== index).map((i) => (i > index ? i - 1 : i))
-    );
   };
 
+  // Xóa toàn bộ giỏ hàng
   const handleRemoveAll = () => {
     if (window.confirm("Bạn có chắc muốn xóa toàn bộ giỏ hàng?")) {
       setCart([]);
-      setSelectedItems([]);
     }
   };
 
+  // Xóa các sản phẩm đang được tick chọn
   const handleRemoveSelected = () => {
     if (selectedItems.length === 0) {
       alert("Bạn chưa chọn sản phẩm nào để xóa!");
@@ -87,29 +101,35 @@ export default function Cart() {
     if (window.confirm(`Xóa ${selectedItems.length} sản phẩm đã chọn?`)) {
       const newCart = cart.filter((_, i) => !selectedItems.includes(i));
       setCart(newCart);
-      setSelectedItems([]);
     }
   };
 
+  // Tổng tiền chỉ tính trên sản phẩm được tick chọn hiển thị ngay tại Cart
   const total = cart.reduce(
     (sum, product, index) =>
-      selectedItems.includes(index)
-        ? sum + (product.price || 0) * (product.quantity || 1)
-        : sum,
+      selectedItems.includes(index) ? sum + product.price * product.quantity : sum,
     0
   );
 
+  // Xử lý chuyển dữ liệu sang trang Checkout
   const handleGoToCheckout = () => {
     if (selectedItems.length === 0) {
       alert("Vui lòng chọn ít nhất 1 sản phẩm để thanh toán!");
       return;
     }
+    
+    // Đóng gói danh sách sản phẩm thực tế được tick chọn
     const itemsToCheckout = cart.filter((_, index) => selectedItems.includes(index));
+    
+    // Lưu thẳng danh sách này vào sessionStorage
     sessionStorage.setItem("checkout_items", JSON.stringify(itemsToCheckout));
+    
+    // Chuyển hướng sang trang thanh toán
     router.push("/checkout");
   };
 
-  if (!cart || cart.length === 0) {
+  // Hiển thị khi giỏ hàng trống hoàn toàn
+  if (cart.length === 0) {
     return (
       <main className="container mt-5 pt-5">
         <div className="text-center py-5">
@@ -152,7 +172,7 @@ export default function Cart() {
           </thead>
           <tbody>
             {cart.map((product, index) => {
-              const uniqueKey = `${product._id || index}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
+              const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
               const checked = selectedItems.includes(index);
 
               return (
@@ -168,8 +188,12 @@ export default function Cart() {
                   <td>
                     <strong>{product.name}</strong>
                     <div className="text-muted small mt-1">
-                      {product.selectedColor && <div>Màu: {product.selectedColor}</div>}
-                      {product.selectedSize && <div>Size: {product.selectedSize}</div>}
+                      {product.selectedColor && (
+                        <div>Màu: {product.selectedColor}</div>
+                      )}
+                      {product.selectedSize && (
+                        <div>Size: {product.selectedSize}</div>
+                      )}
                     </div>
                     {product.image && (
                       <div className="mt-2">
@@ -195,8 +219,8 @@ export default function Cart() {
                       onChange={(e) => handleQuantity(index, e.target.value)}
                     />
                   </td>
-                  <td>{(product.price || 0).toLocaleString("vi-VN")}đ</td>
-                  <td>{((product.quantity || 1) * (product.price || 0)).toLocaleString("vi-VN")}đ</td>
+                  <td>{product.price.toLocaleString("vi-VN")}đ</td>
+                  <td>{(product.quantity * product.price).toLocaleString("vi-VN")}đ</td>
                   <td>
                     <button
                       className="btn btn-danger btn-sm"
@@ -220,7 +244,6 @@ export default function Cart() {
                   <button
                     className="btn btn-outline-danger btn-sm"
                     onClick={handleRemoveSelected}
-                    disabled={selectedItems.length === 0}
                   >
                     Xóa đã chọn
                   </button>
