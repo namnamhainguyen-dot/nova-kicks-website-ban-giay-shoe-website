@@ -461,7 +461,6 @@ margin-top: 2.5rem;
 }
 
 .social-links {
-  detail: flex;
   display: flex;
   gap: 1rem;
   margin-top: 1.5rem;
