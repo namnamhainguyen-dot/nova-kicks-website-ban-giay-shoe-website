@@ -1,4 +1,5 @@
 import clientPromise from "@/libs/mongodb";
+import { ObjectId } from "mongodb"; // 🟢 Import ObjectId để xử lý filter chính xác
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
@@ -15,20 +16,40 @@ export async function GET(request) {
     // Tạo điều kiện lọc (Query Object)
     const query = {};
     if (categoryID) {
-      query.categoryID = categoryID; // Chỉ lọc nếu URL có truyền categoryID
+      // 🟢 Xử lý hỗ trợ cả dạng ObjectId lẫn String trong DB Compass
+      if (ObjectId.isValid(categoryID)) {
+        query.$or = [
+          { categoryID: categoryID },
+          { categoryID: new ObjectId(categoryID) },
+          { categoryId: categoryID },
+          { categoryId: new ObjectId(categoryID) }
+        ];
+      } else {
+        query.$or = [
+          { categoryID: categoryID },
+          { categoryId: categoryID }
+        ];
+      }
     }
 
-    // Truy vấn dữ liệu từ MongoDB với điều kiện query
-    const productsList = await db.collection(COLLECTION_NAME).find(query).toArray();
+    // Truy vấn dữ liệu từ MongoDB với điều kiện query, sắp xếp sản phẩm mới nhất lên đầu
+    const productsList = await db
+      .collection(COLLECTION_NAME)
+      .find(query)
+      .sort({ _id: -1 })
+      .toArray();
 
+    // Chuẩn hóa _id thành String để tránh lỗi Serialization trên Next.js Client Component
     const normalized = productsList.map((product) => ({
       ...product,
       _id: String(product._id),
+      // Chuyển luôn categoryID trong document thành string nếu nó đang là ObjectId
+      categoryID: product.categoryID ? String(product.categoryID) : String(product.categoryId || ""),
     }));
 
     return Response.json(normalized);
   } catch (error) {
-    console.error(error);
+    console.error("[API GET Products Error]:", error);
     return Response.json({ error: "Failed to fetch products" }, { status: 500 });
   }
 }
@@ -37,8 +58,6 @@ export async function POST(request) {
   try {
     const body = await request.json();
     
-    // 🌟 ĐỒNG BỘ THÊM: Hứng thêm quantity và mảng variants từ client gửi lên
-    // Đồng thời đổi tên biến categoryId thành categoryID đúng chuẩn DB của bạn
     const { 
       name, 
       price, 
@@ -64,30 +83,34 @@ export async function POST(request) {
       ? variants.map((v) => ({
           color: v.color ? String(v.color).trim() : "",
           image: v.image ? String(v.image).trim() : "",
-          quantity: Math.max(0, parseInt(v.quantity) || 0), // Đảm bảo số lượng >= 0
-          sizes: Array.isArray(v.sizes) ? v.sizes.map(Number) : [] // Định dạng số cho kích cỡ
+          quantity: Math.max(0, parseInt(v.quantity) || 0),
+          sizes: Array.isArray(v.sizes) ? v.sizes.map(Number) : []
         }))
       : [];
 
+    const finalCategoryID = categoryID || categoryId || "";
+
     const newProduct = {
-      name,
+      name: String(name).trim(),
       price: Number(price),
       description: description || "",
       image: image || "",
-      quantity: Number(quantity) || 0, // 🌟 Thêm số lượng tổng kho
+      quantity: Number(quantity) || 0,
       status: status || "active",
       showOnHome: Boolean(showOnHome),
-      categoryID: categoryID || categoryId || "", // 🌟 Hỗ trợ cả 2 cách viết key từ client gửi lên
-      variants: processedVariants, // 🌟 Lưu mảng biến thể chi tiết màu/size/số lượng vào DB
+      // 🟢 Nếu chuỗi ID hợp lệ thì lưu dạng ObjectId vào DB cho chuẩn quan hệ, nếu không thì lưu string
+      categoryID: ObjectId.isValid(finalCategoryID) ? new ObjectId(finalCategoryID) : finalCategoryID,
+      variants: processedVariants,
       createdAt: new Date(),
     };
 
     const result = await db.collection(COLLECTION_NAME).insertOne(newProduct);
     newProduct._id = String(result.insertedId);
+    newProduct.categoryID = String(newProduct.categoryID); // Convert lại string để trả về client
 
     return Response.json(newProduct, { status: 201 });
   } catch (error) {
-    console.error(error);
+    console.error("[API POST Product Error]:", error);
     return Response.json({ error: "Failed to create product" }, { status: 500 });
   }
 }
