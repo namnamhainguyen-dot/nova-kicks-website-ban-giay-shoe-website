@@ -1,14 +1,20 @@
 import ProductFilter from "@/components/ProductFilter";
 import ProductChatbox from "@/components/ProductChatbox";
 import Link from "next/link";
+import { headers } from "next/headers"; // 🟢 Import headers từ Next.js
 
-// 1. Hàm lấy danh sách sản phẩm từ API (Sử dụng Relative Path cho Vercel)
+// 1. Hàm lấy danh sách sản phẩm từ API (Tự động nhận diện Domain trên Localhost & Vercel)
 async function getProducts(categoryID) {
   try {
-    // ✅ Dùng đường dẫn tương đối để Next.js tự ghép Domain chuẩn (cho cả Localhost & Vercel)
+    // 🟢 TỰ ĐỘNG LẤY DOMAIN CHUẨN KHI CHẠY Ở SERVER SIDE
+    const headersList = await headers();
+    const host = headersList.get("host");
+    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+    const baseUrl = `${protocol}://${host}`;
+
     const url = categoryID 
-      ? `/api/products?categoryID=${categoryID}`
-      : "/api/products";
+      ? `${baseUrl}/api/products?categoryID=${categoryID}`
+      : `${baseUrl}/api/products`;
 
     const res = await fetch(url, {
       cache: "no-store",
