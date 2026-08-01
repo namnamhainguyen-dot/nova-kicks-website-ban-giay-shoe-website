@@ -923,7 +923,6 @@ export default function Profile() {
                             </div>
                             
                             <div className="d-flex flex-column align-items-end gap-1">
-                              
 
                               <div className="d-flex align-items-center gap-3">
                                 <div>

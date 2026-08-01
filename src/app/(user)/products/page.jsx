@@ -24,6 +24,10 @@ export default async function ProductsPage({ searchParams }) {
   const categoryID = params?.categoryID;
   const filterIdsParam = params?.filterIds;
   const searchQuery = params?.search;
+  
+  // Lấy số trang hiện tại từ URL (mặc định là trang 1)
+  const currentPage = Number(params?.page) || 1;
+  const pageSize = 9; 
 
   const rawProducts = await getProducts(categoryID);
 
@@ -56,6 +60,24 @@ export default async function ProductsPage({ searchParams }) {
       p.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }
+
+  // --- PHÂN TRANG ---
+  const totalProductsCount = displayedProducts.length;
+  const totalPages = Math.ceil(totalProductsCount / pageSize);
+  
+  // Cắt mảng sản phẩm theo trang hiện tại (tối đa 10 sản phẩm)
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedProducts = displayedProducts.slice(startIndex, startIndex + pageSize);
+
+  // Hàm tạo link chuyển trang giữ lại các bộ lọc hiện tại
+  const createPageUrl = (pageNumber) => {
+    const queryParams = new URLSearchParams();
+    if (categoryID) queryParams.set("categoryID", categoryID);
+    if (filterIdsParam) queryParams.set("filterIds", filterIdsParam);
+    if (searchQuery) queryParams.set("search", searchQuery);
+    queryParams.set("page", pageNumber);
+    return `/products?${queryParams.toString()}`;
+  };
 
   return (
     <main
@@ -103,7 +125,7 @@ export default async function ProductsPage({ searchParams }) {
         <h1 className="fw-bold text-uppercase m-0" style={{ fontSize: "1.75rem", letterSpacing: "0.05em" }}>
           {categoryID ? `Danh mục sản phẩm` : "Tất cả sản phẩm"}
         </h1>
-        <span className="text-secondary fw-semibold">{displayedProducts.length} sản phẩm</span>
+        <span className="text-secondary fw-semibold">{totalProductsCount} sản phẩm</span>
       </div>
 
       {/* BANNER THÔNG BÁO KHI ĐANG DÙNG BỘ LỌC TỪ AI CHATBOX */}
@@ -113,7 +135,7 @@ export default async function ProductsPage({ searchParams }) {
           style={{ backgroundColor: "#fff3eb", color: "#d87c3c" }}
         >
           <span className="fw-semibold">
-            🤖 Trợ lý AI đã tìm thấy <strong>{displayedProducts.length}</strong> sản phẩm phù hợp với yêu cầu của bạn!
+            🤖 Trợ lý AI đã tìm thấy <strong>{totalProductsCount}</strong> sản phẩm phù hợp với yêu cầu của bạn!
           </span>
           <Link 
             href={categoryID ? `/products?categoryID=${categoryID}` : "/products"} 
@@ -125,11 +147,61 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM */}
+      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM (Tối đa 10 sản phẩm mỗi trang) */}
       <ProductFilter 
-        key={`${categoryID || "all"}-${filterIdsParam || "none"}`} 
-        products={displayedProducts} 
+        key={`${categoryID || "all"}-${filterIdsParam || "none"}-${currentPage}`} 
+        products={paginatedProducts} 
       />
+
+      {/* THANH PHÂN TRANG */}
+      {totalPages > 1 && (
+        <nav className="d-flex justify-content-center mt-5">
+          <ul className="pagination shadow-sm">
+            {/* Nút Trước */}
+            <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+              <Link 
+                className="page-link text-dark" 
+                href={currentPage > 1 ? createPageUrl(currentPage - 1) : "#"}
+                style={{ borderColor: "#dee2e6" }}
+              >
+                Trước
+              </Link>
+            </li>
+
+            {/* Các số trang */}
+            {Array.from({ length: totalPages }, (_, index) => {
+              const pageNum = index + 1;
+              const isActive = currentPage === pageNum;
+              return (
+                <li key={pageNum} className={`page-item ${isActive ? "active" : ""}`}>
+                  <Link
+                    className="page-link"
+                    href={createPageUrl(pageNum)}
+                    style={
+                      isActive
+                        ? { backgroundColor: "#d87c3c", borderColor: "#d87c3c", color: "#fff" }
+                        : { color: "#333" }
+                    }
+                  >
+                    {pageNum}
+                  </Link>
+                </li>
+              );
+            })}
+
+            {/* Nút Sau */}
+            <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+              <Link 
+                className="page-link text-dark" 
+                href={currentPage < totalPages ? createPageUrl(currentPage + 1) : "#"}
+                style={{ borderColor: "#dee2e6" }}
+              >
+                Sau
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      )}
 
       {/* CHATBOX AI (TRUYỀN TOÀN BỘ DANH SÁCH SẢN PHẨM ĐỂ AI TÌM KIẾM CẢ KHO) */}
       <ProductChatbox products={products} />
