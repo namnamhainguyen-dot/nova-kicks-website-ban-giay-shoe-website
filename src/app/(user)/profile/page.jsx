@@ -923,14 +923,7 @@ export default function Profile() {
                             </div>
                             
                             <div className="d-flex flex-column align-items-end gap-1">
-                              {orderDiscount > 0 && (
-                                <div className="small text-muted">
-                                  Mã giảm giá {order.discountCode ? `(${order.discountCode})` : ""}:{" "}
-                                  <span className="text-danger fw-medium">
-                                    -{orderDiscount.toLocaleString("vi-VN")}đ
-                                  </span>
-                                </div>
-                              )}
+                              
 
                               <div className="d-flex align-items-center gap-3">
                                 <div>
