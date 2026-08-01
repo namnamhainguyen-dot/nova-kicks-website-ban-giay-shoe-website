@@ -9,61 +9,65 @@ export default function VoucherManagement() {
   const [searchTerm, setSearchTerm] = useState("");
 
   // 1. Lấy danh sách Voucher từ API
-  useEffect(() => {
-    const fetchVouchers = async () => {
-      try {
-        const res = await fetch("/api/vouchers");
-        const data = await res.json();
+  const fetchVouchers = async () => {
+    try {
+      const res = await fetch("/api/vouchers");
+      const data = await res.json();
+      if (Array.isArray(data)) {
         setVouchers(data);
-      } catch (error) {
-        console.error("Lỗi khi tải danh sách voucher:", error);
-      } finally {
-        setLoading(false);
+      } else {
+        setVouchers([]);
       }
-    };
+    } catch (error) {
+      console.error("Lỗi khi tải danh sách voucher:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchVouchers();
   }, []);
 
-  // // 2. Xóa Voucher
-  // const handleDelete = async (id) => {
-  //   if (!confirm("Bạn có chắc chắn muốn xóa mã giảm giá này không?")) return;
-
-  //   try {
-  //     const res = await fetch(`/api/vouchers/${id}`, { method: "DELETE" });
-  //     if (res.ok) {
-  //       setVouchers(vouchers.filter((v) => v._id !== id));
-  //       alert("Đã xóa voucher thành công!");
-  //     }
-  //   } catch (error) {
-  //     alert("Lỗi khi xóa voucher.");
-  //   }
-  // };
-
-  // 3. Thay đổi trạng thái kích hoạt (is_active) nhanh bằng Switch
+  // 2. Thay đổi trạng thái kích hoạt (is_active) - Optimistic UI cho trải nghiệm mượt hơn
   const toggleStatus = async (id, currentStatus) => {
+    const nextStatus = !currentStatus;
+
+    // Cập nhật giao diện ngay lập tức
+    setVouchers((prev) =>
+      prev.map((v) => (v._id === id ? { ...v, is_active: nextStatus } : v))
+    );
+
     try {
       const res = await fetch(`/api/vouchers/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !currentStatus }),
+        body: JSON.stringify({ is_active: nextStatus }),
       });
-      if (res.ok) {
-        setVouchers(
-          vouchers.map((v) =>
-            v._id === id ? { ...v, is_active: !currentStatus } : v
-          )
+
+      // Nếu API lỗi thì rollback lại trạng thái cũ
+      if (!res.ok) {
+        setVouchers((prev) =>
+          prev.map((v) => (v._id === id ? { ...v, is_active: currentStatus } : v))
         );
+        alert("Không thể cập nhật trạng thái voucher.");
       }
     } catch (error) {
+      setVouchers((prev) =>
+        prev.map((v) => (v._id === id ? { ...v, is_active: currentStatus } : v))
+      );
       alert("Không thể cập nhật trạng thái voucher.");
     }
   };
 
-  // 4. Tìm kiếm Voucher theo Code hoặc Mô tả
-  const filteredVouchers = vouchers.filter((v) =>
-    v.code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    v.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // 3. Tìm kiếm Voucher an toàn (Không crash nếu null/undefined)
+  const filteredVouchers = vouchers.filter((v) => {
+    const code = v.code ? v.code.toLowerCase() : "";
+    const description = v.description ? v.description.toLowerCase() : "";
+    const term = searchTerm.toLowerCase();
+
+    return code.includes(term) || description.includes(term);
+  });
 
   if (loading) {
     return (
@@ -119,18 +123,25 @@ export default function VoucherManagement() {
                 <th>Đã dùng / Giới hạn</th>
                 <th>Ngày Hết Hạn</th>
                 <th>Trạng Thái</th>
-               {/* <th className="text-end pe-4">Hành Động</th>  */}
               </tr>
             </thead>
             <tbody>
               {filteredVouchers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-5 text-muted">Chưa có mã giảm giá nào được tạo.</td>
+                  <td colSpan={6} className="text-center py-5 text-muted">
+                    Chưa có mã giảm giá nào phù hợp.
+                  </td>
                 </tr>
               ) : (
                 filteredVouchers.map((v) => {
-                  const isExpired = new Date(v.expiry_date) < new Date();
-                  
+                  // Kiểm tra hạn sử dụng
+                  const isExpired = v.expiry_date && new Date(v.expiry_date) < new Date();
+
+                  // Bắt fallback dữ liệu đa dạng (snake_case + camelCase)
+                  const usedCount = Number(v.used_count ?? v.usedCount ?? 0);
+                  const usageLimit = Number(v.usage_limit ?? v.usageLimit ?? 0);
+                  const isFull = usageLimit > 0 && usedCount >= usageLimit;
+
                   return (
                     <tr key={v._id}>
                       {/* Cột Mã Voucher + Mô tả */}
@@ -147,12 +158,12 @@ export default function VoucherManagement() {
                       <td>
                         <span className="fw-bold text-dark">
                           {v.discount_type === "fixed"
-                            ? `${v.discount_value.toLocaleString("vi-VN")} đ`
+                            ? `${Number(v.discount_value || 0).toLocaleString("vi-VN")} đ`
                             : `${v.discount_value}%`}
                         </span>
                         {v.discount_type === "percentage" && v.max_discount_amount && (
                           <div className="small text-muted">
-                            (Tối đa: {v.max_discount_amount.toLocaleString("vi-VN")}đ)
+                            (Tối đa: {Number(v.max_discount_amount).toLocaleString("vi-VN")}đ)
                           </div>
                         )}
                       </td>
@@ -160,28 +171,32 @@ export default function VoucherManagement() {
                       {/* Cột Đơn Tối Thiểu */}
                       <td>
                         <span className="text-secondary small">
-                          {v.min_order_value ? `${v.min_order_value.toLocaleString("vi-VN")} đ` : "0 đ"}
+                          {v.min_order_value ? `${Number(v.min_order_value).toLocaleString("vi-VN")} đ` : "0 đ"}
                         </span>
                       </td>
 
-                      {/* Cột Số Lần Sử Dụng */}
+                      {/* Cột Đã dùng / Giới hạn */}
                       <td>
-                        <div className="d-flex align-items-center gap-2">
-                          {/* Ép kiểu Number để tránh lỗi hiển thị */}
-                          <span className="fw-bold">
-                            {Number(v.used_count || 0)}
+                        <div className="d-flex align-items-center gap-1">
+                          <span className={`fw-bold ${isFull ? "text-danger" : "text-dark"}`}>
+                            {usedCount}
                           </span>
                           <span className="text-muted">/</span>
                           <span className="text-muted">
-                            {Number(v.usage_limit || 0)}
+                            {usageLimit > 0 ? usageLimit : "∞"}
                           </span>
                         </div>
-                      </td> 
-                      
+                        {isFull && (
+                          <span className="badge bg-danger-subtle text-danger mt-1 style-badge" style={{ fontSize: "10px" }}>
+                            Hết lượt
+                          </span>
+                        )}
+                      </td>
+
                       {/* Cột Ngày Hết Hạn */}
                       <td>
                         <span className={`small ${isExpired ? "text-danger fw-bold" : "text-dark"}`}>
-                          {new Date(v.expiry_date).toLocaleDateString("vi-VN")}
+                          {v.expiry_date ? new Date(v.expiry_date).toLocaleDateString("vi-VN") : "Không thời hạn"}
                         </span>
                         {isExpired && (
                           <span className="badge bg-danger-subtle text-danger ms-1 px-2 py-1 small" style={{ fontSize: "10px" }}>
@@ -198,33 +213,17 @@ export default function VoucherManagement() {
                             type="checkbox"
                             role="switch"
                             id={`switch-${v._id}`}
-                            checked={v.is_active}
+                            checked={Boolean(v.is_active)}
                             onChange={() => toggleStatus(v._id, v.is_active)}
                           />
-                          <label 
-                            className={`form-check-label small ms-1 ${v.is_active ? "text-success" : "text-danger"}`} 
+                          <label
+                            className={`form-check-label small ms-1 ${v.is_active ? "text-success" : "text-danger"}`}
                             htmlFor={`switch-${v._id}`}
                           >
                             {v.is_active ? "Kích hoạt" : "Tạm ẩn"}
                           </label>
                         </div>
                       </td>
-
-                      {/* Cột Hành Động */}
-                      {/* <td className="text-end pe-4">
-                        <Link
-                          href={`/admin/voucher/edit/${v._id}`}
-                          className="btn btn-sm btn-outline-primary me-2"
-                        >
-                          <i className="bi bi-pencil"></i> Sửa
-                        </Link>
-                        <button
-                          onClick={() => handleDelete(v._id)}
-                          className="btn btn-sm btn-outline-danger"
-                        >
-                          <i className="bi bi-trash"></i> Xóa
-                        </button>
-                      </td> */}
                     </tr>
                   );
                 })
