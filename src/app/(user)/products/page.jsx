@@ -1,33 +1,37 @@
 import ProductFilter from "@/components/ProductFilter";
 import ProductChatbox from "@/components/ProductChatbox";
 import Link from "next/link";
-import { headers } from "next/headers"; // 🟢 Import headers từ Next.js
+import { ObjectId } from "mongodb";
 
-// 1. Hàm lấy danh sách sản phẩm từ API (Tự động nhận diện Domain trên Localhost & Vercel)
-async function getProducts(categoryID) {
+// 🟢 IMPORT HÀM KẾT NỐI MONGODB NATIVE DRIVER
+// (Hãy đảm bảo file lib kết nối MongoDB của bạn trả về clientPromise)
+import clientPromise from "@/libs/mongodb";
+
+// 1. Hàm Query Trực Tiếp MongoDB Native Driver (Không xài Mongoose Model & Không fetch API)
+async function getProductsFromDB(categoryID) {
   try {
-    // 🟢 TỰ ĐỘNG LẤY DOMAIN CHUẨN KHI CHẠY Ở SERVER SIDE
-    const headersList = await headers();
-    const host = headersList.get("host");
-    const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
-    const baseUrl = `${protocol}://${host}`;
+    const client = await clientPromise;
+    const db = client.db(); // Tự động lấy DB name cấu hình trong MONGODB_URI
 
-    const url = categoryID 
-      ? `${baseUrl}/api/products?categoryID=${categoryID}`
-      : `${baseUrl}/api/products`;
-
-    const res = await fetch(url, {
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      console.error("[Fetch Error] Không thể lấy danh sách sản phẩm:", res.statusText);
-      return [];
+    // Tạo bộ lọc theo Category
+    const filter = {};
+    if (categoryID) {
+      // Nếu categoryID trong DB lưu kiểu ObjectId thì dùng line dưới:
+      // filter.category = new ObjectId(categoryID);
+      filter.category = categoryID;
     }
 
-    return await res.json();
+    // Query thẳng vào collection "products" (tên collection trong Compass)
+    const rawProducts = await db
+      .collection("products")
+      .find(filter)
+      .sort({ _id: -1 })
+      .toArray();
+
+    // 🔴 BẮT BUỘC: Convert sang Plain Object để Next.js không báo lỗi Serialize với ObjectId/Date
+    return JSON.parse(JSON.stringify(rawProducts));
   } catch (error) {
-    console.error("[Fetch Exception] Lỗi kết nối API products:", error);
+    console.error("[MongoDB Direct Query Error]:", error);
     return [];
   }
 }
@@ -38,14 +42,16 @@ export default async function ProductsPage({ searchParams }) {
   const filterIdsParam = params?.filterIds;
   const searchQuery = params?.search;
 
-  const rawProducts = await getProducts(categoryID);
+  // 🟢 LẤY TRỰC TIẾP DỮ LIỆU TỪ MONGODB
+  const rawProducts = await getProductsFromDB(categoryID);
 
-  // CHUẨN HÓA DỮ LIỆU
-  const products = (rawProducts || []).map(product => {
-    const availableColors = product.variants?.map(v => ({
-      color: v.color,
-      quantity: v.quantity ?? 0
-    })) || [];
+  // CHUẨN HÓA DỮ LIỆU SẢN PHẨM
+  const products = (rawProducts || []).map((product) => {
+    const availableColors =
+      product.variants?.map((v) => ({
+        color: v.color,
+        quantity: v.quantity ?? 0,
+      })) || [];
 
     const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
 
@@ -54,7 +60,7 @@ export default async function ProductsPage({ searchParams }) {
       _id: String(product._id),
       availableColors,
       availableSizes,
-      description: product.description || "Chưa có mô tả cho sản phẩm này."
+      description: product.description || "Chưa có mô tả cho sản phẩm này.",
     };
   });
 
@@ -63,9 +69,9 @@ export default async function ProductsPage({ searchParams }) {
 
   if (filterIdsParam) {
     const filterIds = filterIdsParam.split(",");
-    displayedProducts = products.filter(p => filterIds.includes(p._id));
+    displayedProducts = products.filter((p) => filterIds.includes(p._id));
   } else if (searchQuery) {
-    displayedProducts = products.filter(p => 
+    displayedProducts = products.filter((p) =>
       p.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }
@@ -113,23 +119,34 @@ export default async function ProductsPage({ searchParams }) {
 
       {/* HEADER TIÊU ĐỀ */}
       <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
-        <h1 className="fw-bold text-uppercase m-0" style={{ fontSize: "1.75rem", letterSpacing: "0.05em" }}>
+        <h1
+          className="fw-bold text-uppercase m-0"
+          style={{ fontSize: "1.75rem", letterSpacing: "0.05em" }}
+        >
           {categoryID ? `Danh mục sản phẩm` : "Tất cả sản phẩm"}
         </h1>
-        <span className="text-secondary fw-semibold">{displayedProducts.length} sản phẩm</span>
+        <span className="text-secondary fw-semibold">
+          {displayedProducts.length} sản phẩm
+        </span>
       </div>
 
       {/* BANNER THÔNG BÁO KHI ĐANG DÙNG BỘ LỌC TỪ AI CHATBOX */}
       {filterIdsParam && (
-        <div 
+        <div
           className="alert d-flex justify-content-between align-items-center mb-4 p-3 rounded-3 border-0 shadow-sm"
           style={{ backgroundColor: "#fff3eb", color: "#d87c3c" }}
         >
           <span className="fw-semibold">
-            🤖 Trợ lý AI đã tìm thấy <strong>{displayedProducts.length}</strong> sản phẩm phù hợp với yêu cầu của bạn!
+            🤖 Trợ lý AI đã tìm thấy{" "}
+            <strong>{displayedProducts.length}</strong> sản phẩm phù hợp với yêu
+            cầu của bạn!
           </span>
-          <Link 
-            href={categoryID ? `/products?categoryID=${categoryID}` : "/products"} 
+          <Link
+            href={
+              categoryID
+                ? `/products?categoryID=${categoryID}`
+                : "/products"
+            }
             className="btn btn-sm btn-dark px-3 rounded-pill"
             style={{ backgroundColor: "#d87c3c", borderColor: "#d87c3c" }}
           >
@@ -139,9 +156,9 @@ export default async function ProductsPage({ searchParams }) {
       )}
 
       {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM */}
-      <ProductFilter 
-        key={`${categoryID || "all"}-${filterIdsParam || "none"}`} 
-        products={displayedProducts} 
+      <ProductFilter
+        key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
+        products={displayedProducts}
       />
 
       {/* CHATBOX AI (TRUYỀN TOÀN BỘ DANH SÁCH SẢN PHẨM ĐỂ AI TÌM KIẾM CẢ KHO) */}
