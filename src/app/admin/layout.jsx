@@ -99,7 +99,7 @@ export default function Layout({ children }) {
             <li className="nav-item mb-2">
               <Link href="/admin/voucher" className="nav-link">
                 Quản lý voucher
-              </Link>
+</Link>
             </li>
 
             <li className="nav-item mb-2">
