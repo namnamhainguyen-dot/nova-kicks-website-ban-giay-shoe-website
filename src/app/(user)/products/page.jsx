@@ -3,11 +3,28 @@ import clientPromise, { dbName } from "@/libs/mongodb"; // Kiểm tra kỹ chữ
 async function getRawProducts() {
   try {
     const client = await clientPromise;
-    const db = client.db(dbName);
     
-    // Tìm tất cả sản phẩm không qua lọc
-    const raw = await db.collection("products").find({}).toArray();
-    return JSON.parse(JSON.stringify(raw));
+    // 1. Quét danh sách tất cả Database đang có trên Cluster Atlas
+    const adminDb = client.db().admin();
+    const dbsList = await adminDb.listDatabases();
+    const allDbNames = dbsList.databases.map(d => d.name);
+
+    // 2. Lấy DB Nova-kicks
+    const db = client.db("Nova-kicks");
+    
+    // 3. Quét danh sách các Collection trong DB Nova-kicks
+    const collections = await db.listCollections().toArray();
+    const collectionNames = collections.map(c => c.name);
+
+    // 4. Thử lấy sản phẩm từ collection "products"
+    const rawProducts = await db.collection("products").find({}).toArray();
+
+    return {
+      allDbNames,
+      collectionNames,
+      productsCount: rawProducts.length,
+      sampleData: JSON.parse(JSON.stringify(rawProducts.slice(0, 2)))
+    };
   } catch (error) {
     return { error: String(error.message || error) };
   }
