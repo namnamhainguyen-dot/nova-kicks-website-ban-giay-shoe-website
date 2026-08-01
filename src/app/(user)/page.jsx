@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
-import clientPromise, { dbName } from "@/lib/mongodb"; // Import helper kết nối MongoDB
+import clientPromise, { dbName } from "@/libs/mongodb"; // Import helper kết nối MongoDB
 
 // Bắt buộc Next.js không static-render trang này (để dữ liệu luôn mới nhất)
 export const dynamic = 'force-dynamic';
