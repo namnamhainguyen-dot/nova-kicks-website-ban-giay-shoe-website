@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
+import { headers } from "next/headers"; // Import headers từ next/headers
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -11,13 +12,33 @@ const formatDate = (value) => {
 };
 
 export default async function Menu() {
-  // ✅ Dùng đường dẫn tương đối (Relative Path) - Tự động nhận diện domain ở cả Localhost & Vercel
-  const res = await fetch('/api/products', { cache: 'no-store' });
-  const productList = res.ok ? await res.json() : [];
+  // 🟢 TỰ ĐỘNG LẤY DOMAIN HIỆN TẠI (Hoạt động 100% trên cả Local & Vercel)
+  const headersList = await headers();
+  const host = headersList.get("host");
+  const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
+  const baseUrl = `${protocol}://${host}`;
 
-  const newsRes = await fetch('/api/news', { cache: 'no-store' });
-  const newsData = newsRes.ok ? await newsRes.json() : null;
-  const newsArticles = Array.isArray(newsData?.data) ? newsData.data.slice(0, 3) : [];
+  let productList = [];
+  let newsArticles = [];
+
+  try {
+    const res = await fetch(`${baseUrl}/api/products`, { cache: 'no-store' });
+    if (res.ok) {
+      productList = await res.json();
+    }
+  } catch (err) {
+    console.error("Lỗi fetch products:", err);
+  }
+
+  try {
+    const newsRes = await fetch(`${baseUrl}/api/news`, { cache: 'no-store' });
+    if (newsRes.ok) {
+      const newsData = await newsRes.json();
+      newsArticles = Array.isArray(newsData?.data) ? newsData.data.slice(0, 3) : [];
+    }
+  } catch (err) {
+    console.error("Lỗi fetch news:", err);
+  }
 
   const isArray = Array.isArray(productList);
   const displayProducts = isArray ? productList : [];
@@ -27,10 +48,7 @@ export default async function Menu() {
   const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
 
   // PHÂN CHIA DỮ LIỆU ĐỘNG CHUẨN XÁC
-  // 1. Lọc các sản phẩm có cấu hình Flash Sale từ Database
   const flashSaleData = displayProducts.filter(p => p.isFlashSale === true);
-  
-  // 2. Các khu vực khác lấy các sản phẩm thông thường
   const regularProducts = displayProducts.filter(p => !p.isFlashSale);
   const newArrivalsData = regularProducts.slice(0, 4); 
   const hotProductsData = regularProducts.slice(4, 12); 
