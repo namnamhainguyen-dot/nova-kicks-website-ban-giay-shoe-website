@@ -7,6 +7,11 @@ import UserActions from "@/components/UserActions";
 import NavbarLinks from "@/components/NavbarLinks";
 import { Toaster } from "react-hot-toast";
 
+
+import Script from "next/script";
+import "./global.css";
+
+
 async function getCategories() {
   try {
     const client = await clientPromise;
@@ -29,7 +34,7 @@ export default async function Layout({ children }) {
   const categories = await getCategories();
 
   return (
-    <html lang="vi">
+    <html lang="vi" suppressHydrationWarning>
       <head>
         <meta charSet="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -579,6 +584,7 @@ export default async function Layout({ children }) {
       <body className="d-flex flex-column min-vh-100">
         <Toaster 
           position="bottom-right" 
+
           reverseOrder={false}
           toastOptions={{
             style: {
