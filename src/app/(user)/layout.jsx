@@ -9,7 +9,7 @@ import { Toaster } from "react-hot-toast";
 
 
 import Script from "next/script";
-import "./global.css";
+import "../global.css";
 
 
 async function getCategories() {
