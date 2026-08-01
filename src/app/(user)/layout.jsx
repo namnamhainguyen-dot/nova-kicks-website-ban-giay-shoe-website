@@ -51,7 +51,7 @@ export default async function Layout({ children }) {
           rel="stylesheet"
         />
 
-        {/* Global Styles bằng dangerouslySetInnerHTML để tránh Hydration Error */}
+        {/* Global Styles đã được làm sạch các ký tự &quot; để tránh Hydration Error */}
         <style
           dangerouslySetInnerHTML={{
             __html: `
