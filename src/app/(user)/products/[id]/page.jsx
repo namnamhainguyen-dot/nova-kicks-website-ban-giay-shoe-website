@@ -269,12 +269,11 @@ export default function ProductDetailPage() {
         setTimeout(() => setAddedToCart(false), 2000);
     };
 
-    // 🚀 BUY NOW - Chuyển thẳng đến checkout
+    // 🚀 BUY NOW
     const handleBuyNow = () => {
         if (stockAvailable <= 0 || isAdmin) return;
         const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
 
-        // Tạo sản phẩm để thanh toán ngay
         const checkoutItem = {
             _id: product._id,
             name: product.name,
@@ -286,12 +285,10 @@ export default function ProductDetailPage() {
             categoryID: product.categoryID || '',
         };
         
-        // Lưu vào sessionStorage để checkout đọc được
         sessionStorage.setItem('checkout_items', JSON.stringify([checkoutItem]));
-        
-        // Chuyển hướng thẳng đến checkout
         router.push('/checkout');
     };
+
     const handleImageChange = (e) => {
         const files = Array.from(e.target.files);
         if (files.length === 0) return;
@@ -355,12 +352,11 @@ export default function ProductDetailPage() {
         return (sum / reviews.length).toFixed(1);
     }, [reviews]);
 
-    // Loading state
     if (loading) {
         return (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', gap: '12px' }}>
                 <div style={{ width: '36px', height: '36px', border: '3px solid #e5e7eb', borderTop: '3px solid #111827', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                <p style={{ color: '#6b7280', fontWeight: '500' }}>Đang tải sản phẩm...</p>
+                <p style={{ color: '#6b7280', fontWeight: '500', fontFamily: 'system-ui, -apple-system, sans-serif' }}>Đang tải sản phẩm...</p>
                 <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
             </div>
         );
@@ -368,11 +364,11 @@ export default function ProductDetailPage() {
 
     if (!product) {
         return (
-            <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+            <div style={{ textAlign: 'center', padding: '80px 20px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                 <h2 style={{ fontSize: '20px', fontWeight: '600', color: '#1f2937' }}>
                     Không tìm thấy sản phẩm hoặc sản phẩm đã bị xóa!
                 </h2>
-                <Link href="/products" style={{ color: '#2563eb', marginTop: '12px', display: 'inline-block' }}>
+                <Link href="/products" style={{ color: '#2563eb', marginTop: '12px', display: 'inline-block', textDecoration: 'none' }}>
                     ← Quay lại danh sách sản phẩm
                 </Link>
             </div>
@@ -380,7 +376,7 @@ export default function ProductDetailPage() {
     }
 
     return (
-        <div style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', padding: '40px 20px', fontFamily: 'sans-serif' }}>
+        <div style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', padding: '40px 20px', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
             {/* Breadcrumb */}
             <nav style={{ marginBottom: '28px', fontSize: '13px', color: '#6b7280' }}>
                 <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Trang chủ</Link>
@@ -429,13 +425,14 @@ export default function ProductDetailPage() {
                 <div style={{ flex: '1 1 50%', minWidth: '300px', display: 'flex', flexDirection: 'column' }}>
                     <h1 style={{
                         fontSize: '28px', fontWeight: '800', color: '#030712', margin: '0 0 10px 0', 
-                        textTransform: 'uppercase', fontFamily: 'system-ui, -apple-system, sans-serif',
+                        textTransform: 'uppercase',
                     }}>
                         {product.name}
                     </h1>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-                        <span style={{ color: '#fbbf24' }}>⭐ {averageRating}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px' }}>
+                        <img src="https://img.icons8.com/color/48/star--v1.png" alt="star" style={{ width: '18px', height: '18px', display: 'inline-block' }} />
+                        <span style={{ fontWeight: '700', color: '#111827' }}>{averageRating}</span>
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>({reviews.length} đánh giá)</span>
                     </div>
 
@@ -715,25 +712,48 @@ export default function ProductDetailPage() {
                             </div>
                         )}
 
+                        {/* PHẦN CHỌN SAO FULL ICONS8 (SAO CHƯA ĐẠT HIỂN THỊ RÕ RÀNG HƠN) */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
-                            <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500' }}>Đánh giá:</span>
-                            <div style={{ display: 'flex', gap: '4px' }}>
+                            <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500', fontFamily: 'inherit' }}>Đánh giá của bạn:</span>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
                                         key={star}
                                         type="button"
                                         onClick={() => setNewRating(star)}
-                                        style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', padding: 0 }}
+                                        style={{ 
+                                            background: 'none', 
+                                            border: 'none', 
+                                            cursor: 'pointer', 
+                                            padding: '2px',
+                                            transition: 'transform 0.15s ease',
+                                            outline: 'none'
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                        title={`${star} sao`}
                                     >
-                                        {star <= newRating ? '⭐' : '☆'}
+                                        <img 
+                                            src="https://img.icons8.com/color/48/star--v1.png" 
+                                            alt={`${star} star`} 
+                                            style={{ 
+                                                width: '24px', 
+                                                height: '24px', 
+                                                display: 'block', 
+                                                filter: star <= newRating ? 'none' : 'grayscale(100%) opacity(0.55)' 
+                                            }} 
+                                        />
                                     </button>
                                 ))}
+                                <span style={{ marginLeft: '8px', fontSize: '14px', fontWeight: '600', color: '#d97706' }}>
+                                    {newRating === 5 ? 'Tuyệt vời ⭐' : newRating === 4 ? 'Hài lòng 😊' : newRating === 3 ? 'Bình thường 😐' : newRating === 2 ? 'Không hài lòng 🙁' : 'Tệ 😞'}
+                                </span>
                             </div>
                         </div>
 
                         <textarea
                             rows={4}
-                            placeholder="Chia sẻ cảm nhận của bạn về sản phẩm này..."
+                            placeholder="Chia sẻ cảm nhận chi tiết của bạn về sản phẩm này..."
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                             disabled={submittingReview}
@@ -741,7 +761,7 @@ export default function ProductDetailPage() {
                                 width: '100%', padding: '12px 16px', borderRadius: '10px',
                                 border: '1px solid #d1d5db', fontSize: '14px', outline: 'none',
                                 fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box',
-                                backgroundColor: '#fff'
+                                backgroundColor: '#fff', color: '#1f2937'
                             }}
                         />
 
@@ -788,56 +808,71 @@ export default function ProductDetailPage() {
                                     color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px',
                                     fontWeight: '600', fontSize: '14px', cursor: !newComment.trim() ? 'not-allowed' : 'pointer',
                                     transition: 'background-color 0.2s',
+                                    fontFamily: 'inherit'
                                 }}
                             >
-                                {submittingReview ? 'Đang gửi...' : 'Gửi bình luận'}
+                                {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
                             </button>
                         </div>
                     </form>
                 )}
 
+                {/* DANH SÁCH ĐÁNH GIÁ (SAO ĐẶC RUỘT, SAO CHƯA ĐẠT RÕ HƠN) */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {reviews.length === 0 ? (
-                        <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic' }}>
-                            Chưa có bình luận nào cho sản phẩm này.
+                        <p style={{ color: '#6b7280', fontSize: '14px', fontStyle: 'italic', fontFamily: 'inherit' }}>
+                            Chưa có đánh giá nào cho sản phẩm này. Hãy là người đầu tiên đánh giá sản phẩm!
                         </p>
                     ) : (
                         reviews.map((rev, idx) => {
                             const nameDisplay = rev.userId?.fullname || rev.userId?.name || rev.userName || 'Khách hàng';
                             const firstLetter = nameDisplay.charAt(0).toUpperCase();
+                            const ratingStars = rev.rating || 5;
 
                             return (
                                 <div key={rev._id || idx} style={{ borderBottom: '1px solid #f3f4f6', paddingBottom: '20px' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                             <div style={{
-                                                width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#111827',
+                                                width: '38px', height: '38px', borderRadius: '50%', backgroundColor: '#111827',
                                                 color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                                 fontWeight: '700', fontSize: '14px', textTransform: 'uppercase'
                                             }}>
                                                 {firstLetter}
                                             </div>
                                             <div>
-                                                <span style={{ fontWeight: '700', fontSize: '14px', color: '#111827', display: 'block' }}>
+                                                <span style={{ fontWeight: '700', fontSize: '14px', color: '#111827', display: 'block', fontFamily: 'inherit' }}>
                                                     {nameDisplay}
                                                 </span>
-                                                <span style={{ fontSize: '12px', color: '#9ca3af' }}>
+                                                <span style={{ fontSize: '12px', color: '#9ca3af', fontFamily: 'inherit' }}>
                                                     {rev.createdAt ? new Date(rev.createdAt).toLocaleDateString('vi-VN') : 'Mới đây'}
                                                 </span>
                                             </div>
                                         </div>
 
-                                        <div style={{ fontSize: '14px', color: '#fbbf24' }}>
-                                            {'⭐'.repeat(rev.rating || 5)}
+                                        {/* Hiển thị sao Icons8 full khối, sao chưa đạt sáng rõ hơn (opacity 0.55) */}
+                                        <div style={{ display: 'flex', gap: '2px' }} title={`${ratingStars} sao`}>
+                                            {[...Array(5)].map((_, i) => (
+                                                <img 
+                                                    key={i}
+                                                    src="https://img.icons8.com/color/48/star--v1.png" 
+                                                    alt="star" 
+                                                    style={{ 
+                                                        width: '16px', 
+                                                        height: '16px', 
+                                                        filter: i < ratingStars ? 'none' : 'grayscale(100%) opacity(0.55)' 
+                                                    }} 
+                                                />
+                                            ))}
                                         </div>
                                     </div>
 
-                                    <p style={{ color: '#374151', fontSize: '14px', lineHeight: '1.6', margin: '8px 0 0 46px' }}>
+                                    <p style={{ color: '#374151', fontSize: '14px', lineHeight: '1.6', margin: '8px 0 0 48px', fontFamily: 'inherit', fontWeight: '400' }}>
                                         {rev.comment}
                                     </p>
 
                                     {rev.images && rev.images.length > 0 && (
-                                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', marginLeft: '46px', flexWrap: 'wrap' }}>
+                                        <div style={{ display: 'flex', gap: '8px', marginTop: '10px', marginLeft: '48px', flexWrap: 'wrap' }}>
                                             {rev.images.map((imgUrl, imgIdx) => (
                                                 <div 
                                                     key={imgIdx} 

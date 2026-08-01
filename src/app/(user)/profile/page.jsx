@@ -19,6 +19,9 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
+  // Thêm state lọc trạng thái đơn hàng
+  const [orderFilter, setOrderFilter] = useState("all");
+
   // Validation
   const [phoneError, setPhoneError] = useState("");
 
@@ -45,8 +48,51 @@ export default function Profile() {
   const [selectedDistrict, setSelectedDistrict] = useState("");
   const [selectedWard, setSelectedWard] = useState("");
 
+  // --- STATE CHO MODAL HỦY ĐƠN HÀNG ---
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [selectedOrderIdToCancel, setSelectedOrderIdToCancel] = useState(null);
+  const [cancelReasonOption, setCancelReasonOption] = useState("Đổi ý, không muốn mua nữa");
+  const [customCancelReason, setCustomCancelReason] = useState("");
+
   // Tab điều hướng
-  const [activeTab, setActiveTab] = useState("address");
+  const [activeTab, setActiveTab] = useState("profile");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    if (tabParam) {
+      setActiveTab(tabParam);
+    }
+  }, []);
+
+  // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình (Giữ màu gốc nhưng tăng độ đậm/chữ đậm cho tất cả trạng thái dễ nhìn hơn)
+  const statusBadges = {
+    pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
+    processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-arrow-repeat" },
+    preparing: { text: "Đang đóng gói", class: "bg-info-subtle text-info-emphasis fw-bold", icon: "bi bi-box-seam" },
+    completed: { text: "Hoàn thành", class: "bg-success-subtle text-success-emphasis fw-bold", icon: "bi bi-check-circle" },
+    cancelled: { text: "Đã hủy", class: "bg-danger-subtle text-danger-emphasis fw-bold", icon: "bi bi-x-circle" },
+  };
+
+  const getStatusInfo = (statusKey) => {
+    const key = (statusKey || "").toLowerCase().trim();
+    if (key === "pending" || key === "chờ xác nhận" || key === "chờ xử lý") {
+      return statusBadges.pending;
+    }
+    if (key === "processing" || key === "đang xử lý") {
+      return statusBadges.processing;
+    }
+    if (key === "preparing" || key === "đang đóng gói") {
+      return statusBadges.preparing;
+    }
+    if (key === "completed" || key === "hoàn thành" || key === "đã giao hàng") {
+      return statusBadges.completed;
+    }
+    if (key === "cancelled" || key === "đã hủy") {
+      return statusBadges.cancelled;
+    }
+    return { text: statusKey || "Chờ xác nhận", class: "bg-secondary-subtle text-secondary-emphasis fw-bold", icon: "bi bi-question-circle" };
+  };
 
   // 2. Tải thông tin người dùng từ API Server & đơn hàng
   useEffect(() => {
@@ -62,7 +108,6 @@ export default function Profile() {
           }
           const currentUserId = String(rawId || "").trim();
 
-          // Gọi trực tiếp API lấy thông tin user mới nhất từ Database
           if (currentUserId && currentUserId !== "undefined") {
             try {
               const resUser = await fetch(`/api/users/${currentUserId}`);
@@ -176,6 +221,57 @@ export default function Profile() {
       } catch (error) {
         console.error("Lỗi khi tải Xã/Phường:", error);
       }
+    }
+  };
+
+  // --- XỬ LÝ HỦY ĐƠN HÀNG QUA MODAL ---
+  const openCancelModal = (orderId) => {
+    setSelectedOrderIdToCancel(orderId);
+    setCancelReasonOption("Đổi ý, không muốn mua nữa");
+    setCustomCancelReason("");
+    setShowCancelModal(true);
+  };
+
+  const handleConfirmCancelOrder = async (e) => {
+    e.preventDefault();
+
+    const finalReason = cancelReasonOption === "Khác (Nhập cụ thể)" 
+      ? customCancelReason.trim() 
+      : cancelReasonOption;
+
+    if (cancelReasonOption === "Khác (Nhập cụ thể)" && !finalReason) {
+      alert("Vui lòng nhập cụ thể lý do hủy đơn hàng.");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/orders/${selectedOrderIdToCancel}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          status: "cancelled", 
+          cancelReason: finalReason 
+        }),
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+        alert("Đã hủy đơn hàng thành công!");
+        setOrders((prevOrders) =>
+          prevOrders.map((ord) =>
+            (ord._id === selectedOrderIdToCancel || ord.id === selectedOrderIdToCancel) 
+              ? { ...ord, status: "cancelled", cancelReason: finalReason } 
+              : ord
+          )
+        );
+        setShowCancelModal(false);
+      } else {
+        alert(`Lỗi: ${result.error || "Không thể hủy đơn hàng này."}`);
+      }
+    } catch (error) {
+      console.error("Lỗi khi hủy đơn hàng:", error);
+      alert("Không thể kết nối đến máy chủ để hủy đơn hàng.");
     }
   };
 
@@ -410,6 +506,28 @@ export default function Profile() {
     syncAddressesToStorageAndServer(updatedList);
   };
 
+  // Logic lọc đơn hàng dựa trên trạng thái được chọn
+  const filteredOrders = orders.filter((order) => {
+    if (orderFilter === "all") return true;
+    const st = (order.status || "").toLowerCase().trim();
+    if (orderFilter === "pending") {
+      return st === "pending" || st === "chờ xác nhận" || st === "chờ xử lý";
+    }
+    if (orderFilter === "processing") {
+      return st === "processing" || st === "đang xử lý";
+    }
+    if (orderFilter === "preparing") {
+      return st === "preparing" || st === "đang đóng gói";
+    }
+    if (orderFilter === "completed") {
+      return st === "completed" || st === "hoàn thành" || st === "đã giao hàng";
+    }
+    if (orderFilter === "cancelled") {
+      return st === "cancelled" || st === "đã hủy";
+    }
+    return true;
+  });
+
   if (loading) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: "#f1f5f9" }}>
@@ -431,7 +549,7 @@ export default function Profile() {
             <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-3 mb-3">
               <div className="d-flex align-items-center gap-3 px-2">
                 <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style={{ width: "50px", height: "50px", fontSize: "20px", backgroundColor: "#d97706" }}>
-                  {user.fullname ? user.fullname.charAt(0).toUpperCase() : "👤"}
+                  {user.fullname ? user.fullname.charAt(0).toUpperCase() : <i className="bi bi-person-fill"></i>}
                 </div>
                 <div className="overflow-hidden">
                   <div className="text-muted small">Xin chào,</div>
@@ -447,24 +565,24 @@ export default function Profile() {
                     setActiveTab("profile");
                     setIsEditingProfile(false);
                   }}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all ${activeTab === "profile" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "profile" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
                   style={activeTab === "profile" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
                 >
-                  Tài khoản của tôi
+                  <i className="bi bi-person-badge"></i> Hồ Sơ Của Tôi
                 </button>
                 <button
                   onClick={() => setActiveTab("address")}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all ${activeTab === "address" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "address" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
                   style={activeTab === "address" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
                 >
-                  Địa chỉ nhận hàng
+                  <i className="bi bi-geo-alt"></i> Địa Chỉ Nhận Hàng
                 </button>
                 <button
                   onClick={() => setActiveTab("orders")}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all ${activeTab === "orders" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "orders" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
                   style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
                 >
-                  Đơn Mua
+                  <i className="bi bi-bag-check"></i> Đơn Hàng Của Tôi
                 </button>
               </div>
             </div>
@@ -473,7 +591,7 @@ export default function Profile() {
           {/* CỘT PHẢI: NỘI DUNG CHÍNH */}
           <div className="col-lg-9">
             
-            {/* TAB 1: HỒ SƠ CÁ NHÂN (Đã đổi sang Text thường, không dùng input readonly) */}
+            {/* TAB 1: HỒ SƠ CÁ NHÂN */}
             {activeTab === "profile" && (
               <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
                 <div className="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
@@ -484,11 +602,11 @@ export default function Profile() {
                   {!isEditingProfile && (
                     <button 
                       type="button" 
-                      className="btn btn-sm px-3 rounded-2 fw-semibold"
+                      className="btn btn-sm px-3 rounded-2 fw-semibold d-flex align-items-center gap-1"
                       style={{ color: "#d97706", borderColor: "#d97706", backgroundColor: "#fff7ed" }}
                       onClick={() => setIsEditingProfile(true)}
                     >
-                      Chỉnh sửa thông tin
+                      <i className="bi bi-pencil-square"></i> Chỉnh sửa thông tin
                     </button>
                   )}
                 </div>
@@ -538,8 +656,8 @@ export default function Profile() {
                   {isEditingProfile && (
                     <div className="row mt-4">
                       <div className="offset-sm-3 col-sm-9 d-flex gap-2">
-                        <button type="submit" className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm" style={{ backgroundColor: "#d97706" }}>
-                          Lưu Thay Đổi
+                        <button type="submit" className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }}>
+                          <i className="bi bi-check-lg"></i> Lưu Thay Đổi
                         </button>
                         <button 
                           type="button" 
@@ -563,11 +681,11 @@ export default function Profile() {
               <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
                 <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
                   <div>
-                    <h4 className="fw-bold text-dark mb-1">Địa Chỉ Của Tôi</h4>
+                    <h4 className="fw-bold text-dark mb-1">Địa Chỉ Nhận Hàng</h4>
                     <p className="text-muted small mb-0">Quản lý các địa chỉ giao hàng đã lưu</p>
                   </div>
-                  <button className="btn text-white btn-sm rounded-2 fw-semibold px-3 py-2 shadow-sm" style={{ backgroundColor: "#d97706" }} onClick={handleOpenAddModal}>
-                    + Thêm Địa Chỉ Mới
+                  <button className="btn text-white btn-sm rounded-2 fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }} onClick={handleOpenAddModal}>
+                    <i className="bi bi-plus-lg"></i> Thêm Địa Chỉ Mới
                   </button>
                 </div>
 
@@ -641,7 +759,7 @@ export default function Profile() {
               </div>
             )}
 
-            {/* TAB 3: ĐƠN MUA (Hiển thị chi tiết sản phẩm, phân loại và số lượng) */}
+            {/* TAB 3: ĐƠN MUA */}
             {activeTab === "orders" && (
               <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
                 <div className="border-bottom pb-3 mb-4">
@@ -649,52 +767,92 @@ export default function Profile() {
                   <p className="text-muted small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
                 </div>
 
+                {/* --- THANH LỌC TRẠNG THÁI ĐƠN HÀNG --- */}
+                <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
+                  {[
+                    { key: "all", label: "Tất cả" },
+                    { key: "pending", label: "Chờ xác nhận" },
+                    { key: "processing", label: "Đang xử lý" },
+                    { key: "preparing", label: "Đang đóng gói" },
+                    { key: "completed", label: "Hoàn thành" },
+                    { key: "cancelled", label: "Đã hủy" },
+                  ].map((tab) => (
+                    <button
+                      key={tab.key}
+                      onClick={() => setOrderFilter(tab.key)}
+                      className={`btn btn-sm px-3 py-2 rounded-pill fw-semibold transition-all ${
+                        orderFilter === tab.key ? "text-white shadow-sm" : "btn-light text-secondary border"
+                      }`}
+                      style={orderFilter === tab.key ? { backgroundColor: "#d97706" } : {}}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+
                 <div className="d-flex flex-column gap-3">
-                  {orders.length > 0 ? (
-                    orders.map((order) => {
-                      // Lấy danh sách sản phẩm từ mảng items hoặc products của đơn hàng
+                  {filteredOrders.length > 0 ? (
+                    filteredOrders.map((order) => {
                       const itemsList = order.order_items || order.items || order.products || [];
+                      const badge = getStatusInfo(order.status);
+                      
+                      const rawPayment = order.paymentMethod || "cod";
+                      const displayPayment = rawPayment.toLowerCase() === "cod" ? "COD" : rawPayment.toUpperCase();
+                      
+                      const rawStatus = (order.status || "").toLowerCase().trim();
+                      const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
+                      const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
+
+                      // Tính toán số tiền giảm giá của đơn hàng
+                      const orderDiscount = Number(order.discountAmount || order.discount || 0);
 
                       return (
                         <div 
-                          key={order._id}
+                          key={order._id || order.id}
                           className="border border-2 rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
                         >
-                          {/* Header của từng đơn hàng: Mã đơn & Trạng thái */}
+                          {/* Header đơn hàng: Ngày giờ, Nhãn giảm giá & Trạng thái */}
                           <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
                             <div className="d-flex align-items-center gap-2">
-                              <span className="fw-bold text-dark">Mã đơn:</span>
-                              <span className="fw-bold" style={{ color: "#d97706" }}>
-                                #{order._id?.slice(-6).toUpperCase()}
-                              </span>
-                              <span className="text-muted ms-2">|</span>
-                              <span className="text-muted small">
-                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
+                              <span className="text-muted fw-medium d-flex align-items-center gap-1">
+                                <i className="bi bi-calendar3"></i> {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
                               </span>
                             </div>
-                            <div>
-                              <span className={`badge px-3 py-2 fw-medium ${
-                                order.status === "Hoàn thành" || order.status === "completed" ? "bg-success-subtle text-success" :
-                                order.status === "Đang xử lý" || order.status === "pending" ? "bg-warning-subtle text-warning" : 
-                                "bg-info-subtle text-info"
-                              }`}>
-                                {order.status === "completed" ? "Hoàn thành" : order.status === "pending" ? "Đang xử lý" : order.status || "Chờ xử lý"}
+                            <div className="d-flex align-items-center gap-2">
+                              {orderDiscount > 0 && (
+                                <span className="badge bg-danger-subtle text-danger px-2.5 py-1.5 fw-medium d-flex align-items-center gap-1" style={{ fontSize: "0.8rem" }}>
+                                  <i className="bi bi-tag-fill"></i> Đã giảm {orderDiscount.toLocaleString("vi-VN")}đ
+                                </span>
+                              )}
+                              <span className={`badge px-3 py-2 ${badge.class || ""}`} style={badge.style || {}}>
+                                <i className={badge.icon}></i> {badge.text}
                               </span>
                             </div>
                           </div>
 
-                          {/* Danh sách sản phẩm bên trong đơn hàng */}
+                          {/* Danh sách sản phẩm */}
                           <div className="d-flex flex-column gap-3 mb-3">
                             {itemsList.length > 0 ? (
                               itemsList.map((item, idx) => {
                                 const itemName = item.name || item.productName || item.title || "Sản phẩm thời trang";
                                 const itemImage = item.image || item.img || item.imageUrl || item.photo || "https://placehold.co/80x80?text=No+Image";
+                                
                                 const itemPrice = Number(item.price || item.productPrice || 0);
+                                const originalPrice = Number(item.originalPrice || item.oldPrice || item.listPrice || 0);
+                                const discountAmount = originalPrice > itemPrice ? originalPrice - itemPrice : Number(item.discountAmount || item.discount || 0);
+                                
                                 const itemQuantity = Number(item.quantity || item.qty || 1);
-                                const itemVariant = item.variant || item.size || item.color || "";
+                                
+                                const itemColor = item.color || "";
+                                const itemSize = item.size || item.variant || "";
+
+                                const detailsArray = [
+                                  itemColor && `Màu: ${itemColor}`,
+                                  itemSize && `Size: ${itemSize}`
+                                ].filter(Boolean);
 
                                 return (
-                                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 bg-light p-2.5 rounded-3">
+                                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 py-2">
                                     <div className="d-flex align-items-center gap-3 overflow-hidden">
                                       <img 
                                         src={itemImage} 
@@ -704,29 +862,40 @@ export default function Profile() {
                                         onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
                                       />
                                       <div className="overflow-hidden">
-                                        <h6 className="fw-semibold text-dark text-truncate mb-1" style={{ fontSize: "0.95rem" }}>
-                                          {itemName}
-                                        </h6>
-                                        {itemVariant && (
-                                          <div className="text-muted small mb-1">
-                                            Phân loại: <span className="text-dark">{itemVariant}</span>
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                          <h6 className="fw-semibold text-dark text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
+                                            {itemName}
+                                          </h6>
+                                          <span className="text-muted small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
+                                            x{itemQuantity}
+                                          </span>
+                                        </div>
+                                        
+                                        {detailsArray.length > 0 && (
+                                          <div className="text-muted small mb-0">
+                                            Phân loại: <span className="text-dark">{detailsArray.join(" | ")}</span>
                                           </div>
                                         )}
-                                        <div className="text-muted small">
-                                          x{itemQuantity}
-                                        </div>
                                       </div>
                                     </div>
 
                                     <div className="text-end flex-shrink-0">
+                                      {discountAmount > 0 && (
+                                        <div className="d-flex align-items-center justify-content-end gap-2 mb-1" style={{ fontSize: "0.8rem" }}>
+                                          {originalPrice > 0 && (
+                                            <span className="text-muted text-decoration-line-through">
+                                              {originalPrice.toLocaleString("vi-VN")}đ
+                                            </span>
+                                          )}
+                                          <span className="badge bg-danger-subtle text-danger px-1.5 py-0.5 fw-medium">
+                                            Giảm {discountAmount.toLocaleString("vi-VN")}đ
+                                          </span>
+                                        </div>
+                                      )}
+
                                       <div className="fw-semibold text-dark">
                                         {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
                                       </div>
-                                      {itemQuantity > 1 && (
-                                        <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                          ({itemPrice.toLocaleString("vi-VN")}đ/cái)
-                                        </div>
-                                      )}
                                     </div>
                                   </div>
                                 );
@@ -736,25 +905,60 @@ export default function Profile() {
                             )}
                           </div>
 
-                          {/* Footer của đơn hàng: Tổng tiền & Nút xem chi tiết */}
-                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
-                            <div className="small text-muted">
-                              Phương thức thanh toán: <span className="fw-medium text-dark">{order.paymentMethod || "Thanh toán khi nhận hàng (COD)"}</span>
-                            </div>
-                            <div className="d-flex align-items-center gap-3">
+                          {/* KHỐI HIỂN THỊ LÝ DO HỦY ĐƠN HÀNG */}
+                          {isCancelled && (
+                            <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
+                              <i className="bi bi-info-circle text-danger"></i>
                               <div>
-                                <span className="small text-muted me-2">Thành tiền:</span>
-                                <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
-                                  {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
-                                </span>
+                                <span className="fw-bold text-dark">Lý do hủy: </span>
+                                <span className="text-secondary">{order.cancelReason || "Không có lý do cụ thể"}</span>
                               </div>
-                              <button 
-                                onClick={() => router.push(`/orders/${order._id}`)}
-                                className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm"
-                                style={{ backgroundColor: "#d97706" }}
-                              >
-                                Xem chi tiết
-                              </button>
+                            </div>
+                          )}
+
+                          {/* Footer đơn hàng */}
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
+                            <div className="small text-muted d-flex align-items-center gap-1">
+                              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
+                            </div>
+                            
+                            <div className="d-flex flex-column align-items-end gap-1">
+                              {orderDiscount > 0 && (
+                                <div className="small text-muted">
+                                  Mã giảm giá {order.discountCode ? `(${order.discountCode})` : ""}:{" "}
+                                  <span className="text-danger fw-medium">
+                                    -{orderDiscount.toLocaleString("vi-VN")}đ
+                                  </span>
+                                </div>
+                              )}
+
+                              <div className="d-flex align-items-center gap-3">
+                                <div>
+                                  <span className="small text-muted me-2">Tổng tiền:</span>
+                                  <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
+                                    {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
+                                  </span>
+                                </div>
+
+                                <div className="d-flex gap-2">
+                                  {isPending && (
+                                    <button 
+                                      onClick={() => openCancelModal(order._id || order.id)}
+                                      className="btn btn-sm btn-outline-danger px-3 py-2 rounded-2 fw-semibold d-flex align-items-center gap-1"
+                                    >
+                                      <i className="bi bi-x-lg"></i> Hủy đơn
+                                    </button>
+                                  )}
+
+                                  <button 
+                                    onClick={() => router.push(`/orders/${order._id || order.id}`)}
+                                    className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
+                                    style={{ backgroundColor: "#d97706" }}
+                                  >
+                                    <i className="bi bi-eye"></i> Xem chi tiết
+                                  </button>
+                                </div>
+                              </div>
                             </div>
                           </div>
 
@@ -763,10 +967,7 @@ export default function Profile() {
                     })
                   ) : (
                     <div className="text-center py-5">
-                      <p className="text-muted m-0">Bạn chưa có đơn hàng nào.</p>
-                      <Link href="/products" className="btn btn-sm text-white rounded-pill px-4 mt-3 shadow-sm" style={{ backgroundColor: "#d97706" }}>
-                        Mua sắm ngay 🛒
-                      </Link>
+                      <p className="text-muted m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
                     </div>
                   )}
                 </div>
@@ -783,8 +984,8 @@ export default function Profile() {
           <div className="modal-dialog modal-dialog-centered modal-lg">
             <div className="modal-content rounded-4 border-0 shadow-lg p-3">
               <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold text-dark">
-                  {editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
+                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                  <i className="bi bi-geo-alt-fill text-warning"></i> {editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
                 </h5>
                 <button type="button" className="btn-close shadow-none" onClick={() => setShowAddressModal(false)}></button>
               </div>
@@ -897,8 +1098,8 @@ export default function Profile() {
                   <button type="button" className="btn btn-light rounded-2 px-4 text-secondary fw-medium" onClick={() => setShowAddressModal(false)} disabled={submitting}>
                     Hủy bỏ
                   </button>
-                  <button type="submit" className="btn text-white rounded-2 px-4 fw-bold shadow-sm" style={{ backgroundColor: "#d97706" }} disabled={submitting}>
-                    {submitting ? "Đang lưu..." : "Lưu địa chỉ"}
+                  <button type="submit" className="btn text-white rounded-2 px-4 fw-bold shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }} disabled={submitting}>
+                    <i className="bi bi-check-lg"></i> {submitting ? "Đang lưu..." : "Lưu địa chỉ"}
                   </button>
                 </div>
               </form>
@@ -906,6 +1107,79 @@ export default function Profile() {
           </div>
         </div>
       )}
+
+      {/* MODAL CHỌN LÝ DO HỦY ĐƠN HÀNG */}
+      {showCancelModal && (
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered">
+            <div className="modal-content rounded-4 border-0 p-3 shadow-lg">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                  <i className="bi bi-exclamation-triangle text-danger"></i> Lý do hủy đơn hàng
+                </h5>
+                <button type="button" className="btn-close shadow-none" onClick={() => setShowCancelModal(false)}></button>
+              </div>
+              
+              <form onSubmit={handleConfirmCancelOrder}>
+                <div className="modal-body py-3">
+                  <p className="text-muted small mb-3">Vui lòng chọn lý do bạn muốn hủy đơn hàng này:</p>
+                  
+                  <div className="d-flex flex-column gap-2 mb-3">
+                    {[
+                      "Đổi ý, không muốn mua nữa",
+                      "Sai địa chỉ, sai số điện thoại",
+                      "Đặt nhầm sản phẩm / phân loại (size, màu)",
+                      "Thủ tục thanh toán gặp rắc rối",
+                      "Khác (Nhập cụ thể)"
+                    ].map((reason, idx) => (
+                      <div className="form-check" key={idx}>
+                        <input 
+                          type="radio" 
+                          className="form-check-input shadow-none" 
+                          name="cancelReasonGroup" 
+                          id={`reason_${idx}`}
+                          value={reason}
+                          checked={cancelReasonOption === reason}
+                          onChange={(e) => setCancelReasonOption(e.target.value)}
+                          style={{ accentColor: "#d97706" }}
+                        />
+                        <label className="form-check-label text-dark small fw-medium" htmlFor={`reason_${idx}`}>
+                          {reason}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+
+                  {cancelReasonOption === "Khác (Nhập cụ thể)" && (
+                    <div className="mt-2">
+                      <label className="form-label small fw-semibold text-muted">Nhập lý do cụ thể của bạn:</label>
+                      <textarea 
+                        className="form-control rounded-3 shadow-none" 
+                        rows="3" 
+                        value={customCancelReason}
+                        onChange={(e) => setCustomCancelReason(e.target.value)}
+                        placeholder="Nhập lý do hủy đơn..."
+                        required
+                        style={{ borderColor: "#d97706" }}
+                      ></textarea>
+                    </div>
+                  )}
+                </div>
+
+                <div className="modal-footer border-0 pt-0 pb-3 px-3">
+                  <button type="button" className="btn btn-light rounded-2 px-4 text-secondary fw-medium" onClick={() => setShowCancelModal(false)}>
+                    Đóng
+                  </button>
+                  <button type="submit" className="btn btn-danger rounded-2 px-4 fw-semibold shadow-sm d-flex align-items-center gap-1">
+                    <i className="bi bi-trash"></i> Xác nhận hủy đơn
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
