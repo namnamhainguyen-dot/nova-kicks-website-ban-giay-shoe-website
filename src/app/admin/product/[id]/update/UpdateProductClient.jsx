@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 
 // Danh sách size cố định để chọn nhanh
@@ -13,10 +13,10 @@ export default function UpdateProductClient({ id }) {
   const [price, setPrice] = useState(0);
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
-  const [quantity, setQuantity] = useState(0); // Số lượng tổng
+  const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState("active");
 
-  // ----- 🌟 Cấu hình Flash Sale 🌟 -----
+  // Flash Sale
   const [isFlashSale, setIsFlashSale] = useState(false);
   const [originalPrice, setOriginalPrice] = useState(0);
 
@@ -24,19 +24,22 @@ export default function UpdateProductClient({ id }) {
   const [categoryID, setCategoryID] = useState(""); 
   const [categories, setCategories] = useState([]); 
 
-  // ----- Biến thể: size & màu -----
+  // Biến thể
   const [sizes, setSizes] = useState([]); 
   const [colors, setColors] = useState([]); 
   const [colorInput, setColorInput] = useState("");
   const [imagesByColor, setImagesByColor] = useState({});
-  
-  // State quản lý số lượng riêng cho từng màu
   const [quantitiesByColor, setQuantitiesByColor] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const [uploading, setUploading] = useState(false);
+
+  // Refs cho input file
+  const mainImageInputRef = useRef(null);
+  const colorImageInputRefs = useRef({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -47,14 +50,12 @@ export default function UpdateProductClient({ id }) {
       }
 
       try {
-        // 1. Tải danh sách danh mục
         const resCategories = await fetch("/api/categories");
         if (resCategories.ok) {
           const categoriesData = await resCategories.json();
           setCategories(Array.isArray(categoriesData) ? categoriesData : []);
         }
 
-        // 2. Tải thông tin chi tiết sản phẩm cần cập nhật
         const res = await fetch(`/api/products/${id}`);
         if (!res.ok) {
           const body = await res.json().catch(() => ({}));
@@ -69,12 +70,9 @@ export default function UpdateProductClient({ id }) {
         setQuantity(product.quantity || 0);
         setStatus(product.status || "active");
         setCategoryID(product.categoryID || product.categoryId || product.category?._id || "");
-
-        // Đổ dữ liệu cấu hình Flash Sale từ Database
         setIsFlashSale(product.isFlashSale || false);
         setOriginalPrice(product.originalPrice || 0);
 
-        // Đổ dữ liệu từ mảng variants của DB vào các State ở Client
         if (Array.isArray(product.variants) && product.variants.length > 0) {
           const uniqueColors = new Set();
           const loadedImagesMap = {};
@@ -98,7 +96,6 @@ export default function UpdateProductClient({ id }) {
           setQuantitiesByColor(loadedQuantitiesMap); 
           setSizes(Array.from(unionSizes).sort((a, b) => a - b));
         } else {
-          // Fallback cũ
           setSizes(Array.isArray(product.sizes) ? product.sizes.map(Number) : []);
           setColors(Array.isArray(product.colors) ? product.colors : []);
           setImagesByColor(product.imagesByColor && typeof product.imagesByColor === "object" ? product.imagesByColor : {});
@@ -117,6 +114,55 @@ export default function UpdateProductClient({ id }) {
 
     loadData();
   }, [id]);
+
+  // Hàm upload ảnh lên server
+  const uploadImage = async (file) => {
+    try {
+      setUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload ảnh thất bại');
+      }
+
+      const data = await response.json();
+      return data.url;
+    } catch (error) {
+      setError(error.message || 'Lỗi khi upload ảnh');
+      return null;
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Xử lý upload ảnh chính
+  const handleMainImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const url = await uploadImage(file);
+    if (url) {
+      setImage(url);
+    }
+  };
+
+  // Xử lý upload ảnh theo màu
+  const handleColorImageUpload = async (color, e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const url = await uploadImage(file);
+    if (url) {
+      setImagesByColor(prev => ({ ...prev, [color]: url }));
+    }
+  };
 
   // Bật/tắt 1 size
   const toggleSize = (size) => {
@@ -165,16 +211,14 @@ export default function UpdateProductClient({ id }) {
     setImagesByColor((prev) => ({ ...prev, [color]: url }));
   };
 
-  // Hàm cập nhật số lượng của từng màu đơn lẻ
   const handleColorQuantityChange = (color, val) => {
-    const numValue = Math.max(0, parseInt(val) || 0); // Đảm bảo >= 0
+    const numValue = Math.max(0, parseInt(val) || 0);
     setQuantitiesByColor((prev) => ({
       ...prev,
       [color]: numValue
     }));
   };
 
-  // Tiện ích hiển thị tính tổng nhanh giúp Admin đối chiếu dữ liệu số lượng
   const totalVariantsQuantity = colors.reduce((sum, color) => sum + (quantitiesByColor[color] || 0), 0);
   const remainingQuantity = Number(quantity) - totalVariantsQuantity;
 
@@ -194,7 +238,6 @@ export default function UpdateProductClient({ id }) {
       return;
     }
 
-    // RÀNG BUỘC SỐ LƯỢNG CHẶT CHẼ KHI LƯU
     if (totalVariantsQuantity !== Number(quantity)) {
       if (totalVariantsQuantity > Number(quantity)) {
         setError(`Không thể lưu! Tổng số lượng các màu (${totalVariantsQuantity}) đang vượt quá số lượng tổng của sản phẩm (${quantity}) là ${Math.abs(remainingQuantity)} sản phẩm.`);
@@ -227,7 +270,6 @@ export default function UpdateProductClient({ id }) {
           status,
           categoryID, 
           variants: finalVariants,
-          // Gửi kèm dữ liệu Flash Sale lên API
           isFlashSale: Boolean(isFlashSale),
           originalPrice: isFlashSale ? Number(originalPrice) : 0 
         }),
@@ -288,6 +330,7 @@ export default function UpdateProductClient({ id }) {
           <h4 className="card-title mb-4">Sửa sản phẩm</h4>
 
           {error && <div className="alert alert-danger font-weight-bold">{error}</div>}
+          {uploading && <div className="alert alert-info">Đang upload ảnh...</div>}
 
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
@@ -373,7 +416,7 @@ export default function UpdateProductClient({ id }) {
               </div>
             </div>
 
-            {/* ==================== 🛠️ KHỐI CẤU HÌNH FLASH SALE (MỚI THÊM) ==================== */}
+            {/* Flash Sale */}
             <div className="card p-3 mb-4 rounded bg-light border-warning">
               <h6 className="form-label font-weight-bold text-danger text-uppercase mb-3">
                 🔥 Cấu hình Chương trình Flash Sale
@@ -416,20 +459,51 @@ export default function UpdateProductClient({ id }) {
                 </div>
               )}
             </div>
-            {/* ============================================================================== */}
 
+            {/* Ảnh chính */}
             <div className="mb-3">
               <label htmlFor="image" className="form-label font-weight-bold">
                 Link ảnh sản phẩm mặc định (Ảnh chính)
               </label>
-              <input
-                type="text"
-                className="form-control"
-                id="image"
-                placeholder="Nhập URL ảnh sản phẩm chính"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-              />
+              <div className="d-flex gap-2 align-items-center">
+                <div className="flex-grow-1">
+                  <input
+                    type="text"
+                    className="form-control"
+                    id="image"
+                    placeholder="Nhập URL ảnh sản phẩm chính"
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <button
+                    type="button"
+                    className="btn btn-outline-primary"
+                    onClick={() => mainImageInputRef.current?.click()}
+                    disabled={uploading}
+                  >
+                    <i className="bi bi-upload"></i> Chọn file
+                  </button>
+                  <input
+                    type="file"
+                    ref={mainImageInputRef}
+                    className="d-none"
+                    accept="image/*"
+                    onChange={handleMainImageUpload}
+                  />
+                </div>
+              </div>
+              {image && (
+                <div className="mt-2">
+                  <img 
+                    src={image} 
+                    alt="Preview" 
+                    style={{ maxHeight: "100px", objectFit: "contain" }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="mb-3">
@@ -444,7 +518,7 @@ export default function UpdateProductClient({ id }) {
               />
             </div>
 
-            {/* ----- Chọn Size ----- */}
+            {/* Chọn Size */}
             <div className="mb-3">
               <label className="form-label font-weight-bold">Size kích cỡ</label>
               <div className="d-flex flex-wrap gap-2">
@@ -468,7 +542,7 @@ export default function UpdateProductClient({ id }) {
               )}
             </div>
 
-            {/* ----- Chọn Màu ----- */}
+            {/* Chọn Màu */}
             <div className="mb-3">
               <label htmlFor="colorInput" className="form-label font-weight-bold">Màu sắc</label>
               <div className="d-flex gap-2">
@@ -504,7 +578,7 @@ export default function UpdateProductClient({ id }) {
               )}
             </div>
 
-            {/* ----- 📷 CẤU HÌNH CHI TIẾT ẢNH & SỐ LƯỢNG KÈM THEO MÀU VÀ NÚT XÓA ----- */}
+            {/* Cấu hình ảnh và số lượng theo màu */}
             {colors.length > 0 && (
               <div className="mb-4 p-3 border rounded bg-light">
                 <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">
@@ -514,7 +588,7 @@ export default function UpdateProductClient({ id }) {
                   {colors.map((color) => (
                     <div className="row g-2 align-items-center p-2 bg-white rounded border" key={color}>
                       
-                      {/* Badge Màu sắc hiển thị và nút xóa */}
+                      {/* Badge Màu sắc */}
                       <div className="col-md-2 col-12 d-flex justify-content-between align-items-center">
                         <span className="badge bg-dark px-3 py-2 text-wrap w-100 text-center">
                           {color}
@@ -528,7 +602,7 @@ export default function UpdateProductClient({ id }) {
                         </button>
                       </div>
 
-                      {/* Ô nhập ảnh sản phẩm */}
+                      {/* Ô nhập ảnh */}
                       <div className="col-md-6 col-12">
                         <div className="input-group input-group-sm">
                           <span className="input-group-text">Link Ảnh</span>
@@ -538,6 +612,23 @@ export default function UpdateProductClient({ id }) {
                             placeholder="URL hình ảnh"
                             value={imagesByColor[color] || ""}
                             onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-outline-primary"
+                            onClick={() => colorImageInputRefs.current[color]?.click()}
+                            disabled={uploading}
+                          >
+                            <i className="bi bi-upload"></i>
+                          </button>
+                          <input
+                            type="file"
+                            ref={(el) => {
+                              if (el) colorImageInputRefs.current[color] = el;
+                            }}
+                            className="d-none"
+                            accept="image/*"
+                            onChange={(e) => handleColorImageUpload(color, e)}
                           />
                           {imagesByColor[color] && (
                             <span className="input-group-text p-1 bg-white">
@@ -552,7 +643,7 @@ export default function UpdateProductClient({ id }) {
                         </div>
                       </div>
 
-                      {/* Ô nhập số lượng chi tiết cho từng màu */}
+                      {/* Ô nhập số lượng */}
                       <div className="col-md-3 col-9">
                         <div className="input-group input-group-sm">
                           <span className="input-group-text">Số lượng</span>
@@ -567,7 +658,7 @@ export default function UpdateProductClient({ id }) {
                         </div>
                       </div>
 
-                      {/* Nút xóa màu ở màn hình máy tính desktop */}
+                      {/* Nút xóa màu desktop */}
                       <div className="col-md-1 col-3 text-end d-none d-md-block">
                         <button
                           type="button"
@@ -583,16 +674,16 @@ export default function UpdateProductClient({ id }) {
               </div>
             )}
 
-            {/* ----- Các nút thao tác ----- */}
+            {/* Các nút thao tác */}
             <div className="d-flex gap-2">
-              <button type="submit" className="btn btn-dark" disabled={saving || deleting}>
+              <button type="submit" className="btn btn-dark" disabled={saving || deleting || uploading}>
                 {saving ? "Đang lưu..." : "Lưu sản phẩm"}
               </button>
               <button
                 type="button"
                 className="btn btn-danger"
                 onClick={handleDelete}
-                disabled={saving || deleting}
+                disabled={saving || deleting || uploading}
               >
                 {deleting ? "Đang xóa..." : "Xóa sản phẩm"}
               </button>
