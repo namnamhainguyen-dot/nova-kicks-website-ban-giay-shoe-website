@@ -2,16 +2,20 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+// Tin nhắn chào mặc định
+const WELCOME_MESSAGE = {
+  role: "bot",
+  text: "Xin chào! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá...), mình tìm cho liền nhé! 🤖",
+};
+
 export default function ProductChatbox({ products }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: "bot", text: "Xin chào! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá...), mình tìm cho liền nhé! 🤖" }
-  ]);
+  const [messages, setMessages] = useState([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [replyMode, setReplyMode] = useState("bot");
 
-  // Tạo cố định 1 sessionId duy nhất cho phiên chat của khách hàng này (lưu trong localStorage để tránh reset khi reload trang)
+  // Tạo cố định 1 sessionId duy nhất cho phiên chat
   const [sessionId] = useState(() => {
     if (typeof window !== "undefined") {
       let savedId = localStorage.getItem("chat_session_id");
@@ -33,7 +37,7 @@ export default function ProductChatbox({ products }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // CƠ CHẾ POLLING + REFRESH TỨC THỜI: tải tin nhắn mới từ Admin mỗi 1 giây và khi có tín hiệu từ Admin
+  // CƠ CHẾ POLLING + REFRESH TỨC THỜI
   useEffect(() => {
     if (!isOpen) return;
 
@@ -45,18 +49,25 @@ export default function ProductChatbox({ products }) {
         const dbMessages = await res.json();
 
         if (dbMessages && Array.isArray(dbMessages)) {
-          const formattedDbMsgs = dbMessages.map((msg) => ({
-            role: msg.sender === "user" ? "user" : "bot",
-            text: msg.text,
-          }));
+          // NẾU DB CÓ DỮ LIỆU
+          if (dbMessages.length > 0) {
+            const formattedDbMsgs = dbMessages.map((msg) => ({
+              role: msg.sender === "user" ? "user" : "bot",
+              // Hỗ trợ linh hoạt nhiều tên trường text từ DB
+              text: msg.text || msg.content || msg.message || "",
+            }));
 
-          setMessages((prev) => {
-            const prevText = prev.map((msg) => `${msg.role}:${msg.text}`).join("||");
-            const nextText = formattedDbMsgs.map((msg) => `${msg.role}:${msg.text}`).join("||");
+            setMessages((prev) => {
+              const prevText = prev.map((msg) => `${msg.role}:${msg.text}`).join("||");
+              const nextText = formattedDbMsgs.map((msg) => `${msg.role}:${msg.text}`).join("||");
 
-            if (prevText === nextText) return prev;
-            return formattedDbMsgs;
-          });
+              if (prevText === nextText) return prev;
+              return formattedDbMsgs;
+            });
+          } else {
+            // NẾU DB RỖNG -> Giữ nguyên tin nhắn xin chào mặc định
+            setMessages([WELCOME_MESSAGE]);
+          }
         }
       } catch (error) {
         console.error("Lỗi khi kiểm tra tin nhắn mới:", error);
@@ -111,7 +122,7 @@ export default function ProductChatbox({ products }) {
       console.error("Lỗi đồng bộ tin nhắn lên Admin:", err);
     }
 
-    // 2. Nếu chọn gửi cho admin thì không gọi bot, chỉ chờ admin trả lời
+    // 2. Nếu chọn gửi cho admin
     if (replyMode === "admin") {
       setMessages((prev) => [
         ...prev,
@@ -157,7 +168,7 @@ export default function ProductChatbox({ products }) {
       // Hiển thị câu trả lời AI
       setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
 
-      // Đồng bộ câu trả lời AI lên DB để Admin cũng xem được câu trả lời AI
+      // Đồng bộ câu trả lời AI lên DB
       await fetch("/api/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
