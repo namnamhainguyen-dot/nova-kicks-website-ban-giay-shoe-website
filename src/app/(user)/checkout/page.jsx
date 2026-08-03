@@ -43,7 +43,6 @@ export default function Checkout() {
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   
-  // State mới cho danh sách Voucher gợi ý & Popover Hover
   const [availableVouchers, setAvailableVouchers] = useState([]);
   const [showVoucherDropdown, setShowVoucherDropdown] = useState(false);
 
@@ -109,7 +108,6 @@ export default function Checkout() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Lấy sản phẩm cần thanh toán (Ưu tiên từ sessionStorage)
     const storedItems = sessionStorage.getItem("checkout_items");
     let parsedCheckoutItems = [];
     
@@ -126,7 +124,6 @@ export default function Checkout() {
       setCheckoutItems(cart);
     }
 
-    // 2. Xử lý sau khi giả lập chuyển hướng thanh toán thành công
     const queryParams = new URLSearchParams(window.location.search);
     const successSimulated = queryParams.get("success_simulated");
     const urlOrderId = queryParams.get("orderId");
@@ -154,7 +151,6 @@ export default function Checkout() {
       sessionStorage.removeItem("checkout_items");
     }
 
-    // 3. Đọc dữ liệu tài khoản & Danh sách nhiều địa chỉ
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
@@ -194,7 +190,6 @@ export default function Checkout() {
     }
   }, [setCart, cart]);
 
-  // ── XỬ LÝ KHI ĐỔI ĐỊA CHỈ ĐÃ LƯU ──
   const handleSelectSavedAddress = (addr) => {
     setSelectedAddressId(addr._id);
     setCustomerName(addr.receiverName || currentUser?.fullname || "");
@@ -209,7 +204,6 @@ export default function Checkout() {
     }
   };
 
-  // ── TÍNH TOÁN GIÁ TRỊ ĐƠN HÀNG ──
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
   let discountAmount = 0;
@@ -223,7 +217,6 @@ export default function Checkout() {
 
   const finalTotal = Math.max(0, total - discountAmount);
 
-  // ── HANDLERS ──
   const handlePhoneChange = (e) => {
     const value = e.target.value.replace(/\D/g, "");
     if (value.length <= 10) {
@@ -343,7 +336,6 @@ export default function Checkout() {
     return true;
   };
 
-  // 🟢 ĐÃ SỬA: Chuỗi địa chỉ hoàn chỉnh theo thứ tự [Địa chỉ nhà], [Phường/Xã], [Quận/Huyện], [Tỉnh/Thành]
   const getFullDeliveryAddress = () => {
     if (selectedAddressId !== "new") {
       const matchedAddr = savedAddresses.find((a) => a._id === selectedAddressId);
@@ -531,252 +523,8 @@ export default function Checkout() {
       <form onSubmit={handleOrder}>
         <div className="row g-4">
           
-          {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG & ĐỊA CHỈ */}
-          <div className="col-lg-7 col-md-12">
-            <div className="card shadow-sm border-0 rounded-3">
-              <div className="card-body p-4">
-                <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
-
-                {/* Họ tên */}
-                <div className="mb-3">
-                  <label className="form-label fw-semibold small">
-                    Họ và tên người nhận <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control form-control-lg fs-6"
-                    placeholder="Nhập tên người nhận hàng"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
-
-                {/* Số điện thoại */}
-                <div className="mb-3">
-                  <label className="form-label fw-semibold small">
-                    Số điện thoại liên hệ <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="tel"
-                    className="form-control form-control-lg fs-6"
-                    placeholder="Nhập số điện thoại (ví dụ: 0912345678)"
-                    value={customerPhone}
-                    onChange={handlePhoneChange}
-                  />
-                  {customerPhone && customerPhone.length !== 10 && (
-                    <div className="text-danger small mt-1">
-                      ⚠️ Số điện thoại chưa đủ 10 chữ số.
-                    </div>
-                  )}
-                </div>
-
-                {/* Địa chỉ giao hàng */}
-                <div className="mb-4">
-                  <label className="form-label fw-semibold small">
-                    Địa chỉ giao hàng <span className="text-danger">*</span>
-                  </label>
-
-                  {/* Danh sách các địa chỉ đã lưu */}
-                  {savedAddresses.length > 0 && (
-                    <div className="d-flex flex-column gap-2 mb-3">
-                      {savedAddresses.map((addr) => (
-                        <div
-                          key={addr._id}
-                          className={`p-3 border rounded user-select-none ${
-                            selectedAddressId === addr._id ? "border-dark bg-light fw-medium" : ""
-                          }`}
-                          style={{ cursor: "pointer" }}
-                          onClick={() => handleSelectSavedAddress(addr)}
-                        >
-                          <div className="d-flex align-items-center gap-2 mb-1">
-                            <input
-                              type="radio"
-                              name="savedAddressOption"
-                              checked={selectedAddressId === addr._id}
-                              onChange={() => handleSelectSavedAddress(addr)}
-                            />
-                            <span className="badge bg-secondary">{addr.label || "Địa chỉ"}</span>
-                            {addr.isDefault && <span className="badge bg-success">Mặc định</span>}
-                          </div>
-                          <div className="small text-dark ms-4">
-                            <strong>{addr.receiverName || customerName}</strong> ({addr.receiverPhone || customerPhone}) <br />
-                            {addr.fullAddress}
-                          </div>
-                        </div>
-                      ))}
-
-                      {/* Option Chọn Nhập Địa Chỉ Mới */}
-                      <div
-                        className={`p-3 border rounded user-select-none ${
-                          selectedAddressId === "new" ? "border-dark bg-light fw-medium" : ""
-                        }`}
-                        style={{ cursor: "pointer" }}
-                        onClick={handleSelectNewAddress}
-                      >
-                        <input
-                          type="radio"
-                          name="savedAddressOption"
-                          checked={selectedAddressId === "new"}
-                          onChange={handleSelectNewAddress}
-                        />
-                        <span className="ms-2 small fw-bold text-primary">+ Giao đến địa chỉ khác / Địa chỉ mới</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Form chọn Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
-                  {(selectedAddressId === "new" || savedAddresses.length === 0) && (
-                    <div className="border p-3 rounded bg-light">
-                      <div className="mb-3">
-                        <input
-                          type="text"
-                          className="form-control form-control-lg fs-6"
-                          placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
-                          value={detailAddress}
-                          onChange={(e) => setDetailAddress(e.target.value)}
-                        />
-                      </div>
-
-                      {/* Thứ tự hiển thị trên UI: Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
-                      <div className="row g-2">
-                        
-                        {/* 1. Hiển thị Phường/Xã */}
-                        <div className="col-md-4">
-                          <label className="form-label small fw-semibold text-muted mb-1">1. Phường / Xã *</label>
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedWard}
-                            onChange={(e) => setSelectedWard(e.target.value)}
-                            disabled={!selectedDistrict}
-                          >
-                            <option value="">
-                              {!selectedDistrict ? "-- Chọn Quận/Huyện trước --" : "-- Chọn Phường/Xã --"}
-                            </option>
-                            {wards.map((w) => (
-                              <option key={w.code} value={w.code}>
-                                {w.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* 2. Hiển thị Quận/Huyện */}
-                        <div className="col-md-4">
-                          <label className="form-label small fw-semibold text-muted mb-1">2. Quận / Huyện *</label>
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedDistrict}
-                            onChange={(e) => setSelectedDistrict(e.target.value)}
-                            disabled={!selectedProvince}
-                          >
-                            <option value="">
-                              {!selectedProvince ? "-- Chọn Tỉnh/Thành trước --" : "-- Chọn Quận/Huyện --"}
-                            </option>
-                            {districts.map((d) => (
-                              <option key={d.code} value={d.code}>
-                                {d.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* 3. Hiển thị Tỉnh/Thành phố */}
-                        <div className="col-md-4">
-                          <label className="form-label small fw-semibold text-muted mb-1">3. Tỉnh / Thành phố *</label>
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedProvince}
-                            onChange={(e) => setSelectedProvince(e.target.value)}
-                          >
-                            <option value="">-- Chọn Tỉnh/Thành --</option>
-                            {provinces.map((p) => (
-                              <option key={p.code} value={p.code}>
-                                {p.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Phương thức thanh toán */}
-                <div className="mb-4">
-                  <label className="form-label fw-semibold small">
-                    Chọn phương thức thanh toán <span className="text-danger">*</span>
-                  </label>
-                  <div className="d-flex flex-column gap-2">
-                    <div
-                      className={`p-3 border rounded user-select-none ${
-                        paymentMethod === "cod" ? "border-dark bg-light fw-medium" : ""
-                      }`}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => setPaymentMethod("cod")}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="cod"
-                        checked={paymentMethod === "cod"}
-                        onChange={() => setPaymentMethod("cod")}
-                      />
-                      <span className="ms-2">Thanh toán khi nhận hàng (COD)</span>
-                    </div>
-
-                    <div
-                      className={`p-3 border rounded user-select-none ${
-                        paymentMethod === "vnpay" ? "border-dark bg-light fw-medium" : ""
-                      }`}
-                      style={{ cursor: "pointer" }}
-                      onClick={() => setPaymentMethod("vnpay")}
-                    >
-                      <input
-                        type="radio"
-                        name="payment"
-                        value="vnpay"
-                        checked={paymentMethod === "vnpay"}
-                        onChange={() => setPaymentMethod("vnpay")}
-                      />
-                      <span className="ms-2">Thanh toán qua VNPay (Thẻ/QR Code)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Ghi chú */}
-                <div className="mb-4">
-                  <label className="form-label fw-semibold small">Ghi chú đơn hàng (Kích cỡ, màu sắc...)</label>
-                  <textarea
-                    className="form-control"
-                    rows="3"
-                    placeholder="Ví dụ: Giao vào giờ hành chính..."
-                    value={orderNote}
-                    onChange={(e) => setOrderNote(e.target.value)}
-                  ></textarea>
-                </div>
-
-                {/* Nút Đặt hàng trên Mobile */}
-                <div className="d-grid d-lg-none gap-2">
-                  <button
-                    type="submit"
-                    className="btn btn-dark btn-lg py-3 fw-bold shadow-sm rounded-pill"
-                    disabled={isOrdering}
-                  >
-                    {isOrdering
-                      ? "Đang xử lý..."
-                      : `Xác Nhận Đặt Hàng • ${finalTotal.toLocaleString("vi-VN")}đ`}
-                  </button>
-                  <Link href="/cart" className="btn btn-link text-muted small text-center">
-                    Quay lại giỏ hàng
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG & VOUCHER */}
-          <div className="col-lg-5 col-md-12">
+          {/* TÓM TẮT ĐƠN HÀNG & VOUCHER (Hiện TRÊN CÙNG ở Mobile nhờ order-1, bên phải ở PC nhờ order-lg-2) */}
+          <div className="col-lg-5 col-md-12 order-1 order-lg-2">
             <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
               <div className="card-body p-4">
                 <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({checkoutItems.length})</h4>
@@ -819,7 +567,7 @@ export default function Checkout() {
                   })}
                 </div>
 
-                {/* Nhập Voucher + DROPDOWN GỢI Ý KHI HOVER */}
+                {/* Nhập Voucher */}
                 <div className="mb-4 bg-light p-3 rounded-3 position-relative">
                   <div className="mb-2">
                     <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
@@ -926,19 +674,254 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  <div className="d-flex justify-content-between mb-3 pt-2 border-top">
+                  <div className="d-flex justify-content-between mb-0 pt-2 border-top">
                     <span className="fw-bold fs-5">Tổng cộng:</span>
                     <span className="fw-bold fs-5 text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
+          {/* THÔNG TIN KHÁCH HÀNG & NÚT ĐẶT HÀNG (Hiện Ở DƯỚI ở Mobile nhờ order-2, bên trái ở PC nhờ order-lg-1) */}
+          <div className="col-lg-7 col-md-12 order-2 order-lg-1">
+            <div className="card shadow-sm border-0 rounded-3">
+              <div className="card-body p-4">
+                <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
+
+                {/* Họ tên */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold small">
+                    Họ và tên người nhận <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control form-control-lg fs-6"
+                    placeholder="Nhập tên người nhận hàng"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                </div>
+
+                {/* Số điện thoại */}
+                <div className="mb-3">
+                  <label className="form-label fw-semibold small">
+                    Số điện thoại liên hệ <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    className="form-control form-control-lg fs-6"
+                    placeholder="Nhập số điện thoại (ví dụ: 0912345678)"
+                    value={customerPhone}
+                    onChange={handlePhoneChange}
+                  />
+                  {customerPhone && customerPhone.length !== 10 && (
+                    <div className="text-danger small mt-1">
+                      ⚠️ Số điện thoại chưa đủ 10 chữ số.
+                    </div>
+                  )}
+                </div>
+
+                {/* Địa chỉ giao hàng */}
+                <div className="mb-4">
+                  <label className="form-label fw-semibold small">
+                    Địa chỉ giao hàng <span className="text-danger">*</span>
+                  </label>
+
+                  {/* Danh sách địa chỉ đã lưu */}
+                  {savedAddresses.length > 0 && (
+                    <div className="d-flex flex-column gap-2 mb-3">
+                      {savedAddresses.map((addr) => (
+                        <div
+                          key={addr._id}
+                          className={`p-3 border rounded user-select-none ${
+                            selectedAddressId === addr._id ? "border-dark bg-light fw-medium" : ""
+                          }`}
+                          style={{ cursor: "pointer" }}
+                          onClick={() => handleSelectSavedAddress(addr)}
+                        >
+                          <div className="d-flex align-items-center gap-2 mb-1">
+                            <input
+                              type="radio"
+                              name="savedAddressOption"
+                              checked={selectedAddressId === addr._id}
+                              onChange={() => handleSelectSavedAddress(addr)}
+                            />
+                            <span className="badge bg-secondary">{addr.label || "Địa chỉ"}</span>
+                            {addr.isDefault && <span className="badge bg-success">Mặc định</span>}
+                          </div>
+                          <div className="small text-dark ms-4">
+                            <strong>{addr.receiverName || customerName}</strong> ({addr.receiverPhone || customerPhone}) <br />
+                            {addr.fullAddress}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Option Nhập địa chỉ mới */}
+                      <div
+                        className={`p-3 border rounded user-select-none ${
+                          selectedAddressId === "new" ? "border-dark bg-light fw-medium" : ""
+                        }`}
+                        style={{ cursor: "pointer" }}
+                        onClick={handleSelectNewAddress}
+                      >
+                        <input
+                          type="radio"
+                          name="savedAddressOption"
+                          checked={selectedAddressId === "new"}
+                          onChange={handleSelectNewAddress}
+                        />
+                        <span className="ms-2 small fw-bold text-primary">+ Giao đến địa chỉ khác / Địa chỉ mới</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Form chọn Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
+                  {(selectedAddressId === "new" || savedAddresses.length === 0) && (
+                    <div className="border p-3 rounded bg-light">
+                      <div className="mb-3">
+                        <input
+                          type="text"
+                          className="form-control form-control-lg fs-6"
+                          placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
+                          value={detailAddress}
+                          onChange={(e) => setDetailAddress(e.target.value)}
+                        />
+                      </div>
+
+                      <div className="row g-2">
+                        {/* 1. Phường/Xã */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">1. Phường / Xã *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedWard}
+                            onChange={(e) => setSelectedWard(e.target.value)}
+                            disabled={!selectedDistrict}
+                          >
+                            <option value="">
+                              {!selectedDistrict ? "-- Chọn Quận/Huyện trước --" : "-- Chọn Phường/Xã --"}
+                            </option>
+                            {wards.map((w) => (
+                              <option key={w.code} value={w.code}>
+                                {w.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Quận/Huyện */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">2. Quận / Huyện *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedDistrict}
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            disabled={!selectedProvince}
+                          >
+                            <option value="">
+                              {!selectedProvince ? "-- Chọn Tỉnh/Thành trước --" : "-- Chọn Quận/Huyện --"}
+                            </option>
+                            {districts.map((d) => (
+                              <option key={d.code} value={d.code}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 3. Tỉnh/Thành phố */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">3. Tỉnh / Thành phố *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedProvince}
+                            onChange={(e) => setSelectedProvince(e.target.value)}
+                          >
+                            <option value="">-- Chọn Tỉnh/Thành --</option>
+                            {provinces.map((p) => (
+                              <option key={p.code} value={p.code}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Phương thức thanh toán */}
+                <div className="mb-4">
+                  <label className="form-label fw-semibold small">
+                    Chọn phương thức thanh toán <span className="text-danger">*</span>
+                  </label>
+                  <div className="d-flex flex-column gap-2">
+                    <div
+                      className={`p-3 border rounded user-select-none ${
+                        paymentMethod === "cod" ? "border-dark bg-light fw-medium" : ""
+                      }`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setPaymentMethod("cod")}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="cod"
+                        checked={paymentMethod === "cod"}
+                        onChange={() => setPaymentMethod("cod")}
+                      />
+                      <span className="ms-2">Thanh toán khi nhận hàng (COD)</span>
+                    </div>
+
+                    <div
+                      className={`p-3 border rounded user-select-none ${
+                        paymentMethod === "vnpay" ? "border-dark bg-light fw-medium" : ""
+                      }`}
+                      style={{ cursor: "pointer" }}
+                      onClick={() => setPaymentMethod("vnpay")}
+                    >
+                      <input
+                        type="radio"
+                        name="payment"
+                        value="vnpay"
+                        checked={paymentMethod === "vnpay"}
+                        onChange={() => setPaymentMethod("vnpay")}
+                      />
+                      <span className="ms-2">Thanh toán qua VNPay (Thẻ/QR Code)</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Ghi chú */}
+                <div className="mb-4">
+                  <label className="form-label fw-semibold small">Ghi chú đơn hàng (Kích cỡ, màu sắc...)</label>
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    placeholder="Ví dụ: Giao vào giờ hành chính..."
+                    value={orderNote}
+                    onChange={(e) => setOrderNote(e.target.value)}
+                  ></textarea>
+                </div>
+
+                {/* Nút Xác Nhận Đặt Hàng duy nhất ở dưới cùng (dùng cho cả Mobile & PC) */}
+                <div className="d-grid gap-2 pt-2">
                   <button
                     type="submit"
-                    className="btn btn-dark w-100 btn-lg py-3 fw-bold shadow-sm rounded-pill d-none d-lg-block"
+                    className="btn btn-dark btn-lg py-3 fw-bold shadow-sm rounded-pill"
                     disabled={isOrdering}
                   >
-                    {isOrdering ? "Đang xử lý đơn hàng..." : "Xác Nhận Đặt Hàng"}
+                    {isOrdering
+                      ? "Đang xử lý đơn hàng..."
+                      : `Xác Nhận Đặt Hàng • ${finalTotal.toLocaleString("vi-VN")}đ`}
                   </button>
+                  <Link href="/cart" className="btn btn-link text-muted small text-center">
+                    Quay lại giỏ hàng
+                  </Link>
                 </div>
+
               </div>
             </div>
           </div>
