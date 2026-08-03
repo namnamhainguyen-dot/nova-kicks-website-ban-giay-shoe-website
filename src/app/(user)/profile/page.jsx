@@ -1010,21 +1010,39 @@ export default function Profile() {
                       />
                     </div>
 
+                    {/* THỨ TỰ HIỂN THỊ ĐÃ SỬA: PHƯỜNG/XÃ -> QUẬN/HUYỆN -> TỈNH/THÀNH */}
+                    
+                    {/* 1. Chọn Phường/Xã (Cột đầu tiên) */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
-                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={selectedProvince} onChange={handleProvinceChange} required style={{ borderColor: "#d97706" }}>
-                        <option value="">-- Chọn Tỉnh/Thành --</option>
-                        {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.full_name}
+                      <label className="form-label small fw-semibold">Phường / Xã *</label>
+                      <select 
+                        className="form-select rounded-2 shadow-none py-2 px-3" 
+                        value={selectedWard} 
+                        onChange={(e) => setSelectedWard(e.target.value)} 
+                        disabled={!selectedDistrict} 
+                        required 
+                        style={{ borderColor: "#d97706" }}
+                      >
+                        <option value="">-- Chọn Phường/Xã --</option>
+                        {wards.map((w) => (
+                          <option key={w.id} value={w.id}>
+                            {w.full_name}
                           </option>
                         ))}
                       </select>
                     </div>
 
+                    {/* 2. Chọn Quận/Huyện (Cột ở giữa) */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Quận / Huyện *</label>
-                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={selectedDistrict} onChange={handleDistrictChange} disabled={!selectedProvince} required style={{ borderColor: "#d97706" }}>
+                      <select 
+                        className="form-select rounded-2 shadow-none py-2 px-3" 
+                        value={selectedDistrict} 
+                        onChange={handleDistrictChange} 
+                        disabled={!selectedProvince} 
+                        required 
+                        style={{ borderColor: "#d97706" }}
+                      >
                         <option value="">-- Chọn Quận/Huyện --</option>
                         {districts.map((d) => (
                           <option key={d.id} value={d.id}>
@@ -1034,13 +1052,20 @@ export default function Profile() {
                       </select>
                     </div>
 
+                    {/* 3. Chọn Tỉnh/Thành phố (Cột ngoài cùng) */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Phường / Xã *</label>
-                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={selectedWard} onChange={(e) => setSelectedWard(e.target.value)} disabled={!selectedDistrict} required style={{ borderColor: "#d97706" }}>
-                        <option value="">-- Chọn Phường/Xã --</option>
-                        {wards.map((w) => (
-                          <option key={w.id} value={w.id}>
-                            {w.full_name}
+                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
+                      <select 
+                        className="form-select rounded-2 shadow-none py-2 px-3" 
+                        value={selectedProvince} 
+                        onChange={handleProvinceChange} 
+                        required 
+                        style={{ borderColor: "#d97706" }}
+                      >
+                        <option value="">-- Chọn Tỉnh/Thành --</option>
+                        {provinces.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.full_name}
                           </option>
                         ))}
                       </select>

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 export default function Login() {
   const router = useRouter();
-  const googleBtnRef = useRef(null); // Dùng ref để định vị nơi render nút Google
+  const googleBtnRef = useRef(null);
 
   const [formData, setFormData] = useState({
     identifier: "",
@@ -21,7 +21,7 @@ export default function Login() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 1. TỰ ĐỘNG TẢI THƯ VIỆN & RENDER NÚT BẤM CHUẨN GOOGLE
+  // 1. TỰ ĐỘNG TẢI THƯ VIỆN & RENDER NÚT BẤM CHUẨN GOOGLE FULL WIDTH
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
@@ -38,19 +38,26 @@ export default function Login() {
         });
 
         if (googleBtnRef.current) {
+          // Lấy độ rộng thực tế của container cha để ép nút Google rộng full 100%
+          const btnWidth = googleBtnRef.current.offsetWidth || 350;
+
           window.google.accounts.id.renderButton(googleBtnRef.current, {
+            type: "standard",
             theme: "outline",
             size: "large",
-            width: "100%", // 🔥 SỬA DÒNG NÀY: Thay cái cũ thành "100%" giống hệt thế này
+            width: btnWidth, // 🟢 ĐÃ SỬA: Đưa kích thước chính xác chiều rộng container
             text: "continue_with",
-            shape: "square",
+            shape: "rectangular",
+            logo_alignment: "left",
           });
         }
       }
     };
 
     return () => {
-      document.body.removeChild(script);
+      if (document.body.contains(script)) {
+        document.body.removeChild(script);
+      }
     };
   }, []);
 
@@ -158,14 +165,6 @@ export default function Login() {
     await submitLogin(formData.identifier, formData.password);
   };
 
-  const handleDemoAdminLogin = () => {
-    setFormData({
-      identifier: DEMO_ADMIN.identifier,
-      password: DEMO_ADMIN.password,
-    });
-    submitLogin(DEMO_ADMIN.identifier, DEMO_ADMIN.password);
-  };
-
   return (
     <main
       className="container-fluid min-vh-100 d-flex justify-content-center align-items-center position-relative px-0"
@@ -192,9 +191,9 @@ export default function Login() {
         {error && <div className="alert alert-danger rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{error}</div>}
         {success && <div className="alert alert-success rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{success}</div>}
 
-        {/* NÚT BẤM GOOGLE CHÍNH CHỦ ĐÃ ĐƯỢC CHUẨN HÓA BẢO MẬT FEDCM */}
+        {/* 🟢 KHUNG CHỨA NÚT GOOGLE ĐÃ ĐƯỢC CHỈNH DẠNG NGUYÊN KHỐI FULL WIDTH */}
         <div className="w-100 mb-4 d-flex justify-content-center">
-          <div ref={googleBtnRef} className="w-100" style={{ minHeight: "44px" }}></div>
+          <div ref={googleBtnRef} className="w-100 d-flex justify-content-center" style={{ minHeight: "44px" }}></div>
         </div>
 
         <div className="position-relative text-center my-4">
