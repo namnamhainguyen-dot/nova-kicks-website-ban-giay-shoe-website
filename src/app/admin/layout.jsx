@@ -107,7 +107,11 @@ export default function Layout({ children }) {
                 Quản lý bình luận
               </Link>
             </li>
-
+            <li className="nav-item mb-2">
+              <Link href="/admin/feedback" className="nav-link">
+                Quản lý Liên hệ
+              </Link>
+            </li>
             <li className="nav-item mb-2">
               <Link href="/admin/news" className="nav-link">
                 Quản lý tin tức
