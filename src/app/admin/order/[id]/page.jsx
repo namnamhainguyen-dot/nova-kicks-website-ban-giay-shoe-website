@@ -11,34 +11,38 @@ export default function OrderDetailPage() {
 
   const params = useParams();
   const router = useRouter();
-  const id = params?.id;
+  const id = params?.id; 
 
   useEffect(() => {
     if (!id) return;
+
+    const fetchOrderDetail = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/orders/${id}`);
+        
+        if (!res.ok) {
+          throw new Error("Không tìm thấy đơn hàng trên hệ thống.");
+        }
+
+        const data = await res.json();
+        const orderData = data && data.data ? data.data : data;
+        setOrder(orderData);
+      } catch (err) {
+        console.error(err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchOrderDetail();
   }, [id]);
 
-  const fetchOrderDetail = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/orders/${id}`);
-      
-      if (!res.ok) {
-        throw new Error("Không tìm thấy đơn hàng trên hệ thống.");
-      }
+  if (loading) {
+    return <div className="text-center my-5 p-5 fs-5">⏳ Đang tải chi tiết đơn hàng...</div>;
+  }
 
-      const data = await res.json();
-      const orderData = data && data.data ? data.data : data;
-      setOrder(orderData);
-    } catch (err) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) return <div className="text-center my-5 p-5 fs-5">⏳ Đang tải chi tiết đơn hàng...</div>;
   if (error) {
     return (
       <div className="container my-5 text-center">
@@ -62,7 +66,7 @@ export default function OrderDetailPage() {
 
   const currentBadge = statusBadges[order?.status] || { label: "Đang xử lý", class: "bg-secondary text-white" };
 
-  // Lấy chính xác địa chỉ dựa theo cấu trúc từ phía trang khách hàng (location_id)
+  // Lấy chính xác địa chỉ dựa theo cấu trúc từ phía trang khách hàng
   const fullAddress = order?.location_id || order?.address || order?.shippingAddress || "Chưa cập nhật";
 
   // Lấy thông tin mã giảm giá và số tiền giảm của đơn hàng
@@ -109,13 +113,55 @@ export default function OrderDetailPage() {
             </div>
             <div className="mb-3">
               <span className="text-muted small d-block">Ngày đặt hàng</span>
-              <span className="text-dark">{order?.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}</span>
+              <strong className="text-dark">{order?.createdAt ? new Date(order.createdAt).toLocaleString("vi-VN") : "---"}</strong>
             </div>
 
             {order?.status === "cancelled" && order?.cancelReason && (
               <div className="p-3 bg-danger bg-opacity-10 border border-danger border-opacity-20 rounded-3 mt-3">
                 <span className="text-danger fw-bold small d-block">⚠️ Lý do hủy đơn:</span>
                 <span className="text-danger small">{order.cancelReason}</span>
+              </div>
+            )}
+
+            {/* Boom hàng */}
+            {order?.boomInfo && (
+              <div className="alert alert-danger mt-4 mb-0 border-0 shadow-sm">
+                <h6 className="fw-bold mb-2">💥 Thông tin boom hàng</h6>
+                <p className="mb-1 small">
+                  <strong>Lý do:</strong> {order.boomInfo.reason}
+                </p>
+                <p className="mb-1 small">
+                  <strong>Ghi chú:</strong> {order.boomInfo.note}
+                </p>
+                {order.boomInfo.image && (
+                  <img
+                    src={order.boomInfo.image}
+                    alt="Boom"
+                    className="img-fluid rounded border mt-2"
+                    style={{ maxHeight: "250px", objectFit: "cover" }}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Trả hàng */}
+            {order?.returnInfo && (
+              <div className="alert alert-warning mt-4 mb-0 border-0 shadow-sm">
+                <h6 className="fw-bold mb-2">↩️ Thông tin trả hàng</h6>
+                <p className="mb-1 small">
+                  <strong>Lý do:</strong> {order.returnInfo.reason}
+                </p>
+                <p className="mb-1 small">
+                  <strong>Ghi chú:</strong> {order.returnInfo.note}
+                </p>
+                {order.returnInfo.image && (
+                  <img
+                    src={order.returnInfo.image}
+                    alt="Return"
+                    className="img-fluid rounded border mt-2"
+                    style={{ maxHeight: "250px", objectFit: "cover" }}
+                  />
+                )}
               </div>
             )}
           </div>
@@ -131,20 +177,20 @@ export default function OrderDetailPage() {
                 <table className="table align-middle">
                   <thead className="table-light text-uppercase small text-muted">
                     <tr>
-                      <th className="py-2">Sản phẩm</th>
-                      <th className="text-center py-2" style={{ width: "90px" }}>Số lượng</th>
-                      <th className="text-end py-2" style={{ width: "130px" }}>Đơn giá</th>
+                      <th className="py-2 border-0 rounded-start">Sản phẩm</th>
+                      <th className="text-center py-2 border-0" style={{ width: "90px" }}>Số lượng</th>
+                      <th className="text-end py-2 border-0 rounded-end" style={{ width: "130px" }}>Đơn giá</th>
                     </tr>
                   </thead>
                   <tbody>
                     {order.order_items.map((item, idx) => (
-                      <tr key={idx}>
+                      <tr key={idx} className="border-bottom">
                         <td className="py-3">
                           <span className="fw-semibold text-dark d-block text-truncate" style={{ maxWidth: "260px" }}>
                             {item.name}
                           </span>
                           {(item.color || item.size) && (
-                            <small className="text-muted d-block">
+                            <small className="text-muted d-block mt-1">
                               {item.color ? `Màu: ${item.color}` : ""} {item.size ? `| Size: ${item.size}` : ""}
                             </small>
                           )}
@@ -164,14 +210,14 @@ export default function OrderDetailPage() {
 
             {/* Hiển thị mã giảm giá đơn hàng nếu có */}
             {voucherCode && (
-              <div className="d-flex justify-content-between align-items-center py-2 px-3 bg-light rounded-3 mb-2 small">
-                <span className="text-muted">Mã giảm giá áp dụng: <strong className="text-dark">({voucherCode.toUpperCase()})</strong></span>
+              <div className="d-flex justify-content-between align-items-center py-2 px-3 bg-light rounded-3 mb-3 mt-3 small border">
+                <span className="text-muted">Mã giảm giá áp dụng: <strong className="text-dark">{voucherCode.toUpperCase()}</strong></span>
                 <span className="text-success fw-bold">-{Number(discountAmount).toLocaleString("vi-VN")}đ</span>
               </div>
             )}
 
             {/* Tổng thành tiền */}
-            <div className="mt-3 pt-3 border-top d-flex justify-content-between align-items-center">
+            <div className="mt-auto pt-3 border-top d-flex justify-content-between align-items-center">
               <span className="text-muted fw-semibold">Tổng thành tiền:</span>
               <span className="fs-3 fw-bold text-danger">
                 {(order?.final_total || order?.total || 0).toLocaleString("vi-VN")}đ

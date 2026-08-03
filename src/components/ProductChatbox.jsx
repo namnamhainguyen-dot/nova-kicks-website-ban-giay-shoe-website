@@ -15,7 +15,7 @@ export default function ProductChatbox({ products }) {
   const [isLoading, setIsLoading] = useState(false);
   const [replyMode, setReplyMode] = useState("bot");
 
-  // Tạo cố định 1 sessionId duy nhất cho phiên chat
+  // Tạo cố định 1 sessionId duy nhất cho phiên chat của khách hàng
   const [sessionId] = useState(() => {
     if (typeof window !== "undefined") {
       let savedId = localStorage.getItem("chat_session_id");
@@ -37,7 +37,7 @@ export default function ProductChatbox({ products }) {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // CƠ CHẾ POLLING + REFRESH TỨC THỜI
+  // CƠ CHẾ POLLING + REFRESH TỨC THỜI: tải tin nhắn mới từ Admin/DB
   useEffect(() => {
     if (!isOpen) return;
 
@@ -49,11 +49,10 @@ export default function ProductChatbox({ products }) {
         const dbMessages = await res.json();
 
         if (dbMessages && Array.isArray(dbMessages)) {
-          // NẾU DB CÓ DỮ LIỆU
           if (dbMessages.length > 0) {
             const formattedDbMsgs = dbMessages.map((msg) => ({
               role: msg.sender === "user" ? "user" : "bot",
-              // Hỗ trợ linh hoạt nhiều tên trường text từ DB
+              // Hỗ trợ linh hoạt nhiều tên trường text từ DB tránh bị bong bóng rỗng
               text: msg.text || msg.content || msg.message || "",
             }));
 
@@ -65,7 +64,7 @@ export default function ProductChatbox({ products }) {
               return formattedDbMsgs;
             });
           } else {
-            // NẾU DB RỖNG -> Giữ nguyên tin nhắn xin chào mặc định
+            // Giữ nguyên tin nhắn xin chào nếu DB rỗng
             setMessages([WELCOME_MESSAGE]);
           }
         }
@@ -105,7 +104,7 @@ export default function ProductChatbox({ products }) {
     setInput("");
     setIsLoading(true);
 
-    // 1. Đồng bộ tin nhắn khách gửi lên DB cho Admin thấy
+    // 1. Đồng bộ tin nhắn của khách lên DB
     try {
       await fetch("/api/messages", {
         method: "POST",
@@ -122,29 +121,36 @@ export default function ProductChatbox({ products }) {
       console.error("Lỗi đồng bộ tin nhắn lên Admin:", err);
     }
 
-    // 2. Nếu chọn gửi cho admin
+    // 2. NẾU CHỌN GỬI CHO ADMIN -> Chỉ gửi thông báo xác nhận, không lặp lại tin nhắn
     if (replyMode === "admin") {
+      const confirmText = "Đã chuyển tin nhắn của bạn đến Admin. Admin sẽ phản hồi sớm nhất có thể! 👨‍💼";
+
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: "Đã chuyển tin nhắn cho admin. Admin sẽ phản hồi cho bạn sớm nhất có thể. 👨‍💼" },
+        { role: "bot", text: confirmText },
       ]);
 
-      await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          user: "Khách hàng",
-          sender: "admin",
-          text: `Tin nhắn cần hỗ trợ từ admin: ${userText}`,
-          mode: "admin",
-        }),
-      });
+      try {
+        await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId: sessionId,
+            user: "Khách hàng",
+            sender: "admin",
+            text: confirmText,
+            mode: "admin",
+          }),
+        });
+      } catch (err) {
+        console.error("Lỗi gửi phản hồi tự động:", err);
+      }
+
       setIsLoading(false);
       return;
     }
 
-    // 3. Gửi sang AI Gemini để nhận phản hồi & Lọc sản phẩm
+    // 3. NẾU CHỌN BOT TRẢ LỜI -> Gửi sang AI Gemini
     const historyForAPI = updatedMessages.slice(0, -1).map((msg) => ({
       role: msg.role === "user" ? "user" : "model",
       parts: [{ text: msg.text }],
@@ -181,7 +187,7 @@ export default function ProductChatbox({ products }) {
         }),
       });
 
-      // Lọc sản phẩm trên giao diện
+      // Lọc sản phẩm trên giao diện nếu AI tìm thấy
       if (data.matchedIds && data.matchedIds.length > 0) {
         const params = new URLSearchParams(searchParams.toString());
         params.set("filterIds", data.matchedIds.join(","));
@@ -246,7 +252,7 @@ export default function ProductChatbox({ products }) {
             {isLoading && (
               <div className="d-flex justify-content-start">
                 <div className="p-2 rounded-3 bg-white border text-muted" style={{ fontSize: "0.85rem" }}>
-                  Đang phân tích sản phẩm phù hợp... 🤔
+                  Đang xử lý... 🤔
                 </div>
               </div>
             )}
