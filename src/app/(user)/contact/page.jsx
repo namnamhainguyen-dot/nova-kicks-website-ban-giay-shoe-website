@@ -66,7 +66,7 @@ export default function StaticContactPage() {
               <span className="fs-3 me-3">📞</span>
               <div>
                 <h6 className="fw-bold mb-1">Số điện thoại liên hệ</h6>
-                <p className="text-muted mb-0">0123 456 789</p>
+                <p className="text-muted mb-0">0931839732</p>
               </div>
             </div>
 
@@ -74,7 +74,7 @@ export default function StaticContactPage() {
               <span className="fs-3 me-3">✉️</span>
               <div>
                 <h6 className="fw-bold mb-1">Email hỗ trợ</h6>
-                <p className="text-muted mb-0">support@nova-kicks.com</p>
+                <p className="text-muted mb-0">namnamhainguyen@gmail.com</p>
               </div>
             </div>
 
@@ -88,12 +88,8 @@ export default function StaticContactPage() {
 
             <hr className="text-muted opacity-25 my-3" />
 
-            <h6 className="fw-bold text-dark mb-2">Theo dõi Nova Kicks trên mạng xã hội</h6>
-            <div className="d-flex gap-2">
-              <span className="badge bg-dark px-3 py-2 rounded cursor-pointer">Facebook</span>
-              <span className="badge bg-dark px-3 py-2 rounded cursor-pointer">Instagram</span>
-              <span className="badge bg-dark px-3 py-2 rounded cursor-pointer">TikTok</span>
-            </div>
+            
+            
           </div>
         </div>
 
