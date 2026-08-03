@@ -64,9 +64,13 @@ export default function NewsDetailPage() {
             <span>✍️ {article.author || "Nova Kicks"}</span>
             <span>📅 {formatDate(article.createdAt)}</span>
           </div>
-          <div style={{ whiteSpace: "pre-line", lineHeight: 1.8 }}>
-            {article.content || article.summary}
-          </div>
+
+          {/* Dùng dangerouslySetInnerHTML để render đúng HTML */}
+          <div
+            className="article-content"
+            style={{ lineHeight: 1.8 }}
+            dangerouslySetInnerHTML={{ __html: article.content || article.summary }}
+          />
         </div>
       </div>
     </div>
