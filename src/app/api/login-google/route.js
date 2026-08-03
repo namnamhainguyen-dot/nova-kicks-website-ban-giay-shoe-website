@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/libs/mongodb";
+import { OAuth2Client } from "google-auth-library"; // 🟢 Khuyên dùng để verify token chính chủ
+
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 export async function POST(request) {
   try {
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
     const body = await request.json();
-    const { token } = body; 
+    const { token } = body;
 
     if (!token) {
       return NextResponse.json(
@@ -16,53 +17,80 @@ export async function POST(request) {
       );
     }
 
-    // 1. Giải mã Payload từ Google Token (JWT Base64)
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const googleUser = JSON.parse(atob(base64));
+    let googleUser = {};
 
-    if (!googleUser.email) {
+    // 🟢 1. GIẢI MÃ & VERIFY TOKEN VỚI GOOGLE (An toàn bảo mật)
+    try {
+      if (GOOGLE_CLIENT_ID) {
+        // Xác thực token trực tiếp qua SDK Google
+        const ticket = await googleClient.verifyIdToken({
+          idToken: token,
+          audience: GOOGLE_CLIENT_ID,
+        });
+        googleUser = ticket.getPayload();
+      } else {
+        // Fallback Decode Base64 an toàn UTF-8 (chống crash Tiếng Việt có dấu)
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = Buffer.from(base64, 'base64').toString('utf-8');
+        googleUser = JSON.parse(jsonPayload);
+      }
+    } catch (authError) {
+      console.error("Lỗi xác minh Google Token:", authError);
       return NextResponse.json(
-        { message: "Không thể lấy email từ tài khoản Google này!" },
+        { message: "Mã xác thực Google không hợp lệ hoặc đã hết hạn!" },
         { status: 400 }
       );
     }
 
-    // 2. Tìm xem email Google này đã tồn tại trong database "users" chưa
-    let user = await db.collection("users").findOne({ email: googleUser.email.trim() });
+    if (!googleUser || !googleUser.email) {
+      return NextResponse.json(
+        { message: "Không thể lấy thông tin email từ tài khoản Google này!" },
+        { status: 400 }
+      );
+    }
 
-    // 3. Nếu CHƯA tồn tại -> Tự động đăng ký tài khoản mới cho họ
+    const client = await clientPromise;
+    const db = client.db("Nova-kicks");
+
+    // 🟢 2. Tìm xem email Google này đã tồn tại trong database "users" chưa
+    const userEmail = googleUser.email.trim().toLowerCase();
+    let user = await db.collection("users").findOne({ email: userEmail });
+
+    // 🟢 3. Nếu CHƯA tồn tại -> Tự động đăng ký tài khoản mới
     if (!user) {
       const newUser = {
-        fullname: googleUser.name,
-        email: googleUser.email.trim(),
+        fullname: googleUser.name || "Người dùng Google",
+        email: userEmail,
+        avatar: googleUser.picture || null, // 🌟 Lưu thêm avatar Google
         phone: null,
-        password: null, // Đăng nhập Google không cần mật khẩu trực tiếp
-        role: "user",   // Mặc định phân quyền user
+        password: null, // Đăng nhập Google không dùng mật khẩu
+        role: "user",   // Mặc định là user
+        provider: "google",
         createdAt: new Date(),
       };
 
       const result = await db.collection("users").insertOne(newUser);
-      
-      // Lấy lại thông tin user vừa insert thành công
+
       user = {
         _id: result.insertedId,
-        ...newUser
+        ...newUser,
       };
     }
 
-    // 4. Trả thông tin User về cho Client giống hệt API đăng nhập thường
+    // 🟢 4. Trả thông tin User về cho Client
     return NextResponse.json(
       {
         message: "Đăng nhập bằng Google thành công!",
         user: {
-          id: user._id,
+          id: String(user._id),
           fullname: user.fullname,
           email: user.email,
+          avatar: user.avatar || googleUser.picture || null,
           phone: user.phone || null,
           role: user.role || "user",
         },
-        token: "google-session-token-placeholder" // Có thể tích hợp thêm JWT token riêng của hệ thống bạn nếu cần
+        token: token // Dùng luôn ID Token này hoặc tạo JWT token riêng của app bạn
       },
       { status: 200 }
     );
