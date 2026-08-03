@@ -43,7 +43,6 @@ export default function Checkout() {
   const [voucherSuccess, setVoucherSuccess] = useState("");
   const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
   
-  // State mới cho danh sách Voucher gợi ý & Popover Hover
   const [availableVouchers, setAvailableVouchers] = useState([]);
   const [showVoucherDropdown, setShowVoucherDropdown] = useState(false);
 
@@ -109,7 +108,6 @@ export default function Checkout() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // 1. Lấy sản phẩm cần thanh toán (Ưu tiên từ sessionStorage)
     const storedItems = sessionStorage.getItem("checkout_items");
     let parsedCheckoutItems = [];
     
@@ -126,7 +124,6 @@ export default function Checkout() {
       setCheckoutItems(cart);
     }
 
-    // 2. Xử lý sau khi giả lập chuyển hướng thanh toán thành công
     const queryParams = new URLSearchParams(window.location.search);
     const successSimulated = queryParams.get("success_simulated");
     const urlOrderId = queryParams.get("orderId");
@@ -154,7 +151,6 @@ export default function Checkout() {
       sessionStorage.removeItem("checkout_items");
     }
 
-    // 3. Đọc dữ liệu tài khoản & Danh sách nhiều địa chỉ
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
@@ -194,7 +190,6 @@ export default function Checkout() {
     }
   }, [setCart, cart]);
 
-  // ── XỬ LÝ KHI ĐỔI ĐỊA CHỈ ĐÃ LƯU ──
   const handleSelectSavedAddress = (addr) => {
     setSelectedAddressId(addr._id);
     setCustomerName(addr.receiverName || currentUser?.fullname || "");
@@ -209,7 +204,6 @@ export default function Checkout() {
     }
   };
 
-  // ── TÍNH TOÁN GIÁ TRỊ ĐƠN HÀNG ──
   const total = checkoutItems.reduce((sum, product) => sum + product.price * product.quantity, 0);
 
   let discountAmount = 0;
@@ -223,7 +217,6 @@ export default function Checkout() {
 
   const finalTotal = Math.max(0, total - discountAmount);
 
-  // ── HANDLERS ──
   const handlePhoneChange = (e) => {
     const value = e.target.value.replace(/\D/g, "");
     if (value.length <= 10) {
@@ -335,7 +328,7 @@ export default function Checkout() {
         return false;
       }
       if (!selectedProvince || !selectedDistrict || !selectedWard) {
-        alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
+        alert("Vui lòng chọn đầy đủ Phường/Xã, Quận/Huyện và Tỉnh/Thành!");
         return false;
       }
     }
@@ -530,8 +523,168 @@ export default function Checkout() {
       <form onSubmit={handleOrder}>
         <div className="row g-4">
           
-          {/* CỘT TRÁI: THÔNG TIN KHÁCH HÀNG & ĐỊA CHỈ */}
-          <div className="col-lg-7 col-md-12">
+          {/* TÓM TẮT ĐƠN HÀNG & VOUCHER (Hiện TRÊN CÙNG ở Mobile nhờ order-1, bên phải ở PC nhờ order-lg-2) */}
+          <div className="col-lg-5 col-md-12 order-1 order-lg-2">
+            <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
+              <div className="card-body p-4">
+                <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({checkoutItems.length})</h4>
+
+                {/* Danh sách SP */}
+                <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
+                  {checkoutItems.map((product, index) => {
+                    const uniqueKey = `checkout-${product._id}-${product.selectedColor || "none"}-${
+                      product.selectedSize || "none"
+                    }-${index}`;
+
+                    return (
+                      <div key={uniqueKey} className="d-flex align-items-center justify-content-between py-2 border-bottom">
+                        <div className="d-flex align-items-center">
+                          {product.image && (
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="rounded border me-3 object-fit-cover"
+                              style={{ width: "50px", height: "50px" }}
+                            />
+                          )}
+                          <div>
+                            <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>
+                              {product.name}
+                            </h6>
+                            <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
+                              {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
+                              {product.selectedColor && product.selectedSize && <span> | </span>}
+                              {product.selectedSize && <span>Size: {product.selectedSize}</span>}
+                            </div>
+                            <small className="text-muted">Số lượng: {product.quantity}</small>
+                          </div>
+                        </div>
+                        <span className="fw-medium text-dark">
+                          {(product.quantity * product.price).toLocaleString("vi-VN")}đ
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Nhập Voucher */}
+                <div className="mb-4 bg-light p-3 rounded-3 position-relative">
+                  <div className="mb-2">
+                    <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
+                  </div>
+
+                  <div 
+                    className="position-relative"
+                    onMouseEnter={() => setShowVoucherDropdown(true)}
+                    onMouseLeave={() => setShowVoucherDropdown(false)}
+                  >
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm text-uppercase fw-bold"
+                        placeholder="NHẬP HOẶC CHỌN MÃ"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value)}
+                        onFocus={() => setShowVoucherDropdown(true)}
+                        disabled={!!appliedVoucher}
+                      />
+                      {appliedVoucher ? (
+                        <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
+                          Hủy bỏ
+                        </button>
+                      ) : (
+                        <button
+                          className="btn btn-dark btn-sm fw-semibold"
+                          type="button"
+                          onClick={handleApplyVoucher}
+                          disabled={isValidatingVoucher}
+                        >
+                          {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* DROPDOWN POPUP HIỆN DANH SÁCH VOUCHER KHẢ DỤNG */}
+                    {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
+                      <div 
+                        className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
+                        style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
+                      >
+                        <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
+                        
+                        {[...availableVouchers]
+                          .sort((a, b) => {
+                            const aEligible = total >= (a.min_order_value || 0);
+                            const bEligible = total >= (b.min_order_value || 0);
+                            return bEligible - aEligible;
+                          })
+                          .map((v) => {
+                            const isEligible = total >= (v.min_order_value || 0);
+                            return (
+                              <div
+                                key={v._id || v.code}
+                                className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
+                                  isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
+                                }`}
+                                style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
+                                onClick={() => isEligible && handleSelectSuggestedVoucher(v.code)}
+                              >
+                                <div>
+                                  <div className="fw-bold text-primary small d-flex align-items-center gap-1">
+                                    🏷️ {v.code}
+                                    {isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>}
+                                  </div>
+                                  <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                    {v.discount_type === "percentage" 
+                                      ? `Giảm ${v.discount_value}%` 
+                                      : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
+                                    {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
+                                  style={{ fontSize: "0.7rem", padding: "2px 8px" }}
+                                  disabled={!isEligible}
+                                >
+                                  {isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
+                                </button>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </div>
+
+                  {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
+                  {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
+                </div>
+
+                {/* TỔNG TIỀN */}
+                <div className="pt-2">
+                  <div className="d-flex justify-content-between mb-2">
+                    <span className="text-muted">Tạm tính:</span>
+                    <span className="fw-semibold">{total.toLocaleString("vi-VN")}đ</span>
+                  </div>
+
+                  {discountAmount > 0 && (
+                    <div className="d-flex justify-content-between mb-2 text-success">
+                      <span>Giảm giá (Voucher):</span>
+                      <span className="fw-semibold">-{discountAmount.toLocaleString("vi-VN")}đ</span>
+                    </div>
+                  )}
+
+                  <div className="d-flex justify-content-between mb-0 pt-2 border-top">
+                    <span className="fw-bold fs-5">Tổng cộng:</span>
+                    <span className="fw-bold fs-5 text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* THÔNG TIN KHÁCH HÀNG & NÚT ĐẶT HÀNG (Hiện Ở DƯỚI ở Mobile nhờ order-2, bên trái ở PC nhờ order-lg-1) */}
+          <div className="col-lg-7 col-md-12 order-2 order-lg-1">
             <div className="card shadow-sm border-0 rounded-3">
               <div className="card-body p-4">
                 <h4 className="mb-4 text-dark fw-bold">📋 Thông Tin Nhận Hàng</h4>
@@ -575,7 +728,7 @@ export default function Checkout() {
                     Địa chỉ giao hàng <span className="text-danger">*</span>
                   </label>
 
-                  {/* Danh sách các địa chỉ đã lưu */}
+                  {/* Danh sách địa chỉ đã lưu */}
                   {savedAddresses.length > 0 && (
                     <div className="d-flex flex-column gap-2 mb-3">
                       {savedAddresses.map((addr) => (
@@ -604,7 +757,7 @@ export default function Checkout() {
                         </div>
                       ))}
 
-                      {/* Option Chọn Nhập Địa Chỉ Mới */}
+                      {/* Option Nhập địa chỉ mới */}
                       <div
                         className={`p-3 border rounded user-select-none ${
                           selectedAddressId === "new" ? "border-dark bg-light fw-medium" : ""
@@ -623,7 +776,7 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  {/* Form chọn Tỉnh/Huyện/Xã */}
+                  {/* Form chọn Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
                   {(selectedAddressId === "new" || savedAddresses.length === 0) && (
                     <div className="border p-3 rounded bg-light">
                       <div className="mb-3">
@@ -637,7 +790,49 @@ export default function Checkout() {
                       </div>
 
                       <div className="row g-2">
+                        {/* 1. Phường/Xã */}
                         <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">1. Phường / Xã *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedWard}
+                            onChange={(e) => setSelectedWard(e.target.value)}
+                            disabled={!selectedDistrict}
+                          >
+                            <option value="">
+                              {!selectedDistrict ? "-- Chọn Quận/Huyện trước --" : "-- Chọn Phường/Xã --"}
+                            </option>
+                            {wards.map((w) => (
+                              <option key={w.code} value={w.code}>
+                                {w.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Quận/Huyện */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">2. Quận / Huyện *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedDistrict}
+                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            disabled={!selectedProvince}
+                          >
+                            <option value="">
+                              {!selectedProvince ? "-- Chọn Tỉnh/Thành trước --" : "-- Chọn Quận/Huyện --"}
+                            </option>
+                            {districts.map((d) => (
+                              <option key={d.code} value={d.code}>
+                                {d.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 3. Tỉnh/Thành phố */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">3. Tỉnh / Thành phố *</label>
                           <select
                             className="form-select form-select-lg fs-6"
                             value={selectedProvince}
@@ -652,37 +847,6 @@ export default function Checkout() {
                           </select>
                         </div>
 
-                        <div className="col-md-4">
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedDistrict}
-                            onChange={(e) => setSelectedDistrict(e.target.value)}
-                            disabled={!selectedProvince}
-                          >
-                            <option value="">-- Chọn Quận/Huyện --</option>
-                            {districts.map((d) => (
-                              <option key={d.code} value={d.code}>
-                                {d.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="col-md-4">
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedWard}
-                            onChange={(e) => setSelectedWard(e.target.value)}
-                            disabled={!selectedDistrict}
-                          >
-                            <option value="">-- Chọn Phường/Xã --</option>
-                            {wards.map((w) => (
-                              <option key={w.code} value={w.code}>
-                                {w.name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
                       </div>
                     </div>
                   )}
@@ -742,190 +906,22 @@ export default function Checkout() {
                   ></textarea>
                 </div>
 
-                {/* Nút Đặt hàng trên Mobile */}
-                <div className="d-grid d-lg-none gap-2">
+                {/* Nút Xác Nhận Đặt Hàng duy nhất ở dưới cùng (dùng cho cả Mobile & PC) */}
+                <div className="d-grid gap-2 pt-2">
                   <button
                     type="submit"
                     className="btn btn-dark btn-lg py-3 fw-bold shadow-sm rounded-pill"
                     disabled={isOrdering}
                   >
                     {isOrdering
-                      ? "Đang xử lý..."
+                      ? "Đang xử lý đơn hàng..."
                       : `Xác Nhận Đặt Hàng • ${finalTotal.toLocaleString("vi-VN")}đ`}
                   </button>
                   <Link href="/cart" className="btn btn-link text-muted small text-center">
                     Quay lại giỏ hàng
                   </Link>
                 </div>
-              </div>
-            </div>
-          </div>
 
-          {/* CỘT PHẢI: TÓM TẮT ĐƠN HÀNG & VOUCHER */}
-          <div className="col-lg-5 col-md-12">
-            <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
-              <div className="card-body p-4">
-                <h4 className="mb-4 text-dark fw-bold">🛒 Đơn Hàng Của Bạn ({checkoutItems.length})</h4>
-
-                {/* Danh sách SP */}
-                <div className="overflow-auto mb-3 border-bottom" style={{ maxHeight: "320px" }}>
-                  {checkoutItems.map((product, index) => {
-                    const uniqueKey = `checkout-${product._id}-${product.selectedColor || "none"}-${
-                      product.selectedSize || "none"
-                    }-${index}`;
-
-                    return (
-                      <div key={uniqueKey} className="d-flex align-items-center justify-content-between py-2 border-bottom">
-                        <div className="d-flex align-items-center">
-                          {product.image && (
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="rounded border me-3 object-fit-cover"
-                              style={{ width: "50px", height: "50px" }}
-                            />
-                          )}
-                          <div>
-                            <h6 className="mb-0 fw-semibold text-truncate" style={{ maxWidth: "160px" }}>
-                              {product.name}
-                            </h6>
-                            <div className="text-muted small" style={{ fontSize: "0.75rem" }}>
-                              {product.selectedColor && <span>Màu: {product.selectedColor}</span>}
-                              {product.selectedColor && product.selectedSize && <span> | </span>}
-                              {product.selectedSize && <span>Size: {product.selectedSize}</span>}
-                            </div>
-                            <small className="text-muted">Số lượng: {product.quantity}</small>
-                          </div>
-                        </div>
-                        <span className="fw-medium text-dark">
-                          {(product.quantity * product.price).toLocaleString("vi-VN")}đ
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Nhập Voucher + DROPDOWN GỢI Ý KHI HOVER */}
-                <div className="mb-4 bg-light p-3 rounded-3 position-relative">
-                  <div className="mb-2">
-                    <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
-                  </div>
-
-                  <div 
-                    className="position-relative"
-                    onMouseEnter={() => setShowVoucherDropdown(true)}
-                    onMouseLeave={() => setShowVoucherDropdown(false)}
-                  >
-                    <div className="input-group">
-                      <input
-                        type="text"
-                        className="form-control form-control-sm text-uppercase fw-bold"
-                        placeholder="NHẬP HOẶC CHỌN MÃ"
-                        value={voucherCode}
-                        onChange={(e) => setVoucherCode(e.target.value)}
-                        onFocus={() => setShowVoucherDropdown(true)}
-                        disabled={!!appliedVoucher}
-                      />
-                      {appliedVoucher ? (
-                        <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
-                          Hủy bỏ
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-dark btn-sm fw-semibold"
-                          type="button"
-                          onClick={handleApplyVoucher}
-                          disabled={isValidatingVoucher}
-                        >
-                          {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
-                        </button>
-                      )}
-                    </div>
-
-                    {/* DROPDOWN POPUP HIỆN DANH SÁCH VOUCHER KHẢ DỤNG */}
-                    {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
-                      <div 
-                        className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
-                        style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
-                      >
-                        <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
-                        
-                        {/* Đã thêm .sort() để đẩy Voucher đủ điều kiện lên đầu */}
-                        {[...availableVouchers]
-                          .sort((a, b) => {
-                            const aEligible = total >= (a.min_order_value || 0);
-                            const bEligible = total >= (b.min_order_value || 0);
-                            return bEligible - aEligible; // True (1) lên trước, False (0) xuống sau
-                          })
-                          .map((v) => {
-                            const isEligible = total >= (v.min_order_value || 0);
-                            return (
-                              <div
-                                key={v._id || v.code}
-                                className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
-                                  isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
-                                }`}
-                                style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
-                                onClick={() => isEligible && handleSelectSuggestedVoucher(v.code)}
-                              >
-                                <div>
-                                  <div className="fw-bold text-primary small d-flex align-items-center gap-1">
-                                    🏷️ {v.code}
-                                    {isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>}
-                                  </div>
-                                  <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                    {v.discount_type === "percentage" 
-                                      ? `Giảm ${v.discount_value}%` 
-                                      : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
-                                    {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
-                                  style={{ fontSize: "0.7rem", padding: "2px 8px" }}
-                                  disabled={!isEligible}
-                                >
-                                  {isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
-                                </button>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-
-                  {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
-                  {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
-                </div>
-
-                {/* TỔNG TIỀN */}
-                <div className="pt-2">
-                  <div className="d-flex justify-content-between mb-2">
-                    <span className="text-muted">Tạm tính:</span>
-                    <span className="fw-semibold">{total.toLocaleString("vi-VN")}đ</span>
-                  </div>
-
-                  {discountAmount > 0 && (
-                    <div className="d-flex justify-content-between mb-2 text-success">
-                      <span>Giảm giá (Voucher):</span>
-                      <span className="fw-semibold">-{discountAmount.toLocaleString("vi-VN")}đ</span>
-                    </div>
-                  )}
-
-                  <div className="d-flex justify-content-between mb-3 pt-2 border-top">
-                    <span className="fw-bold fs-5">Tổng cộng:</span>
-                    <span className="fw-bold fs-5 text-danger">{finalTotal.toLocaleString("vi-VN")}đ</span>
-                  </div>
-
-                  <button
-                    type="submit"
-                    className="btn btn-dark w-100 btn-lg py-3 fw-bold shadow-sm rounded-pill d-none d-lg-block"
-                    disabled={isOrdering}
-                  >
-                    {isOrdering ? "Đang xử lý đơn hàng..." : "Xác Nhận Đặt Hàng"}
-                  </button>
-                </div>
               </div>
             </div>
           </div>

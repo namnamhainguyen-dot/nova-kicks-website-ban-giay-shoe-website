@@ -123,6 +123,11 @@ export default function Layout({ children }) {
                 Hỗ trợ trực tiếp
               </Link>
             </li>
+            <li className="nav-item mb-2">
+              <Link href="/admin/feedback" className="nav-link">
+                Quản lý Liên hệ
+              </Link>
+            </li>
             <li className="nav-item mt-5 border-top">
               <button type="button" className="nav-link btn btn-link text-start p-0" onClick={handleLogout}>
                 Đăng xuất

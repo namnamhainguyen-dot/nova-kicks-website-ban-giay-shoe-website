@@ -257,100 +257,49 @@ export default function StaticContactPage() {
 
 
         <div className="col-lg-5">
+          <div className="card h-100 border-0 shadow-sm p-4 rounded-3 contact-card bg-light">
+            <h4 className="fw-bold text-dark mb-4">Thông Tin Cửa Hàng</h4>
 
-
-          <div className="card border-0 shadow-sm p-4 h-100 contact-card bg-light">
-
-
-            <h4 className="fw-bold mb-4">
-
-              Thông tin cửa hàng
-
-            </h4>
-
-
-
-            <p>
-
-              <strong>📍 Địa chỉ:</strong>
-
-              <br/>
-
-              123 CVPM Quang Trung, Quận 12, TP.HCM
-
-            </p>
-
-
-
-            <p>
-
-              <strong>📞 Điện thoại:</strong>
-
-              <br/>
-
-              0123 456 789
-
-            </p>
-
-
-
-            <p>
-
-              <strong>✉️ Email:</strong>
-
-              <br/>
-
-              support@nova-kicks.com
-
-            </p>
-
-
-
-            <p>
-
-              <strong>⏰ Giờ làm việc:</strong>
-
-              <br/>
-
-              09:00 - 22:00
-
-            </p>
-
-
-
-            <hr/>
-
-
-
-
-            <div className="d-flex gap-2">
-
-
-              <span className="badge bg-dark">
-
-                Facebook
-
-              </span>
-
-
-              <span className="badge bg-dark">
-
-                Instagram
-
-              </span>
-
-
-              <span className="badge bg-dark">
-
-                TikTok
-
-              </span>
-
-
-
+            <div className="d-flex align-items-start mb-4">
+              <span className="fs-3 me-3">📍</span>
+              <div>
+                <h6 className="fw-bold mb-1">Địa chỉ cửa hàng</h6>
+                <p className="text-muted mb-0">123 CVPM Quang Trung, Quận 12, TP.HCM</p>
+              </div>
             </div>
 
+            <div className="d-flex align-items-start mb-4">
+              <span className="fs-3 me-3">📞</span>
+              <div>
+                <h6 className="fw-bold mb-1">Số điện thoại liên hệ</h6>
+                <p className="text-muted mb-0">0123 456 789</p>
+              </div>
+            </div>
 
+            <div className="d-flex align-items-start mb-4">
+              <span className="fs-3 me-3">✉️</span>
+              <div>
+                <h6 className="fw-bold mb-1">Email hỗ trợ</h6>
+                <p className="text-muted mb-0">support@nova-kicks.com</p>
+              </div>
+            </div>
+
+            <div className="d-flex align-items-start mb-4">
+              <span className="fs-3 me-3">⏰</span>
+              <div>
+                <h6 className="fw-bold mb-1">Thời gian làm việc</h6>
+                <p className="text-muted mb-0">09:00 – 22:00 hàng ngày</p>
+              </div>
+            </div>
+
+            <hr className="text-muted opacity-25 my-3" />
+
+            <h6 className="fw-bold text-dark mb-2">Theo dõi Nova Kicks trên mạng xã hội</h6>
+            <div className="d-flex gap-2">
+              <span className="badge bg-dark px-3 py-2 rounded cursor-pointer">Facebook</span>
+              <span className="badge bg-dark px-3 py-2 rounded cursor-pointer">Instagram</span>
+              <span className="badge bg-dark px-3 py-2 rounded cursor-pointer">TikTok</span>
+            </div>
           </div>
 
 

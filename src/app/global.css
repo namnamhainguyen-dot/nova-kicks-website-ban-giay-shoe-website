@@ -1,4 +1,7 @@
-html, body { height: 100%; }
+html, body { 
+  height: 100%; 
+  overflow-x: hidden; /* Tránh vỡ khung theo chiều ngang trên điện thoại */
+}
 
 :root {
   --background: #ffffff;
@@ -59,6 +62,7 @@ main {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Announcement Bar */
 .nk-announcement-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -110,6 +114,7 @@ main {
   color: #ffffff;
 }
 
+/* Header & Navigation */
 .nk-nav {
   position: fixed;
   top: 36px;
@@ -118,7 +123,7 @@ main {
   background: rgba(255, 255, 255, 0.88) !important;
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
   height: 72px;
   display: flex;
   align-items: center;
@@ -134,6 +139,7 @@ border-bottom: 1px solid var(--border-light);
   align-items: center; 
   justify-content: space-between;
   max-width: 1400px;
+  width: 100%;
 }
 
 .nk-brand {
@@ -228,6 +234,7 @@ border-bottom: 1px solid var(--border-light);
   color: var(--accent);
 }
 
+/* Categories Bar */
 .nk-categories-bar {
   position: fixed;
   top: 108px;
@@ -244,6 +251,7 @@ border-bottom: 1px solid var(--border-light);
 
 .nk-categories-bar .container {
   max-width: 1400px;
+  width: 100%;
 }
 
 .nk-categories-list { 
@@ -275,7 +283,7 @@ border-bottom: 1px solid var(--border-light);
   position: relative;
   white-space: nowrap;
   padding: 4px 0;
-display: inline-block;
+  display: inline-block;
 }
 
 .nk-categories-list a::before {
@@ -313,6 +321,7 @@ display: inline-block;
   width: 100%;
 }
 
+/* Actions Menu */
 .nk-actions {
   display: flex;
   align-items: center;
@@ -370,6 +379,7 @@ display: inline-block;
   background-color: var(--accent) !important;
 }
 
+/* Footer */
 .nk-footer { 
   background: linear-gradient(180deg, #fafbfc 0%, #f1f3f5 100%) !important;
   border-top: 1px solid var(--border-light);
@@ -445,7 +455,7 @@ display: inline-block;
 }
 
 .nk-footer-copy {
-margin-top: 2.5rem; 
+  margin-top: 2.5rem; 
   padding-top: 1.5rem; 
   border-top: 1px solid var(--border-light); 
   color: var(--text-muted); 
@@ -489,29 +499,342 @@ margin-top: 2.5rem;
   border-color: var(--accent);
 }
 
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE STYLES (Tối ưu hóa giao diện di động)
+   ========================================================================== */
+
+/* Nút Mobile Toggle Menu (Mặc định ẩn trên Desktop) */
+.nk-mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+@media (max-width: 991px) {
+  /* Tối ưu toán bộ vị trí Header khi xuống Tablet/Mobile */
+  .nk-announcement-bar {
+    height: 30px;
+    font-size: 0.65rem;
+  }
+
+  .nk-nav {
+    top: 30px;
+    height: 60px;
+    padding: 0 1rem;
+  }
+
+  .nk-categories-bar {
+    top: 90px;
+    height: 38px;
+  }
+
+  main {
+    padding-top: 138px;
+    padding-bottom: 30px;
+  }
+
+  /* Ẩn bớt link ngang để làm Menu trượt (Drawer) */
+  .nk-links {
+    position: fixed;
+    top: 90px;
+    left: -100%;
+    width: 280px;
+    height: calc(100vh - 90px);
+    background: #ffffff;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease-in-out;
+    z-index: 1002;
+  }
+
+  /* Khi class 'active' được thêm qua JS khi bấm Nút Hamburger */
+  .nk-links.active {
+    left: 0;
+  }
+
+  .nk-links a {
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  .nk-mobile-toggle {
+    display: block;
+  }
+
+  .nk-actions {
+    gap: 1rem;
+  }
+}
+
 @media (max-width: 768px) {
-  main { padding-top: 132px; }
-  .nk-announcement-bar { font-size: 0.62rem; height: 32px; }
-  .nk-nav { top: 32px; height: 64px; }
+  main { 
+    padding-top: 128px; 
+  }
+
+  .nk-announcement-bar { 
+    font-size: 0.6rem; 
+    height: 28px; 
+  }
+
+  .nk-nav { 
+    top: 28px; 
+    height: 56px; 
+  }
+
   .nk-categories-bar { 
-    top: 96px;
+    top: 84px;
     height: 36px;
     overflow-x: auto;
   }
+
   .nk-categories-list { 
-    gap: 1.5rem;
-    padding: 0 1rem;
     justify-content: flex-start;
+    gap: 1.2rem;
+    padding: 0 1rem;
   }
-  .nk-links { gap: 1.2rem; }
-  .nk-links a { font-size: 0.6rem; letter-spacing: 0.08em; }
+
+  .nk-categories-list a {
+    font-size: 0.6rem;
+  }
+
+  .nk-footer {
+    padding: 2.5rem 0 1.5rem;
+    text-align: center;
+  }
+
+  .nk-footer-label::after {
+    margin: 8px auto 0;
+  }
+
+  .social-links {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 576px) {
-  .nk-links { gap: 0.8rem; }
-  .nk-links a { font-size: 0.5rem; letter-spacing: 0.06em; }
-  .nk-categories-list { gap: 1rem; }
-  .nk-categories-list a { font-size: 0.55rem; }
+  /* Tối ưu không gian hiển thị cho màn hình cực nhỏ (Smartphone) */
+  .nk-announcement-content span:nth-child(2) {
+    display: none; /* Ẩn bớt tin phụ ở thanh trên cùng cho đỡ chật */
+  }
 
+  .nk-links a { 
+    font-size: 0.75rem; 
+    letter-spacing: 0.06em; 
+  }
+
+  .nk-categories-list { 
+    gap: 1rem; 
+  }
+
+  .nk-categories-list a { 
+    font-size: 0.58rem; 
+  }
+
+  /* Tối ưu hóa Touch point trên màn hình cảm ứng */
+  .nk-actions a, 
+  .nk-categories-list a, 
+  .nk-links a {
+    padding: 8px 4px;
+  }
 }
 
+/* ==========================================================================
+   MOBILE OFFCANVAS DRAWER (Giống mẫu Myshoes)
+   ========================================================================== */
+
+/* Nút Hamburger */
+.nk-mobile-toggle {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+/* Overlay / Backdrop mờ nền */
+.nk-drawer-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(2px);
+  z-index: 1045;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+.nk-drawer-backdrop.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Drawer Container */
+.nk-mobile-drawer {
+  position: fixed;
+  top: 0;
+  left: -100%;
+  width: 85%;
+  max-width: 340px;
+  height: 100vh;
+  background: #ffffff;
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  transition: left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+}
+
+.nk-mobile-drawer.active {
+  left: 0;
+}
+
+/* Header xanh lam sẫm / chủ đạo */
+.nk-drawer-header {
+  background-color: #0b2545; /* Tone màu xanh đậm giống Myshoes */
+  color: #ffffff;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nk-drawer-close {
+  background: none;
+  border: none;
+  color: #ffffff;
+  font-size: 1.4rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Content Body */
+.nk-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.nk-drawer-section-title {
+  padding: 14px 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6c757d;
+  background: #f8f9fa;
+  border-bottom: 1px solid #edf2f7;
+  text-transform: uppercase;
+}
+
+/* Danh sách Item */
+.nk-drawer-menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nk-drawer-menu li {
+  border-bottom: 1px solid #f1f3f5;
+}
+
+.nk-drawer-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  color: #212529;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.92rem;
+  transition: background 0.2s;
+}
+
+.nk-drawer-menu a:active {
+  background-color: #f8f9fa;
+}
+
+.menu-item-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.menu-icon {
+  width: 20px;
+  text-align: center;
+  color: #495057;
+  font-size: 1rem;
+}
+
+.arrow-icon {
+  font-size: 0.75rem;
+  color: #adb5bd;
+}
+
+/* Bottom Actions Bar */
+.nk-drawer-footer {
+  padding: 12px 16px;
+  background: #ffffff;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.nk-footer-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  height: 44px;
+  text-decoration: none;
+  color: #333;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.action-zalo {
+  width: 52px;
+  color: #0068ff;
+  border-color: #d0e1ff;
+}
+
+.action-zalo i {
+  font-size: 1.1rem;
+}
+
+.action-cart {
+  width: 52px;
+  border-color: #e0e0e0;
+  color: #c73a2b;
+}
+
+.action-cart i {
+  font-size: 1.1rem;
+}
+
+.nk-btn-buy-now {
+  flex: 1;
+  background-color: #d83a2b; /* Màu đỏ CTA */
+  color: #ffffff !important;
+  height: 44px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  box-shadow: 0 4px 12px rgba(216, 58, 43, 0.25);
+}
