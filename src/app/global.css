@@ -1,4 +1,7 @@
-html, body { height: 100%; }
+html, body { 
+  height: 100%; 
+  overflow-x: hidden; /* Tránh vỡ khung theo chiều ngang trên điện thoại */
+}
 
 :root {
   --background: #ffffff;
@@ -59,6 +62,7 @@ main {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Announcement Bar */
 .nk-announcement-bar {
   position: fixed;
   top: 0; left: 0; right: 0;
@@ -110,6 +114,7 @@ main {
   color: #ffffff;
 }
 
+/* Header & Navigation */
 .nk-nav {
   position: fixed;
   top: 36px;
@@ -118,7 +123,7 @@ main {
   background: rgba(255, 255, 255, 0.88) !important;
   backdrop-filter: blur(20px) saturate(1.2);
   -webkit-backdrop-filter: blur(20px) saturate(1.2);
-border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
   height: 72px;
   display: flex;
   align-items: center;
@@ -134,6 +139,7 @@ border-bottom: 1px solid var(--border-light);
   align-items: center; 
   justify-content: space-between;
   max-width: 1400px;
+  width: 100%;
 }
 
 .nk-brand {
@@ -228,6 +234,7 @@ border-bottom: 1px solid var(--border-light);
   color: var(--accent);
 }
 
+/* Categories Bar */
 .nk-categories-bar {
   position: fixed;
   top: 108px;
@@ -244,6 +251,7 @@ border-bottom: 1px solid var(--border-light);
 
 .nk-categories-bar .container {
   max-width: 1400px;
+  width: 100%;
 }
 
 .nk-categories-list { 
@@ -275,7 +283,7 @@ border-bottom: 1px solid var(--border-light);
   position: relative;
   white-space: nowrap;
   padding: 4px 0;
-display: inline-block;
+  display: inline-block;
 }
 
 .nk-categories-list a::before {
@@ -313,6 +321,7 @@ display: inline-block;
   width: 100%;
 }
 
+/* Actions Menu */
 .nk-actions {
   display: flex;
   align-items: center;
@@ -370,6 +379,7 @@ display: inline-block;
   background-color: var(--accent) !important;
 }
 
+/* Footer */
 .nk-footer { 
   background: linear-gradient(180deg, #fafbfc 0%, #f1f3f5 100%) !important;
   border-top: 1px solid var(--border-light);
@@ -445,7 +455,7 @@ display: inline-block;
 }
 
 .nk-footer-copy {
-margin-top: 2.5rem; 
+  margin-top: 2.5rem; 
   padding-top: 1.5rem; 
   border-top: 1px solid var(--border-light); 
   color: var(--text-muted); 
@@ -489,29 +499,148 @@ margin-top: 2.5rem;
   border-color: var(--accent);
 }
 
+/* ==========================================================================
+   MOBILE & TABLET RESPONSIVE STYLES (Tối ưu hóa giao diện di động)
+   ========================================================================== */
+
+/* Nút Mobile Toggle Menu (Mặc định ẩn trên Desktop) */
+.nk-mobile-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 1.4rem;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+@media (max-width: 991px) {
+  /* Tối ưu toán bộ vị trí Header khi xuống Tablet/Mobile */
+  .nk-announcement-bar {
+    height: 30px;
+    font-size: 0.65rem;
+  }
+
+  .nk-nav {
+    top: 30px;
+    height: 60px;
+    padding: 0 1rem;
+  }
+
+  .nk-categories-bar {
+    top: 90px;
+    height: 38px;
+  }
+
+  main {
+    padding-top: 138px;
+    padding-bottom: 30px;
+  }
+
+  /* Ẩn bớt link ngang để làm Menu trượt (Drawer) */
+  .nk-links {
+    position: fixed;
+    top: 90px;
+    left: -100%;
+    width: 280px;
+    height: calc(100vh - 90px);
+    background: #ffffff;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 2rem 1.5rem;
+    gap: 1.5rem;
+    box-shadow: 10px 0 30px rgba(0, 0, 0, 0.1);
+    transition: left 0.3s ease-in-out;
+    z-index: 1002;
+  }
+
+  /* Khi class 'active' được thêm qua JS khi bấm Nút Hamburger */
+  .nk-links.active {
+    left: 0;
+  }
+
+  .nk-links a {
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  .nk-mobile-toggle {
+    display: block;
+  }
+
+  .nk-actions {
+    gap: 1rem;
+  }
+}
+
 @media (max-width: 768px) {
-  main { padding-top: 132px; }
-  .nk-announcement-bar { font-size: 0.62rem; height: 32px; }
-  .nk-nav { top: 32px; height: 64px; }
+  main { 
+    padding-top: 128px; 
+  }
+
+  .nk-announcement-bar { 
+    font-size: 0.6rem; 
+    height: 28px; 
+  }
+
+  .nk-nav { 
+    top: 28px; 
+    height: 56px; 
+  }
+
   .nk-categories-bar { 
-    top: 96px;
+    top: 84px;
     height: 36px;
     overflow-x: auto;
   }
+
   .nk-categories-list { 
-    gap: 1.5rem;
-    padding: 0 1rem;
     justify-content: flex-start;
+    gap: 1.2rem;
+    padding: 0 1rem;
   }
-  .nk-links { gap: 1.2rem; }
-  .nk-links a { font-size: 0.6rem; letter-spacing: 0.08em; }
+
+  .nk-categories-list a {
+    font-size: 0.6rem;
+  }
+
+  .nk-footer {
+    padding: 2.5rem 0 1.5rem;
+    text-align: center;
+  }
+
+  .nk-footer-label::after {
+    margin: 8px auto 0;
+  }
+
+  .social-links {
+    justify-content: center;
+  }
 }
 
 @media (max-width: 576px) {
-  .nk-links { gap: 0.8rem; }
-  .nk-links a { font-size: 0.5rem; letter-spacing: 0.06em; }
-  .nk-categories-list { gap: 1rem; }
-  .nk-categories-list a { font-size: 0.55rem; }
+  /* Tối ưu không gian hiển thị cho màn hình cực nhỏ (Smartphone) */
+  .nk-announcement-content span:nth-child(2) {
+    display: none; /* Ẩn bớt tin phụ ở thanh trên cùng cho đỡ chật */
+  }
 
+  .nk-links a { 
+    font-size: 0.75rem; 
+    letter-spacing: 0.06em; 
+  }
+
+  .nk-categories-list { 
+    gap: 1rem; 
+  }
+
+  .nk-categories-list a { 
+    font-size: 0.58rem; 
+  }
+
+  /* Tối ưu hóa Touch point trên màn hình cảm ứng */
+  .nk-actions a, 
+  .nk-categories-list a, 
+  .nk-links a {
+    padding: 8px 4px;
+  }
 }
-
