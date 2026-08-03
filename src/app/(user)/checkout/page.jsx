@@ -335,7 +335,7 @@ export default function Checkout() {
         return false;
       }
       if (!selectedProvince || !selectedDistrict || !selectedWard) {
-        alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
+        alert("Vui lòng chọn đầy đủ Phường/Xã, Quận/Huyện và Tỉnh/Thành!");
         return false;
       }
     }
@@ -343,6 +343,7 @@ export default function Checkout() {
     return true;
   };
 
+  // 🟢 ĐÃ SỬA: Chuỗi địa chỉ hoàn chỉnh theo thứ tự [Địa chỉ nhà], [Phường/Xã], [Quận/Huyện], [Tỉnh/Thành]
   const getFullDeliveryAddress = () => {
     if (selectedAddressId !== "new") {
       const matchedAddr = savedAddresses.find((a) => a._id === selectedAddressId);
@@ -636,7 +637,9 @@ export default function Checkout() {
                         />
                       </div>
 
+                      {/* 🟢 ĐÃ SỬA: Sắp xếp theo thứ tự Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
                       <div className="row g-2">
+                        {/* 1. Chọn Tỉnh/Thành phố (Tỉnh chọn trước để load dữ liệu Quận/Huyện) */}
                         <div className="col-md-4">
                           <select
                             className="form-select form-select-lg fs-6"
@@ -652,6 +655,7 @@ export default function Checkout() {
                           </select>
                         </div>
 
+                        {/* 2. Chọn Quận/Huyện */}
                         <div className="col-md-4">
                           <select
                             className="form-select form-select-lg fs-6"
@@ -668,6 +672,7 @@ export default function Checkout() {
                           </select>
                         </div>
 
+                        {/* 3. Chọn Phường/Xã */}
                         <div className="col-md-4">
                           <select
                             className="form-select form-select-lg fs-6"
@@ -850,12 +855,11 @@ export default function Checkout() {
                       >
                         <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
                         
-                        {/* Đã thêm .sort() để đẩy Voucher đủ điều kiện lên đầu */}
                         {[...availableVouchers]
                           .sort((a, b) => {
                             const aEligible = total >= (a.min_order_value || 0);
                             const bEligible = total >= (b.min_order_value || 0);
-                            return bEligible - aEligible; // True (1) lên trước, False (0) xuống sau
+                            return bEligible - aEligible;
                           })
                           .map((v) => {
                             const isEligible = total >= (v.min_order_value || 0);
