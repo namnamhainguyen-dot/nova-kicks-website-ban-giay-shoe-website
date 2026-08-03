@@ -7,10 +7,8 @@ import Image from "next/image";
 import UserActions from "@/components/UserActions";
 import NavbarLinks from "@/components/NavbarLinks";
 import { Toaster } from "react-hot-toast";
-
 import Script from "next/script";
 import "../global.css";
-
 
 async function getCategories() {
   try {
@@ -20,9 +18,9 @@ async function getCategories() {
       .collection("categories")
       .find({ status: "active" })
       .toArray();
-    return categoriesList.map(cat => ({
+    return categoriesList.map((cat) => ({
       ...cat,
-      _id: String(cat._id)
+      _id: String(cat._id),
     }));
   } catch (error) {
     console.error("Lỗi khi lấy danh mục từ MongoDB:", error);
@@ -37,19 +35,22 @@ export default async function Layout({ children }) {
     <html lang="vi" suppressHydrationWarning>
       <head>
         <meta charSet="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
         <title>Nova Kicks - Premium Streetwear Hub</title>
-        
+
         {/* Font Awesome Icons */}
         <link
           rel="stylesheet"
           href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
         />
-        
+
+        {/* Bootstrap CSS */}
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           rel="stylesheet"
         />
+        
+        {/* Google Fonts */}
         <link
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
@@ -57,42 +58,39 @@ export default async function Layout({ children }) {
       </head>
       <body className="d-flex flex-column min-vh-100">
         <ToastProvider />
-        <Toaster 
-          position="bottom-right" 
-
+        <Toaster
+          position="bottom-right"
           reverseOrder={false}
           toastOptions={{
             style: {
-              borderRadius: '12px',
-              background: '#fff',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-              padding: '14px 20px',
+              borderRadius: "12px",
+              background: "#fff",
+              boxShadow: "0 8px 32px rgba(0,0,0,0.08)",
+              padding: "14px 20px",
               fontFamily: "'Inter', sans-serif",
             },
             success: {
               iconTheme: {
-                primary: '#d87c3c',
-                secondary: '#fff',
+                primary: "#d87c3c",
+                secondary: "#fff",
               },
             },
             error: {
               iconTheme: {
-                primary: '#c73a2b',
-                secondary: '#fff',
+                primary: "#c73a2b",
+                secondary: "#fff",
               },
             },
           }}
         />
 
-
         <CartProvider>
           <WishlistProvider>
-            
             {/* ── THANH THÔNG BÁO PHÍA TRÊN (ANNOUNCEMENT BAR) ── */}
             <div className="nk-announcement-bar">
               <div className="nk-announcement-content">
                 <span>
-                  <i className="fas fa-bolt" style={{ color: 'var(--gold)' }}></i>
+                  <i className="fas fa-bolt" style={{ color: "var(--gold)" }}></i>
                   FREESHIP TOÀN QUỐC CHO ĐƠN HÀNG TỪ 500K — MIỄN PHÍ ĐỔI TRẢ TRONG 30 NGÀY
                 </span>
                 <span className="d-none d-md-inline-flex">|</span>
@@ -102,38 +100,41 @@ export default async function Layout({ children }) {
               </div>
             </div>
 
-            {/* ── NAVBAR CHÍNH NÂNG CẤP ── */}
+            {/* ── NAVBAR CHÍNH DÙNG DỊCH CHO MOBILE ── */}
             <nav className="nk-nav" id="mainNav" suppressHydrationWarning>
               <div className="container">
+                {/* Logo */}
                 <Link className="nk-brand" href="/">
-                  <Image 
+                  <Image
                     src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
-                    alt="Nova Kicks Logo" 
+                    alt="Nova Kicks Logo"
                     width={160}
                     height={48}
-                    style={{ 
-                      objectFit: 'contain',
-                      maxHeight: '44px',
-                      filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.04))'
-                    }} 
-                    priority 
+                    style={{
+                      objectFit: "contain",
+                      maxHeight: "44px",
+                      filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.04))",
+                    }}
+                    priority
                   />
                   <span className="brand-dot"></span>
                 </Link>
 
+                {/* Các liên kết chính */}
                 <NavbarLinks />
 
+                {/* Giỏ hàng / Nút bấm Người dùng */}
                 <UserActions />
               </div>
             </nav>
 
-            {/* ── CATEGORIES BAR NÂNG CẤP ── */}
+            {/* ── CATEGORIES BAR (THANH DANH MỤC TRUỘT) ── */}
             <div className="nk-categories-bar">
               <div className="container">
                 <ul className="nk-categories-list">
                   <li>
                     <Link href="/products">
-                      <i className="fas fa-th" style={{ marginRight: '6px', fontSize: '0.5rem' }}></i>
+                      <i className="fas fa-th" style={{ marginRight: "6px", fontSize: "0.5rem" }}></i>
                       Tất cả
                     </Link>
                   </li>
@@ -147,91 +148,74 @@ export default async function Layout({ children }) {
                 </ul>
               </div>
             </div>
-            
-            {/* ── CONTENT ── */}
-            <main>
-              {children}
-            </main>
 
+            {/* ── NỘI DUNG CHÍNH ── */}
+            <main>{children}</main>
           </WishlistProvider>
         </CartProvider>
 
-        {/* ── FOOTER NÂNG CẤP ── */}
+        {/* ── FOOTER CHÂN TRANG ── */}
         <footer className="nk-footer">
           <div className="container">
             <div className="row g-5">
-              <div className="col-md-5">
+              <div className="col-12 col-md-5">
                 <div className="mb-3">
                   <Link className="nk-footer-brand" href="/">
-                    <Image 
+                    <Image
                       src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
-                      alt="Nova Kicks Logo" 
-                      width={300} 
-                      height={200} 
-                      style={{ 
-                        objectFit: 'contain',
-                        mixBlendMode: 'multiply'
-                      }} 
+                      alt="Nova Kicks Logo"
+                      width={220}
+                      height={80}
+                      style={{
+                        objectFit: "contain",
+                        mixBlendMode: "multiply",
+                      }}
                     />
                   </Link>
                 </div>
-                <p style={{ maxWidth: '320px', color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.7 }}>
-                  <i className="fas fa-quote-left" style={{ color: 'var(--accent)', marginRight: '6px', opacity: 0.5 }}></i>
+                <p style={{ maxWidth: "320px", color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: 1.7 }}>
+                  <i className="fas fa-quote-left" style={{ color: "var(--accent)", marginRight: "6px", opacity: 0.5 }}></i>
                   Nền tảng phân phối giày Streetwear cao cấp — nơi văn hóa đường phố gặp gỡ thiết kế đương đại.
                 </p>
-                
-                {/* Social Links */}
+
+                {/* Mạng xã hội */}
                 <div className="social-links">
-                  <a href="#" aria-label="Facebook">
-                    <i className="fab fa-facebook-f"></i>
-                  </a>
-                  <a href="#" aria-label="Instagram">
-                    <i className="fab fa-instagram"></i>
-                  </a>
-                  <a href="#" aria-label="Twitter">
-                    <i className="fab fa-x-twitter"></i>
-                  </a>
-                  <a href="#" aria-label="YouTube">
-                    <i className="fab fa-youtube"></i>
-                  </a>
-                  <a href="#" aria-label="TikTok">
-                    <i className="fab fa-tiktok"></i>
-                  </a>
+                  <a href="#" aria-label="Facebook"><i className="fab fa-facebook-f"></i></a>
+                  <a href="#" aria-label="Instagram"><i className="fab fa-instagram"></i></a>
+                  <a href="#" aria-label="Twitter"><i className="fab fa-x-twitter"></i></a>
+                  <a href="#" aria-label="YouTube"><i className="fab fa-youtube"></i></a>
+                  <a href="#" aria-label="TikTok"><i className="fab fa-tiktok"></i></a>
                 </div>
               </div>
- 
+
               <div className="col-6 col-md-4">
                 <p className="nk-footer-label">
-                  <i className="fas fa-headset" style={{ marginRight: '8px', color: 'var(--accent)' }}></i>
+                  <i className="fas fa-headset" style={{ marginRight: "8px", color: "var(--accent)" }}></i>
                   Liên hệ
                 </p>
                 <ul className="nk-footer-links">
                   <li>
                     <a href="tel:0931839732">
-                      <i className="fas fa-phone" style={{ marginRight: '8px', color: 'var(--accent)', width: '16px' }}></i>
+                      <i className="fas fa-phone" style={{ marginRight: "8px", color: "var(--accent)", width: "16px" }}></i>
                       0931 839 732
                     </a>
                   </li>
                   <li>
                     <a href="mailto:support@nova-kicks.com">
-                      <i className="fas fa-envelope" style={{ marginRight: '8px', color: 'var(--accent)', width: '16px' }}></i>
+                      <i className="fas fa-envelope" style={{ marginRight: "8px", color: "var(--accent)", width: "16px" }}></i>
                       support@nova-kicks.com
                     </a>
                   </li>
-                  <li style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className="fas fa-location-dot" style={{ color: 'var(--accent)', width: '16px' }}></i>
+                  <li style={{ color: "var(--text-secondary)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "8px" }}>
+                    <i className="fas fa-location-dot" style={{ color: "var(--accent)", width: "16px" }}></i>
                     123 CVPM Quang Trung, Quận 12, TP.HCM
-                  </li>
-                  <li style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <i className="fas fa-clock" style={{ color: 'var(--accent)', width: '16px' }}></i>
-                    09:00 – 22:00 hàng ngày
                   </li>
                 </ul>
               </div>
-              
+
               <div className="col-6 col-md-3">
                 <p className="nk-footer-label">
-                  <i className="fas fa-link" style={{ marginRight: '8px', color: 'var(--accent)' }}></i>
+                  <i className="fas fa-link" style={{ marginRight: "8px", color: "var(--accent)" }}></i>
                   Liên kết
                 </p>
                 <ul className="nk-footer-links">
@@ -242,40 +226,30 @@ export default async function Layout({ children }) {
                 </ul>
               </div>
             </div>
-            
+
             <div className="nk-footer-copy d-flex justify-content-between align-items-center flex-wrap gap-2">
               <span>
-                <i className="far fa-copyright" style={{ marginRight: '4px' }}></i>
+                <i className="far fa-copyright" style={{ marginRight: "4px" }}></i>
                 2026 Nova Kicks. All rights reserved.
               </span>
-              <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                <a href="#" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.73rem', transition: 'color 0.3s' }}>
+              <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+                <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none", fontSize: "0.73rem" }}>
                   Chính sách bảo mật
                 </a>
-                <span style={{ color: 'var(--border-medium)' }}>|</span>
-                <a href="#" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '0.73rem', transition: 'color 0.3s' }}>
+                <span style={{ color: "var(--border-medium)" }}>|</span>
+                <a href="#" style={{ color: "var(--text-muted)", textDecoration: "none", fontSize: "0.73rem" }}>
                   Điều khoản sử dụng
                 </a>
               </div>
             </div>
           </div>
         </footer>
-        
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-        
-        {/* Scroll effect script */}
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            window.addEventListener('scroll', function() {
-              const nav = document.getElementById('mainNav');
-              if (window.scrollY > 50) {
-                nav.classList.add('scrolled');
-              } else {
-                nav.classList.remove('scrolled');
-              }
-            });
-          `
-        }} />
+
+        {/* Load Bootstrap JS qua Next Script */}
+        <Script 
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
+          strategy="afterInteractive" 
+        />
       </body>
     </html>
   );
