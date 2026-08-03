@@ -17,12 +17,21 @@ export default function AdminDirectReplyPage() {
 
         const data = await res.json();
         if (Array.isArray(data)) {
-          setConversations(data);
+          // So sánh để tránh re-render trùng lặp gây giật giao diện
+          setConversations((prev) => {
+            const prevStr = JSON.stringify(prev);
+            const nextStr = JSON.stringify(data);
+            if (prevStr === nextStr) return prev;
+            return data;
+          });
 
           // Nếu chưa chọn khách nào và có dữ liệu -> Tự động chọn cuộc trò chuyện đầu tiên
-          if (!activeSessionId && data.length > 0) {
-            setActiveSessionId(data[0].sessionId);
-          }
+          setActiveSessionId((prevId) => {
+            if (!prevId && data.length > 0) {
+              return data[0].sessionId;
+            }
+            return prevId;
+          });
         }
       } catch (error) {
         console.error("Lỗi khi tải danh sách tin nhắn:", error);
@@ -32,8 +41,19 @@ export default function AdminDirectReplyPage() {
     fetchConversations();
     const interval = setInterval(fetchConversations, 3000);
 
-    return () => clearInterval(interval);
-  }, [activeSessionId]);
+    // Lắng nghe sự kiện từ storage / custom event nếu có hành động mới
+    const handleStorageChange = (e) => {
+      if (e.key === "chat_refresh") fetchConversations();
+    };
+    window.addEventListener("storage", handleStorageChange);
+    window.addEventListener("chat-updated", fetchConversations);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("chat-updated", fetchConversations);
+    };
+  }, []);
 
   // Cuộn xuống tin nhắn cuối cùng khi có tin nhắn mới hoặc đổi cuộc trò chuyện
   useEffect(() => {
@@ -57,6 +77,8 @@ export default function AdminDirectReplyPage() {
     const currentText = replyText.trim();
     setReplyText(""); // Xóa ngay ô input cho trải nghiệm mượt mà
 
+    const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
     // Cập nhật giao diện tạm thời (Optimistic Update)
     const newMessage = { id: Date.now(), sender: "admin", text: currentText };
     setConversations((prev) =>
@@ -65,7 +87,7 @@ export default function AdminDirectReplyPage() {
           ? {
               ...chat,
               messages: [...(chat.messages || []), newMessage],
-              time: new Date().toLocaleTimeString(),
+              time: nowTime,
             }
           : chat
       )
@@ -79,7 +101,9 @@ export default function AdminDirectReplyPage() {
         body: JSON.stringify({
           sessionId: activeSessionId,
           sender: "admin",
+          user: "Khách hàng",
           text: currentText,
+          mode: "admin",
         }),
       });
 
@@ -122,7 +146,11 @@ export default function AdminDirectReplyPage() {
             <div className="overflow-auto flex-grow-1">
               {filteredConversations.length > 0 ? (
                 filteredConversations.map((conv) => {
-                  const lastMsg = conv.messages?.[conv.messages.length - 1]?.text || "Chưa có tin nhắn";
+                  // Chuẩn hóa tin nhắn cuối cùng để hiển thị preview ở danh sách bên trái
+                  const lastMsgObj = conv.messages?.[conv.messages.length - 1];
+                  const lastMsgText = lastMsgObj
+                    ? lastMsgObj.text || lastMsgObj.content || lastMsgObj.message
+                    : "Chưa có tin nhắn";
                   const isSelected = activeSessionId === conv.sessionId;
 
                   return (
@@ -144,7 +172,8 @@ export default function AdminDirectReplyPage() {
                           </small>
                         </div>
                         <p className="mb-0 text-muted text-truncate" style={{ fontSize: "0.85rem" }}>
-                          {lastMsg}
+                          {lastMsgObj?.sender === "admin" ? "Bạn: " : ""}
+                          {lastMsgText}
                         </p>
                       </div>
                     </div>
@@ -183,6 +212,8 @@ export default function AdminDirectReplyPage() {
                   {activeChat.messages && activeChat.messages.length > 0 ? (
                     activeChat.messages.map((msg, index) => {
                       const isAdmin = msg.sender === "admin";
+                      const msgContent = msg.text || msg.content || msg.message || "";
+
                       return (
                         <div key={msg.id || index} className={`d-flex ${isAdmin ? "justify-content-end" : "justify-content-start"}`}>
                           <div
@@ -194,7 +225,7 @@ export default function AdminDirectReplyPage() {
                               lineHeight: "1.4",
                             }}
                           >
-                            {msg.text}
+                            {msgContent}
                           </div>
                         </div>
                       );
