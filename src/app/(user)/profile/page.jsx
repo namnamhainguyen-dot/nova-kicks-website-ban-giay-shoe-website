@@ -415,82 +415,111 @@ export default function Profile() {
   };
 
   const handleSaveAddress = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
 
-    if (!receiverName.trim() || !receiverPhone.trim() || !houseNumber.trim()) {
-      alert("Vui lòng điền đầy đủ Tên, Số điện thoại người nhận và Số nhà!");
-      return;
+  if (!receiverName.trim() || !receiverPhone.trim() || !houseNumber.trim()) {
+    alert("Vui lòng điền đầy đủ Tên, Số điện thoại người nhận và Số nhà!");
+    return;
+  }
+
+  if (!selectedProvince || !selectedDistrict || !selectedWard) {
+    alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
+    return;
+  }
+
+  setSubmitting(true);
+
+  const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
+  const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
+  const wardObj = wards.find((w) => String(w.id) === String(selectedWard));
+
+  const fullAddrString = [
+    houseNumber.trim(),
+    wardObj ? wardObj.full_name : "",
+    districtObj ? districtObj.full_name : "",
+    provinceObj ? provinceObj.full_name : "",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  let updatedList = [...(user.addresses || [])];
+
+  if (isDefaultAddress) {
+    updatedList = updatedList.map((a) => ({ ...a, isDefault: false }));
+  }
+
+  if (editingAddressId) {
+    updatedList = updatedList.map((a) =>
+      a._id === editingAddressId
+        ? {
+            ...a,
+            label: addressLabel,
+            receiverName,
+            receiverPhone,
+            detailAddress: houseNumber,
+            provinceId: selectedProvince,
+            districtId: selectedDistrict,
+            wardId: selectedWard,
+            fullAddress: fullAddrString,
+            isDefault: isDefaultAddress,
+          }
+        : a
+    );
+  } else {
+    const newAddressItem = {
+      _id: "addr_" + Date.now(),
+      label: addressLabel,
+      receiverName,
+      receiverPhone,
+      detailAddress: houseNumber,
+      provinceId: selectedProvince,
+      districtId: selectedDistrict,
+      wardId: selectedWard,
+      fullAddress: fullAddrString,
+      isDefault: isDefaultAddress || updatedList.length === 0,
+    };
+    updatedList.push(newAddressItem);
+  }
+
+  // --- LƯU VÀO DATABASE MÁY CHỦ ---
+  try {
+    let rawId = user._id || user.id;
+    if (typeof rawId === "object" && rawId !== null) {
+      rawId = rawId.$oid || rawId.toString();
     }
+    const currentUserId = String(rawId || "").trim();
 
-    const phoneRegex = /^0\d{9}$/;
-    if (!phoneRegex.test(receiverPhone)) {
-      alert("Số điện thoại người nhận không hợp lệ (cần đúng 10 số)!");
-      return;
-    }
+    const res = await fetch(`/api/users/${currentUserId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fullname: user.fullname,
+        phone: user.phone,
+        addresses: updatedList, // Gửi danh sách địa chỉ mới lên server
+      }),
+    });
 
-    if (!selectedProvince || !selectedDistrict || !selectedWard) {
-      alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
-      return;
-    }
+    if (res.ok) {
+      // 1. Cập nhật React State
+      const updatedUser = { ...user, addresses: updatedList };
+      setUser(updatedUser);
 
-    setSubmitting(true);
+      // 2. Cập nhật LocalStorage
+      localStorage.setItem("user", JSON.stringify(updatedUser));
 
-    const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
-    const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
-    const wardObj = wards.find((w) => String(w.id) === String(selectedWard));
-
-    const fullAddrString = [
-      houseNumber.trim(),
-      wardObj ? wardObj.full_name : "",
-      districtObj ? districtObj.full_name : "",
-      provinceObj ? provinceObj.full_name : "",
-    ]
-      .filter(Boolean)
-      .join(", ");
-
-    let updatedList = [...(user.addresses || [])];
-
-    if (isDefaultAddress) {
-      updatedList = updatedList.map((a) => ({ ...a, isDefault: false }));
-    }
-
-    if (editingAddressId) {
-      updatedList = updatedList.map((a) =>
-        a._id === editingAddressId
-          ? {
-              ...a,
-              label: addressLabel,
-              receiverName,
-              receiverPhone,
-              detailAddress: houseNumber,
-              provinceId: selectedProvince,
-              districtId: selectedDistrict,
-              wardId: selectedWard,
-              fullAddress: fullAddrString,
-              isDefault: isDefaultAddress,
-            }
-          : a
-      );
+      alert("Lưu địa chỉ thành công!");
+      setShowAddressModal(false);
     } else {
-      const newAddressItem = {
-        _id: "addr_" + Date.now(),
-        label: addressLabel,
-        receiverName,
-        receiverPhone,
-        detailAddress: houseNumber,
-        provinceId: selectedProvince,
-        districtId: selectedDistrict,
-        wardId: selectedWard,
-        fullAddress: fullAddrString,
-        isDefault: isDefaultAddress || updatedList.length === 0,
-      };
-      updatedList.push(newAddressItem);
+      const errData = await res.json();
+      alert(`Lỗi lưu địa chỉ: ${errData.error || "Không thể lưu vào cơ sở dữ liệu"}`);
     }
-
-    await syncAddressesToStorageAndServer(updatedList);
+  } catch (err) {
+    console.error("Lỗi khi kết nối server:", err);
+    alert("Không thể kết nối đến máy chủ để lưu địa chỉ!");
+  } finally {
     setSubmitting(false);
-    setShowAddressModal(false);
-  };
+  }
+};
 
   const handleDeleteAddress = (id) => {
     if (!confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
