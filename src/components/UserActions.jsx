@@ -3,19 +3,19 @@
 import { useEffect, useState, useContext } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CartContext } from "@/components/CartContext"; // Đường dẫn trỏ tới CartContext của bạn
+import { CartContext } from "@/components/CartContext";
 
 export default function UserActions() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [isMounted, setIsMounted] = useState(false);
 
-  // Lấy dữ liệu giỏ hàng từ CartContext (tên biến có thể là cart hoặc cartItems tùy theo file Context của bạn)
-  const { cart } = useContext(CartContext) || {}; 
+  // Lấy dữ liệu giỏ hàng từ CartContext
+  const { cart } = useContext(CartContext) || {};
 
   // Tính tổng số lượng sản phẩm trong giỏ hàng
-  const totalItems = Array.isArray(cart) 
-    ? cart.reduce((sum, item) => sum + (item.quantity || 1), 0) 
+  const totalItems = Array.isArray(cart)
+    ? cart.reduce((sum, item) => sum + (item.quantity || 1), 0)
     : 0;
 
   const fetchUserData = () => {
@@ -26,6 +26,8 @@ export default function UserActions() {
       } catch (error) {
         setUser(null);
       }
+    } else {
+      setUser(null);
     }
   };
 
@@ -33,20 +35,18 @@ export default function UserActions() {
     setIsMounted(true);
     fetchUserData();
 
-    // Lắng nghe sự kiện đăng nhập/đăng xuất
+    // Lắng nghe các sự kiện cập nhật user
     window.addEventListener("userLogin", fetchUserData);
 
-    // Lắng nghe sự kiện cập nhật profile từ trang Profile để đổi tên ngay lập tức không cần F5
     const handleProfileUpdate = (event) => {
       if (event.detail) {
-        setUser(event.detail); // Cập nhật trực tiếp state user bằng dữ liệu mới
+        setUser(event.detail);
       } else {
-        fetchUserData(); // Fallback fetch lại từ localStorage nếu thiếu detail
+        fetchUserData();
       }
     };
     window.addEventListener("userProfileUpdated", handleProfileUpdate);
 
-    // Cleanup sự kiện khi component unmount
     return () => {
       window.removeEventListener("userLogin", fetchUserData);
       window.removeEventListener("userProfileUpdated", handleProfileUpdate);
@@ -63,58 +63,76 @@ export default function UserActions() {
   };
 
   if (!isMounted) {
-    return <ul className="nk-actions"></ul>;
+    return <ul className="nk-actions d-none d-lg-flex"></ul>;
   }
 
   return (
-    <ul className="nk-actions">
-      {(!user || user.role !== 'admin') && (
+    /* Thêm d-none d-lg-flex: Ẩn hoàn toàn trên Mobile/Tablet (< 992px) và chỉ hiện ở Desktop (>= 992px) */
+    <ul className="nk-actions d-none d-lg-flex align-items-center mb-0 list-unstyled gap-3">
+      {/* 1. ICON GIỎ HÀNG */}
+      {(!user || user.role !== "admin") && (
         <li>
-          <Link href="/cart" className="position-relative text-dark text-decoration-none" title="Giỏ hàng">
+          <Link
+            href="/cart"
+            className="position-relative text-dark text-decoration-none"
+            title="Giỏ hàng"
+          >
             <i className="fas fa-shopping-bag" style={{ fontSize: "1rem" }}></i>
-            
+
             {/* Badge hiển thị số lượng */}
             {totalItems > 0 && (
-              <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: "0.55rem" }}>
+              <span
+                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
+                style={{ fontSize: "0.55rem" }}
+              >
                 {totalItems}
               </span>
             )}
           </Link>
         </li>
       )}
-      
+
+      {/* 2. TÀI KHOẢN / ĐĂNG NHẬP */}
       {user ? (
         <li className="nav-item dropdown">
-          <Link 
-            className="nav-link dropdown-toggle fw-bold text-dark p-0" 
-            href="#" 
-            id="userDropdown" 
-            role="button" 
-            data-bs-toggle="dropdown" 
+          <Link
+            className="nav-link dropdown-toggle fw-bold text-dark p-0"
+            href="#"
+            id="userDropdown"
+            role="button"
+            data-bs-toggle="dropdown"
             aria-expanded="false"
             style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
           >
-            👋 Chào, {user.fullname}
+            👋 CHÀO, {user.fullname || user.name || "KHÁCH"}
           </Link>
-          
-          <ul className="dropdown-menu dropdown-menu-end rounded-0 shadow-sm" aria-labelledby="userDropdown">
-            {user.role === 'admin' && (
+
+          <ul
+            className="dropdown-menu dropdown-menu-end rounded-0 shadow-sm"
+            aria-labelledby="userDropdown"
+          >
+            {user.role === "admin" && (
               <li>
-                <Link className="dropdown-item small text-primary fw-bold" href="/admin">
+                <Link
+                  className="dropdown-item small text-primary fw-bold"
+                  href="/admin"
+                >
                   Quản trị hệ thống
                 </Link>
               </li>
             )}
-            
+
             <li>
               <Link className="dropdown-item small" href="/profile">
                 Hồ sơ của tôi
               </Link>
             </li>
-            <li><hr className="dropdown-divider" /></li>
             <li>
-              <button 
-                className="dropdown-item small text-danger bg-transparent border-0 w-100 text-start" 
+              <hr className="dropdown-divider" />
+            </li>
+            <li>
+              <button
+                className="dropdown-item small text-danger bg-transparent border-0 w-100 text-start"
                 onClick={handleLogout}
               >
                 Đăng xuất
@@ -123,7 +141,15 @@ export default function UserActions() {
           </ul>
         </li>
       ) : (
-        <li><Link href="/login">Đăng nhập</Link></li>
+        <li>
+          <Link
+            href="/login"
+            className="text-decoration-none fw-bold text-dark"
+            style={{ fontSize: "0.85rem" }}
+          >
+            Đăng nhập
+          </Link>
+        </li>
       )}
     </ul>
   );
