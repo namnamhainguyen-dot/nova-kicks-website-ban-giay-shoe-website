@@ -65,7 +65,7 @@ export default function Profile() {
     }
   }, []);
 
-  // Từ điển ánh xạ trạng thái đơn hàng
+  // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình (Giữ màu gốc nhưng tăng độ đậm/chữ đậm cho tất cả trạng thái dễ nhìn hơn)
   const statusBadges = {
     pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
     processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-arrow-repeat" },
@@ -429,7 +429,7 @@ export default function Profile() {
     }
 
     if (!selectedProvince || !selectedDistrict || !selectedWard) {
-      alert("Vui lòng chọn đầy đủ Phường/Xã, Quận/Huyện, Tỉnh/Thành!");
+      alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
       return;
     }
 
@@ -767,7 +767,7 @@ export default function Profile() {
                   <p className="text-muted small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
                 </div>
 
-                {/* THANH LỌC TRẠNG THÁI ĐƠN HÀNG */}
+                {/* --- THANH LỌC TRẠNG THÁI ĐƠN HÀNG --- */}
                 <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
                   {[
                     { key: "all", label: "Tất cả" },
@@ -803,6 +803,7 @@ export default function Profile() {
                       const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
                       const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
 
+                      // Tính toán số tiền giảm giá của đơn hàng
                       const orderDiscount = Number(order.discountAmount || order.discount || 0);
 
                       return (
@@ -810,6 +811,7 @@ export default function Profile() {
                           key={order._id || order.id}
                           className="border border-2 rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
                         >
+                          {/* Header đơn hàng: Ngày giờ, Nhãn giảm giá & Trạng thái */}
                           <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
                             <div className="d-flex align-items-center gap-2">
                               <span className="text-muted fw-medium d-flex align-items-center gap-1">
@@ -828,6 +830,7 @@ export default function Profile() {
                             </div>
                           </div>
 
+                          {/* Danh sách sản phẩm */}
                           <div className="d-flex flex-column gap-3 mb-3">
                             {itemsList.length > 0 ? (
                               itemsList.map((item, idx) => {
@@ -902,6 +905,7 @@ export default function Profile() {
                             )}
                           </div>
 
+                          {/* KHỐI HIỂN THỊ LÝ DO HỦY ĐƠN HÀNG */}
                           {isCancelled && (
                             <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
                               <i className="bi bi-info-circle text-danger"></i>
@@ -912,12 +916,14 @@ export default function Profile() {
                             </div>
                           )}
 
+                          {/* Footer đơn hàng */}
                           <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
                             <div className="small text-muted d-flex align-items-center gap-1">
                               <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
                             </div>
                             
                             <div className="d-flex flex-column align-items-end gap-1">
+
                               <div className="d-flex align-items-center gap-3">
                                 <div>
                                   <span className="small text-muted me-2">Tổng tiền:</span>
@@ -1004,24 +1010,20 @@ export default function Profile() {
                       />
                     </div>
 
-                    {/* LUỒNG BẮT BUỘC CHỌN THEO THỨ TỰ: PHƯỜNG/XÃ -> QUẬN/HUYỆN -> TỈNH/THÀNH */}
+                    {/* THỨ TỰ HIỂN THỊ ĐÃ SỬA: PHƯỜNG/XÃ -> QUẬN/HUYỆN -> TỈNH/THÀNH */}
                     
-                    {/* 1. Chọn Phường / Xã (Bước 1: Được phép chọn ngay từ danh sách wards có sẵn) */}
+                    {/* 1. Chọn Phường/Xã (Cột đầu tiên) */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">1. Phường / Xã *</label>
+                      <label className="form-label small fw-semibold">Phường / Xã *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
                         value={selectedWard} 
-                        onChange={(e) => {
-                          setSelectedWard(e.target.value);
-                          // Reset chọn ở 2 bước sau khi đổi Phường/Xã
-                          setSelectedDistrict("");
-                          setSelectedProvince("");
-                        }} 
+                        onChange={(e) => setSelectedWard(e.target.value)} 
+                        disabled={!selectedDistrict} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Phường/Xã trc --</option>
+                        <option value="">-- Chọn Phường/Xã --</option>
                         {wards.map((w) => (
                           <option key={w.id} value={w.id}>
                             {w.full_name}
@@ -1030,17 +1032,14 @@ export default function Profile() {
                       </select>
                     </div>
 
-                    {/* 2. Chọn Quận / Huyện (Bước 2: Bắt buộc đã chọn Phường/Xã) */}
+                    {/* 2. Chọn Quận/Huyện (Cột ở giữa) */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">2. Quận / Huyện *</label>
+                      <label className="form-label small fw-semibold">Quận / Huyện *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
                         value={selectedDistrict} 
-                        onChange={(e) => {
-                          handleDistrictChange(e);
-                          setSelectedProvince("");
-                        }} 
-                        disabled={!selectedWard} 
+                        onChange={handleDistrictChange} 
+                        disabled={!selectedProvince} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
@@ -1053,14 +1052,13 @@ export default function Profile() {
                       </select>
                     </div>
 
-                    {/* 3. Chọn Tỉnh / Thành phố (Bước 3: Bắt buộc đã chọn Quận/Huyện) */}
+                    {/* 3. Chọn Tỉnh/Thành phố (Cột ngoài cùng) */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">3. Tỉnh / Thành phố *</label>
+                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
                         value={selectedProvince} 
                         onChange={handleProvinceChange} 
-                        disabled={!selectedDistrict} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
@@ -1198,6 +1196,7 @@ export default function Profile() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
