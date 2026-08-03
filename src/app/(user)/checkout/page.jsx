@@ -624,11 +624,10 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  {/* Form chọn Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
+                  {/* Form chọn Tỉnh/Huyện/Xã */}
                   {(selectedAddressId === "new" || savedAddresses.length === 0) && (
                     <div className="border p-3 rounded bg-light">
                       <div className="mb-3">
-                        <label className="form-label fw-semibold small">Địa chỉ chi tiết (Số nhà, tên đường)</label>
                         <input
                           type="text"
                           className="form-control form-control-lg fs-6"
@@ -638,42 +637,31 @@ export default function Checkout() {
                         />
                       </div>
 
+                      {/* 🟢 ĐÃ SỬA: Sắp xếp theo thứ tự Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
                       <div className="row g-2">
-                        {/* 1. ƯU TIÊN CHỌN PHƯỜNG / XÃ TRƯỚC */}
+                        {/* 1. Chọn Tỉnh/Thành phố (Tỉnh chọn trước để load dữ liệu Quận/Huyện) */}
                         <div className="col-md-4">
-                          <label className="form-label fw-semibold small">Phường / Xã *</label>
                           <select
                             className="form-select form-select-lg fs-6"
-                            value={selectedWard}
-                            onChange={(e) => {
-                              const wardCode = e.target.value;
-                              setSelectedWard(wardCode);
-                              
-                              // Logic tìm Quận/Huyện & Tỉnh/Thành tương ứng từ dữ liệu Phường/Xã được chọn
-                              const foundWard = wards.find((w) => w.code == wardCode);
-                              if (foundWard) {
-                                if (foundWard.district_code) setSelectedDistrict(foundWard.district_code);
-                                if (foundWard.province_code) setSelectedProvince(foundWard.province_code);
-                              }
-                            }}
+                            value={selectedProvince}
+                            onChange={(e) => setSelectedProvince(e.target.value)}
                           >
-                            <option value="">-- Chọn Phường/Xã --</option>
-                            {wards.map((w) => (
-                              <option key={w.code} value={w.code}>
-                                {w.name}
+                            <option value="">-- Chọn Tỉnh/Thành --</option>
+                            {provinces.map((p) => (
+                              <option key={p.code} value={p.code}>
+                                {p.name}
                               </option>
                             ))}
                           </select>
                         </div>
 
-                        {/* 2. QUẬN / HUYỆN (Tự động cập nhật theo Phường/Xã) */}
+                        {/* 2. Chọn Quận/Huyện */}
                         <div className="col-md-4">
-                          <label className="form-label fw-semibold small">Quận / Huyện</label>
                           <select
                             className="form-select form-select-lg fs-6"
                             value={selectedDistrict}
                             onChange={(e) => setSelectedDistrict(e.target.value)}
-                            disabled={!selectedWard && districts.length === 0}
+                            disabled={!selectedProvince}
                           >
                             <option value="">-- Chọn Quận/Huyện --</option>
                             {districts.map((d) => (
@@ -684,19 +672,18 @@ export default function Checkout() {
                           </select>
                         </div>
 
-                        {/* 3. TỈNH / THÀNH PHỐ (Tự động cập nhật) */}
+                        {/* 3. Chọn Phường/Xã */}
                         <div className="col-md-4">
-                          <label className="form-label fw-semibold small">Tỉnh / Thành Phố</label>
                           <select
                             className="form-select form-select-lg fs-6"
-                            value={selectedProvince}
-                            onChange={(e) => setSelectedProvince(e.target.value)}
-                            disabled={!selectedWard && provinces.length === 0}
+                            value={selectedWard}
+                            onChange={(e) => setSelectedWard(e.target.value)}
+                            disabled={!selectedDistrict}
                           >
-                            <option value="">-- Chọn Tỉnh/Thành --</option>
-                            {provinces.map((p) => (
-                              <option key={p.code} value={p.code}>
-                                {p.name}
+                            <option value="">-- Chọn Phường/Xã --</option>
+                            {wards.map((w) => (
+                              <option key={w.code} value={w.code}>
+                                {w.name}
                               </option>
                             ))}
                           </select>
