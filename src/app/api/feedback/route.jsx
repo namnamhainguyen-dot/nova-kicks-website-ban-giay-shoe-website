@@ -1,5 +1,6 @@
 import clientPromise from "@/libs/mongodb";
 import nodemailer from "nodemailer";
+import { NextResponse } from "next/server";
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -9,12 +10,35 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// 1. Hàm GET: Dành cho trang Admin load danh sách feedback từ database
+export async function GET() {
+  try {
+    const client = await clientPromise;
+    const db = client.db("Nova-kicks"); // Trỏ đúng tên database trên Atlas của bạn
+
+    const feedbacks = await db
+      .collection("feedback")
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray();
+
+    return NextResponse.json(feedbacks, { status: 200 });
+  } catch (error) {
+    console.error("GET FEEDBACK ERROR:", error);
+    return NextResponse.json(
+      { success: false, message: error.message || "Lỗi máy chủ" },
+      { status: 500 }
+    );
+  }
+}
+
+// 2. Hàm POST: Dành cho form phía người dùng gửi liên hệ/feedback mới
 export async function POST(request) {
   try {
     const body = await request.json();
     const { name, email, phone, subject, message } = body;
 
-    // 1. Kiểm tra dữ liệu đầu vào
+    // Kiểm tra dữ liệu đầu vào
     if (!name || !email || !phone || !message) {
       return Response.json(
         { success: false, message: "Vui lòng điền đầy đủ thông tin bắt buộc!" },
@@ -23,9 +47,9 @@ export async function POST(request) {
     }
 
     const client = await clientPromise;
-    const db = client.db("Nova-kicks");
+    const db = client.db("Nova-kicks"); // Trỏ đúng tên database trên Atlas của bạn
 
-    // 2. Lưu vào Database collection "feedback"
+    // Lưu vào Database collection "feedback"
     const newFeedback = {
       name,
       email,
@@ -38,7 +62,7 @@ export async function POST(request) {
 
     const result = await db.collection("feedback").insertOne(newFeedback);
 
-    // 3. Gửi email thông báo về cho cửa hàng/admin
+    // Gửi email thông báo về cho cửa hàng/admin
     try {
       await transporter.sendMail({
         from: `"Nova Kicks System" <${process.env.EMAIL_USER}>`,
