@@ -163,7 +163,7 @@ export default function AdminCommentsPage() {
             <thead className="table-dark text-uppercase small" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
               <tr>
                 <th className="py-3 px-4">Người dùng</th>
-                <th className="py-3">Nội dung bình luận</th>
+                <th className="py-3">Nội dung đánh giá</th>
                 <th className="py-3">Sản phẩm</th>
                 <th className="py-3">Ngày đăng</th>
                 <th className="py-3">Trạng thái</th>
