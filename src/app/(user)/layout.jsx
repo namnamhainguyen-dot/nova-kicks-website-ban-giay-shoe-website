@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import UserActions from "@/components/UserActions";
 import NavbarLinks from "@/components/NavbarLinks";
+import MobileMenu from "@/components/MobileMenu";
 import { Toaster } from "react-hot-toast";
 import Script from "next/script";
 import "../global.css";
@@ -49,7 +50,7 @@ export default async function Layout({ children }) {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           rel="stylesheet"
         />
-        
+
         {/* Google Fonts */}
         <link
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap"
@@ -86,7 +87,7 @@ export default async function Layout({ children }) {
 
         <CartProvider>
           <WishlistProvider>
-            {/* ── THANH THÔNG BÁO PHÍA TRÊN (ANNOUNCEMENT BAR) ── */}
+            {/* ── THANH THÔNG BÁO PHÍA TRÊN ── */}
             <div className="nk-announcement-bar">
               <div className="nk-announcement-content">
                 <span>
@@ -100,35 +101,42 @@ export default async function Layout({ children }) {
               </div>
             </div>
 
-            {/* ── NAVBAR CHÍNH DÙNG DỊCH CHO MOBILE ── */}
+            {/* ── NAVBAR CHÍNH ── */}
             <nav className="nk-nav" id="mainNav" suppressHydrationWarning>
-              <div className="container">
-                {/* Logo */}
-                <Link className="nk-brand" href="/">
-                  <Image
-                    src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
-                    alt="Nova Kicks Logo"
-                    width={160}
-                    height={48}
-                    style={{
-                      objectFit: "contain",
-                      maxHeight: "44px",
-                      filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.04))",
-                    }}
-                    priority
-                  />
-                  <span className="brand-dot"></span>
-                </Link>
+              <div className="container d-flex align-items-center justify-content-between">
+                
+                {/* Cụm Trái: Nút Hamburger Mobile & Logo */}
+                <div className="d-flex align-items-center gap-2">
+                  <MobileMenu categories={categories} />
 
-                {/* Các liên kết chính */}
-                <NavbarLinks />
+                  <Link className="nk-brand" href="/">
+                    <Image
+                      src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
+                      alt="Nova Kicks Logo"
+                      width={160}
+                      height={48}
+                      style={{
+                        objectFit: "contain",
+                        maxHeight: "44px",
+                        filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.04))",
+                      }}
+                      priority
+                    />
+                    <span className="brand-dot"></span>
+                  </Link>
+                </div>
 
-                {/* Giỏ hàng / Nút bấm Người dùng */}
+                {/* Các liên kết chính (Hiển thị trên màn hình lớn) */}
+                <div className="d-none d-lg-block">
+                  <NavbarLinks />
+                </div>
+
+                {/* Giỏ hàng / Tài khoản */}
                 <UserActions />
               </div>
             </nav>
 
-            {/* ── CATEGORIES BAR (THANH DANH MỤC TRUỘT) ── */}
+            {/* ── CATEGORIES BAR (Thanh danh mục trượt) ── */}
             <div className="nk-categories-bar">
               <div className="container">
                 <ul className="nk-categories-list">
@@ -245,7 +253,7 @@ export default async function Layout({ children }) {
           </div>
         </footer>
 
-        {/* Load Bootstrap JS qua Next Script */}
+        {/* Load Bootstrap JS */}
         <Script 
           src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
           strategy="afterInteractive" 
