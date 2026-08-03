@@ -1,55 +1,164 @@
-import clientPromise, { dbName } from "@/libs/mongodb"; // Kiểm tra kỹ chữ libs hay lib
+import ProductFilter from "@/components/ProductFilter";
+import ProductChatbox from "@/components/ProductChatbox";
+import Link from "next/link";
+import clientPromise from "@/libs/mongodb"; // Kiểm tra đường dẫn @/libs/mongodb hoặc @/lib/mongodb tùy dự án của bạn
 
-async function getRawProducts() {
+const DB_NAME = "Nova-kicks";
+const COLLECTION_NAME = "products";
+
+// 1. Hàm Query Trực Tiếp MongoDB Native Driver (Chuẩn Server-Side Rendering)
+async function getProductsFromDB(categoryID) {
   try {
     const client = await clientPromise;
-    
-    // 1. Quét danh sách tất cả Database đang có trên Cluster Atlas
-    const adminDb = client.db().admin();
-    const dbsList = await adminDb.listDatabases();
-    const allDbNames = dbsList.databases.map(d => d.name);
+    const db = client.db(DB_NAME);
 
-    // 2. Lấy DB Nova-kicks
-    const db = client.db("Nova-kicks");
-    
-    // 3. Quét danh sách các Collection trong DB Nova-kicks
-    const collections = await db.listCollections().toArray();
-    const collectionNames = collections.map(c => c.name);
+    // Tạo bộ lọc theo categoryID
+    const filter = {};
+    if (categoryID) {
+      filter.categoryID = categoryID;
+    }
 
-    // 4. Thử lấy sản phẩm từ collection "products"
-    const rawProducts = await db.collection("products").find({}).toArray();
+    // Query thẳng vào collection "products" trên Cloud Atlas
+    const rawProducts = await db
+      .collection(COLLECTION_NAME)
+      .find(filter)
+      .sort({ _id: -1 })
+      .toArray();
 
-    return {
-      allDbNames,
-      collectionNames,
-      productsCount: rawProducts.length,
-      sampleData: JSON.parse(JSON.stringify(rawProducts.slice(0, 2)))
-    };
+    // Convert sang Plain Object để không bị lỗi Serializable ObjectId/Date trên Server Component
+    return JSON.parse(JSON.stringify(rawProducts));
   } catch (error) {
-    return { error: String(error.message || error) };
+    console.error("[MongoDB Query Error] Lỗi kết nối hoặc lấy dữ liệu:", error);
+    return [];
   }
 }
 
-export default async function TestProductsPage() {
-  const result = await getRawProducts();
+export default async function ProductsPage({ searchParams }) {
+  const params = await searchParams;
+  const categoryID = params?.categoryID;
+  const filterIdsParam = params?.filterIds;
+  const searchQuery = params?.search;
+
+  // Lấy dữ liệu từ Database
+  const rawProducts = await getProductsFromDB(categoryID);
+
+  // CHUẨN HÓA DỮ LIỆU
+  const products = (rawProducts || []).map((product) => {
+    const availableColors =
+      product.variants?.map((v) => ({
+        color: v.color,
+        quantity: v.quantity ?? 0,
+      })) || [];
+
+    const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
+
+    return {
+      ...product,
+      _id: String(product._id),
+      availableColors,
+      availableSizes,
+      description: product.description || "Chưa có mô tả cho sản phẩm này.",
+    };
+  });
+
+  // XỬ LÝ LỌC SẢN PHẨM TỪ AI CHATBOX HOẶC TÌM KIẾM TỰ DO
+  let displayedProducts = products;
+
+  if (filterIdsParam) {
+    const filterIds = filterIdsParam.split(",");
+    displayedProducts = products.filter((p) => filterIds.includes(p._id));
+  } else if (searchQuery) {
+    displayedProducts = products.filter((p) =>
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }
 
   return (
-    <div style={{ paddingTop: "120px", paddingLeft: "30px", fontFamily: "sans-serif" }}>
-      <h2>🔍 MÀN HÌNH TEST KẾT NỐI DATABASE</h2>
-      
-      {result.error ? (
-        <div style={{ color: "red", background: "#fee", padding: "15px", borderRadius: "8px" }}>
-          ❌ <strong>LỖI KẾT NỐI MONGO:</strong> {result.error}
-        </div>
-      ) : (
-        <div>
-          <h3>✅ Kết nối DB thành công!</h3>
-          <p><strong>Số lượng sản phẩm lấy được:</strong> {result.length}</p>
-          <pre style={{ background: "#f4f4f4", padding: "15px", borderRadius: "8px", maxHeight: "400px", overflow: "auto" }}>
-            {JSON.stringify(result, null, 2)}
-          </pre>
+    <main
+      className="container py-5"
+      style={{ paddingTop: "90px", minHeight: "100vh" }}
+    >
+      <style>{`
+        .nk-card, .card-product, [class*="card"] {
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                      box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          position: relative;
+          overflow: hidden;
+        }
+        .nk-card:hover, .card-product:hover, [class*="card"]:hover {
+          transform: translateY(-8px);
+box-shadow: 0 16px 36px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.02) !important;
+        }
+        .img-hover-scale, [class*="card"] img {
+          transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        }
+        .nk-card:hover .img-hover-scale, 
+        .card-product:hover [class*="card"] img,
+        [class*="card"]:hover img {
+          transform: scale(1.07);
+        }
+        .nk-card:hover .card-title,
+        .card-product:hover [class*="title"],
+        [class*="card"]:hover h6, [class*="card"]:hover h5 {
+          color: var(--accent, #d87c3c) !important;
+          transition: color 0.3s ease;
+        }
+        .border-bottom {
+          position: relative;
+        }
+        .border-bottom::after {
+          content: '';
+          position: absolute;
+          bottom: 0; left: 0; width: 60px; height: 3px;
+          background-color: var(--accent, #d87c3c);
+        }
+      `}</style>
+
+      {/* HEADER TIÊU ĐỀ */}
+      <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+        <h1
+          className="fw-bold text-uppercase m-0"
+          style={{ fontSize: "1.75rem", letterSpacing: "0.05em" }}
+        >
+          {categoryID ? `Danh mục sản phẩm` : "Tất cả sản phẩm"}
+        </h1>
+        <span className="text-secondary fw-semibold">
+          {displayedProducts.length} sản phẩm
+        </span>
+      </div>
+
+      {/* BANNER THÔNG BÁO KHI DÙNG BỘ LỌC TỪ AI CHATBOX */}
+      {filterIdsParam && (
+        <div
+          className="alert d-flex justify-content-between align-items-center mb-4 p-3 rounded-3 border-0 shadow-sm"
+          style={{ backgroundColor: "#fff3eb", color: "#d87c3c" }}
+        >
+          <span className="fw-semibold">
+            🤖 Trợ lý AI đã tìm thấy{" "}
+            <strong>{displayedProducts.length}</strong> sản phẩm phù hợp với yêu cầu của bạn!
+          </span>
+          <Link
+            href={
+              categoryID
+                ? `/products?categoryID=${categoryID}`
+                : "/products"
+            }
+            className="btn btn-sm btn-dark px-3 rounded-pill"
+            style={{ backgroundColor: "#d87c3c", borderColor: "#d87c3c" }}
+          >
+            Xóa bộ lọc AI ✕
+          </Link>
         </div>
       )}
-    </div>
+
+      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM */}
+      <ProductFilter
+        key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
+        products={displayedProducts}
+      />
+
+      {/* CHATBOX AI */}
+      <ProductChatbox products={products} />
+    </main>
   );
 }
