@@ -16,7 +16,9 @@ export default function Cart() {
     async function fetchLocations() {
       try {
         setIsLoading(true);
-        const res = await fetch("http://localhost:3000/api/tables");
+        
+        // ✅ Chuyển sang đường dẫn tương đối để chạy mượt cả trên Localhost & Vercel
+        const res = await fetch("/api/tables");
 
         if (!res.ok) {
           throw new Error(`HTTP error! status: ${res.status}`);

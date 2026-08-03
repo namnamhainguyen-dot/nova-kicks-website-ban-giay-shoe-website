@@ -40,7 +40,3 @@ export async function DELETE(request, { params }) {
         return Response.json({ error: 'Failed to fetch products' }, { status: 500 });   
     }
 }
-    
-    
-
-

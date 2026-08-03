@@ -43,6 +43,42 @@ export default function ProductCreate() {
     fetchCategories();
   }, []);
 
+  // Hàm chuyển đổi file ảnh sang dạng Base64 string
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = (error) => reject(error);
+    });
+  };
+
+  // Xử lý khi chọn file ảnh chính
+  const handleMainFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const base64 = await convertFileToBase64(file);
+        setImage(base64);
+      } catch (err) {
+        console.error("Lỗi đọc file ảnh chính:", err);
+      }
+    }
+  };
+
+  // Xử lý khi chọn file ảnh cho màu tương ứng
+  const handleColorFileChange = async (color, e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      try {
+        const base64 = await convertFileToBase64(file);
+        handleColorImageUrlChange(color, base64);
+      } catch (err) {
+        console.error("Lỗi đọc file ảnh màu:", err);
+      }
+    }
+  };
+
   const toggleSize = (size) => {
     setSizes((prev) =>
       prev.includes(size)
@@ -125,10 +161,10 @@ export default function ProductCreate() {
     setSaving(true);
     setError("");
 
-    // Cấu trúc mảng variants để lưu trực tiếp vào database
+    // Cấu trúc mảng variants
     const finalVariants = colors.map((color) => ({
       color: color,
-      image: imagesByColor[color] || image, // Nếu màu không có ảnh riêng, lấy ảnh chính làm mặc định
+      image: imagesByColor[color] || image,
       quantity: quantitiesByColor[color] || 0,
       sizes: sizes.map(Number) 
     }));
@@ -145,7 +181,7 @@ export default function ProductCreate() {
           quantity: Number(quantity),
           status,
           categoryId,
-          variants: finalVariants // Gửi mảng variants chuẩn lên server
+          variants: finalVariants
         }),
       });
 
@@ -250,15 +286,28 @@ export default function ProductCreate() {
               </div>
             </div>
 
+            {/* Ảnh chính mặc định */}
             <div className="mb-3">
-              <label htmlFor="image" className="form-label font-weight-bold">Link ảnh chính mặc định</label>
-              <input
-                type="text"
-                className="form-control"
-                id="image"
-                value={image}
-                onChange={(e) => setImage(e.target.value)}
-              />
+              <label className="form-label font-weight-bold">Ảnh chính mặc định</label>
+              <div className="row g-2">
+                <div className="col-md-7">
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Dán URL link ảnh tại đây..."
+                    value={image}
+                    onChange={(e) => setImage(e.target.value)}
+                  />
+                </div>
+                <div className="col-md-5">
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="image/*"
+                    onChange={handleMainFileChange}
+                  />
+                </div>
+              </div>
             </div>
 
             <div className="mb-3">
@@ -333,20 +382,33 @@ export default function ProductCreate() {
                       <div className="col-md-2 col-12">
                         <span className="badge bg-dark px-3 py-2 w-100 text-center">{color}</span>
                       </div>
-                      <div className="col-md-6 col-12">
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">Link Ảnh</span>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={imagesByColor[color] || ""}
-                            onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
-                          />
+                      
+                      {/* Cụm nhập Link URL và chọn file cho mỗi màu */}
+                      <div className="col-md-7 col-12">
+                        <div className="row g-1">
+                          <div className="col-7">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              placeholder="Link URL ảnh"
+                              value={imagesByColor[color] || ""}
+                              onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
+                            />
+                          </div>
+                          <div className="col-5">
+                            <input
+                              type="file"
+                              className="form-control form-control-sm"
+                              accept="image/*"
+                              onChange={(e) => handleColorFileChange(color, e)}
+                            />
+                          </div>
                         </div>
                       </div>
-                      <div className="col-md-3 col-9">
+
+                      <div className="col-md-2 col-9">
                         <div className="input-group input-group-sm">
-                          <span className="input-group-text">Số lượng</span>
+                          <span className="input-group-text">SL</span>
                           <input
                             type="number"
                             className="form-control"
@@ -356,7 +418,8 @@ export default function ProductCreate() {
                           />
                         </div>
                       </div>
-                      <div className="col-md-1 d-none d-md-block text-end">
+
+                      <div className="col-md-1 col-3 text-end">
                         <button type="button" onClick={() => removeColor(color)} className="btn-close" />
                       </div>
                     </div>

@@ -1,52 +1,84 @@
 import { NextResponse } from "next/server";
-import { MongoClient, ObjectId } from "mongodb";
+import clientPromise, { dbName } from "@/libs/mongodb";
+import bcrypt from "bcryptjs";
+import { ObjectId } from "mongodb";
 
-const uri = process.env.MONGODB_URI || "CHUOI_KET_NOI_MONGODB_CUA_BAN";
-const client = new MongoClient(uri);
+export async function GET(request, { params }) {
+  try {
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const user = await db.collection("users").findOne({ _id: new ObjectId(id) });
 
-async function connectDB() {
-  await client.connect();
-  return client.db("test").collection("accounts");
+    if (!user) {
+      return NextResponse.json({ message: "Không tìm thấy tài khoản" }, { status: 404 });
+    }
+
+    const sanitizedUser = {
+      ...user,
+      _id: user._id.toString(),
+      name: user.fullname || user.name || user.email || "Không rõ",
+      role: user.role || "MEMBER",
+      status: user.status || "active",
+      avatar: user.avatar || "https://i.pravatar.cc/80?img=32",
+    };
+
+    return NextResponse.json(sanitizedUser, { status: 200 });
+  } catch (error) {
+    console.error("Lỗi GET /api/accounts/[id]:", error);
+    return NextResponse.json({ message: "Lỗi Server" }, { status: 500 });
+  }
 }
 
-// 1. DELETE: Xóa tài khoản
-export async function DELETE(req, { params }) {
+export async function PUT(request, { params }) {
   try {
-    const { id } = params;
-    const collection = await connectDB();
-    const result = await collection.deleteOne({ _id: new ObjectId(id) });
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    const body = await request.json();
+    const client = await clientPromise;
+    const db = client.db(dbName);
+
+    const updateData = { ...body, updatedAt: new Date() };
+
+    if (body.password) {
+      updateData.password = await bcrypt.hash(body.password, 10);
+    }
+
+    if (body.name) {
+      updateData.fullname = body.name;
+      updateData.name = body.name;
+    }
+
+    const result = await db.collection("users").updateOne({ _id: new ObjectId(id) }, { $set: updateData });
+
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ message: "Không tìm thấy tài khoản" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true }, { status: 200 });
+  } catch (error) {
+    console.error("Lỗi PUT /api/accounts/[id]:", error);
+    return NextResponse.json({ message: "Lỗi Server" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request, { params }) {
+  try {
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    const client = await clientPromise;
+    const db = client.db(dbName);
+
+    const result = await db.collection("users").deleteOne({ _id: new ObjectId(id) });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ message: "Không tìm thấy tài khoản" }, { status: 404 });
     }
-    return NextResponse.json({ success: true });
+
+    return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
-    return NextResponse.json({ message: "Lỗi khi xóa tài khoản" }, { status: 500 });
-  }
-}
-
-// 2. PUT: Cập nhật thông tin hoặc trạng thái tài khoản
-export async function PUT(req, { params }) {
-  try {
-    const { id } = params;
-    const body = await req.json();
-    const collection = await connectDB();
-
-    // Lọc bỏ các trường không cập nhật hoặc rỗng
-    const updateData = {};
-    if (body.name) updateData.name = body.name;
-    if (body.role) updateData.role = body.role;
-    if (body.status) updateData.status = body.status;
-    if (body.avatar) updateData.avatar = body.avatar;
-    if (body.id) updateData.id = body.id;
-
-    const result = await collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateData }
-    );
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    return NextResponse.json({ message: "Lỗi khi cập nhật tài khoản" }, { status: 500 });
+    console.error("Lỗi DELETE /api/accounts/[id]:", error);
+    return NextResponse.json({ message: "Lỗi Server" }, { status: 500 });
   }
 }

@@ -3,180 +3,221 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
-export default function AccountManagement() {
-  const [accounts, setAccounts] = useState([]);
+export default function UserManagement() {
+  const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
 
-  // 1. Lấy danh sách tài khoản từ MongoDB qua API
+  // Hàm lấy ID an toàn
+  const getAccountId = (user) => {
+    if (!user?._id) return "";
+    return typeof user._id === "object" && user._id.$oid
+      ? user._id.$oid
+      : String(user._id);
+  };
+
+  // Hàm lấy Tên an toàn
+  const getDisplayName = (user) => {
+    if (user.fullname) return user.fullname;
+    if (user.name) return user.name;
+    if (user.email) return user.email.split("@")[0];
+    return "Người dùng";
+  };
+
+  // 1. Lấy danh sách từ /api/accounts
   useEffect(() => {
-    const fetchAccounts = async () => {
+    const fetchUsers = async () => {
       try {
-        // ĐÃ ĐỔI: Chuyển sang gọi endpoint /api/users
-        const res = await fetch("/api/users");
+        const res = await fetch("/api/accounts");
+        
+        // Tránh lỗi "Unexpected token '<'" bằng cách kiểm tra res.ok trước
+        if (!res.ok) {
+          console.error("API trả về lỗi HTTP:", res.status);
+          setUsers([]);
+          return;
+        }
+
         const data = await res.json();
-        setAccounts(data);
+        setUsers(Array.isArray(data) ? data : []);
       } catch (error) {
-        console.error("Lỗi khi tải danh sách tài khoản:", error);
+        console.error("Lỗi parse JSON hoặc mất mạng:", error);
       } finally {
         setLoading(false);
       }
     };
-    fetchAccounts();
+    fetchUsers();
   }, []);
 
-  // 2. Xóa tài khoản (Sử dụng _id của MongoDB)
-  const handleDelete = async (id) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa tài khoản này?")) return;
+  // 2. Xóa tài khoản
+  const handleDelete = async (user) => {
+    const id = getAccountId(user);
+    if (!id) return alert("Không tìm thấy ID!");
+    if (!confirm(`Bạn chắc chắn muốn xóa "${getDisplayName(user)}"?`)) return;
 
     try {
-      // ĐÃ ĐỔI: Chuyển sang gọi endpoint /api/users/${id}
-      const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/accounts/${id}`, { method: "DELETE" });
       if (res.ok) {
-        setAccounts(accounts.filter((acc) => acc._id !== id));
-        alert("Đã xóa tài khoản thành công!");
+        setUsers((prev) => prev.filter((u) => getAccountId(u) !== id));
+        alert("Đã xóa thành công!");
+      } else {
+        alert("Xóa thất bại!");
       }
     } catch (error) {
-      alert("Lỗi khi xóa tài khoản.");
+      alert("Lỗi kết nối máy chủ!");
     }
   };
 
-  // 3. Thay đổi nhanh trạng thái (Hoạt động / Bị cấm)
-  const toggleStatus = async (id, currentStatus) => {
-    const newStatus = currentStatus === "active" ? "inactive" : "active";
+  // 3. Đổi trạng thái
+  const toggleStatus = async (user) => {
+    const id = getAccountId(user);
+    if (!id) return;
+
+    const currentStatus = user.status === "Hoạt động" || user.status === "active";
+    const newStatus = currentStatus ? "Bị cấm" : "Hoạt động";
+
+    // Cập nhật giao diện trước (Optimistic Update)
+    setUsers((prev) =>
+      prev.map((u) => (getAccountId(u) === id ? { ...u, status: newStatus } : u))
+    );
+
     try {
-      // ĐÃ ĐỔI: Chuyển sang gọi endpoint /api/users/${id}
-      const res = await fetch(`/api/users/${id}`, {
+      const res = await fetch(`/api/accounts/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ _id: id, status: newStatus }),
       });
-      if (res.ok) {
-        setAccounts(
-          accounts.map((acc) =>
-            acc._id === id ? { ...acc, status: newStatus } : acc
-          )
+
+      if (!res.ok) {
+        // Trả lại trạng thái cũ nếu server lỗi
+        setUsers((prev) =>
+          prev.map((u) => (getAccountId(u) === id ? { ...u, status: user.status } : u))
         );
+        alert("Không thể cập nhật trạng thái!");
       }
     } catch (error) {
-      console.error("Lỗi khi cập nhật trạng thái:", error);
+      alert("Lỗi kết nối server!");
     }
   };
 
-  // 4. Tìm kiếm tài khoản theo tên hoặc email
-  const filteredAccounts = accounts.filter((acc) =>
-    acc.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    acc.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter((user) => {
+    const name = getDisplayName(user).toLowerCase();
+    const email = (user.email || "").toLowerCase();
+    const term = searchTerm.toLowerCase();
+    return name.includes(term) || email.includes(term);
+  });
 
   return (
-    <div className="container-fluid py-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
+    <div className="container-fluid py-4 px-4">
+      <div className="d-flex justify-content-between align-items-end mb-4">
         <div>
-          <h4 className="fw-bold mb-1">Quản lý Tài khoản</h4>
-          <p className="text-secondary small mb-0">Danh sách thành viên và phân quyền hệ thống</p>
+          <h3 className="fw-bold text-dark mb-1">Quản lý Người dùng</h3>
+          <p className="text-muted small mb-0">Quản lý tài khoản và phân quyền hệ thống</p>
         </div>
-        <Link href="/admin/account/add" className="btn btn-dark text-white font-medium">
-          + Thêm tài khoản mới
+        <Link href="/admin/user/add" className="btn btn-dark px-4 py-2 rounded-3 shadow-sm">
+          <i className="bi bi-plus-lg me-1"></i> Thêm người dùng
         </Link>
       </div>
 
-      <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-        <div className="card-header bg-white border-0 pt-4 px-4 pb-2">
-          <div className="row align-items-center">
-            <div className="col-md-4">
-              <input
-                type="text"
-                className="form-control form-control-sm bg-light border-0 px-3 py-2 rounded-3"
-                placeholder="Tìm kiếm tài khoản, email..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      <div className="card border-0 shadow-sm rounded-4">
+        <div className="card-body p-3">
+          <div className="mb-4 px-2">
+            <input
+              type="text"
+              className="form-control bg-light border-0 py-2 px-3"
+              style={{ maxWidth: "350px" }}
+              placeholder="Tìm theo tên hoặc email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        </div>
 
-        <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0 text-sm">
-            <thead className="table-light text-secondary small uppercase fw-bold border-bottom">
-              <tr>
-                <th className="ps-4">Thành viên</th>
-                <th>Email</th>
-                <th>Vai trò</th>
-                <th>Trạng thái</th>
-                <th className="text-end pe-4">Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
+          <div className="table-responsive">
+            <table className="table table-hover align-middle mb-0">
+              <thead className="table-light">
                 <tr>
-                  <td colSpan="5" className="text-center py-4 text-secondary">
-                    Đang tải danh sách tài khoản...
-                  </td>
+                  <th className="py-3 ps-4">Người dùng</th>
+                  <th className="py-3">Email</th>
+                  <th className="py-3">Vai trò</th>
+                  <th className="py-3">Trạng thái</th>
+                  <th className="py-3 text-end pe-4">Hành động</th>
                 </tr>
-              ) : filteredAccounts.length === 0 ? (
-                <tr>
-                  <td colSpan="5" className="text-center py-4 text-secondary">
-                    Không tìm thấy tài khoản nào.
-                  </td>
-                </tr>
-              ) : (
-                filteredAccounts.map((acc) => (
-                  <tr key={acc._id}>
-                    <td className="ps-4">
-                      <div className="d-flex align-items-center gap-3">
-                        <img
-                          src={acc.avatar || "https://i.pravatar.cc/80?img=32"}
-                          alt={acc.name}
-                          className="rounded-circle"
-                          style={{ width: "40px", height: "40px", objectFit: "cover" }}
-                        />
-                        <div>
-                          <div className="fw-semibold text-dark">{acc.name}</div>
-                          <div className="text-muted small">Mã: {acc.id || "N/A"}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="text-secondary">{acc.email}</td>
-                    <td>
-                      <span className={`badge px-2 py-1.5 rounded-2 ${acc.role === "ADMIN" ? "bg-dark" : "bg-light text-dark border"}`}>
-                        {acc.role}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="form-check form-switch mb-0">
-                        <input
-                          className="form-check-input cursor-pointer"
-                          type="checkbox"
-                          role="switch"
-                          id={`switch-${acc._id}`}
-                          checked={acc.status === "active"}
-                          onChange={() => toggleStatus(acc._id, acc.status)}
-                        />
-                        <label className={`form-check-label small ms-1 ${acc.status === "active" ? "text-success" : "text-danger"}`} htmlFor={`switch-${acc._id}`}>
-                          {acc.status === "active" ? "Hoạt động" : "Bị khóa"}
-                        </label>
-                      </div>
-                    </td>
-                    <td className="text-end pe-4">
-                      <Link
-                        href={`/admin/account/edit/${acc._id}`}
-                        className="btn btn-sm btn-outline-primary me-2"
-                      >
-                        <i className="bi bi-pencil"></i> Sửa
-                      </Link>
-                      <button
-                        onClick={() => handleDelete(acc._id)}
-                        className="btn btn-sm btn-outline-danger"
-                      >
-                        <i className="bi bi-trash"></i> Xóa
-                      </button>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-5 text-muted">
+                      Đang tải danh sách tài khoản...
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ) : filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-5 text-muted">
+                      Không tìm thấy dữ liệu phù hợp.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredUsers.map((user) => {
+                    const userId = getAccountId(user);
+                    const name = getDisplayName(user);
+                    const isActive = user.status === "Hoạt động" || user.status === "active";
+                    const roleUpper = (user.role || "MEMBER").toUpperCase();
+
+                    return (
+                      <tr key={userId}>
+                        <td className="ps-4">
+                          <div className="d-flex align-items-center gap-3">
+                            <img
+                              src={
+                                user.avatar ||
+                                `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=random`
+                              }
+                              alt={name}
+                              className="rounded-circle shadow-sm"
+                              width="40"
+                              height="40"
+                              style={{ objectFit: "cover" }}
+                            />
+                            <div>
+                              <div className="fw-bold text-dark">{name}</div>
+                              <small className="text-muted">ID: {userId.slice(-6)}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="text-secondary">{user.email || "—"}</td>
+                        <td>
+                          <span className={`badge px-3 py-2 ${roleUpper === "ADMIN" ? "bg-dark" : "bg-primary-subtle text-primary"}`}>
+                            {roleUpper}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="form-check form-switch mb-0">
+                            <input
+                              className="form-check-input cursor-pointer"
+                              type="checkbox"
+                              role="switch"
+                              checked={isActive}
+                              onChange={() => toggleStatus(user)}
+                            />
+                            <span className={`ms-1 small ${isActive ? "text-success" : "text-danger"}`}>
+                              {isActive ? "Hoạt động" : "Bị cấm"}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-end pe-4">
+                          <Link href={`/admin/user/edit/${userId}`} className="btn btn-sm btn-outline-secondary me-2">
+                            Sửa
+                          </Link>
+                          <button onClick={() => handleDelete(user)} className="btn btn-sm btn-outline-danger">
+                            Xóa
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

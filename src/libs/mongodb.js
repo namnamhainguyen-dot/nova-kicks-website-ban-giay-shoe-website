@@ -1,28 +1,32 @@
 import { MongoClient } from 'mongodb';
 
-if (!process.env.MONGODB_URI) {
-  throw new Error('Please add your Mongo URI to .env.local');
+const uri = process.env.MONGODB_URI;
+const dbName = process.env.MONGODB_DB || 'Nova-kicks';
+
+// 🟢 CẢNH BÁO RÕ RÀNG NẾU QUÊN CÀI BIẾN MÔI TRƯỜNG
+if (!uri) {
+  throw new Error('⚠️ Vui lòng cấu hình MONGODB_URI trong file .env.local hoặc Vercel Environment Variables!');
 }
 
-const uri = process.env.MONGODB_URI;
-const options = {};
+const options = {
+  serverSelectionTimeoutMS: 10000, // Tăng timeout lên 10s cho Vercel Cloud
+};
 
 let client;
 let clientPromise;
 
 if (process.env.NODE_ENV === 'development') {
-  // Trong môi trường dev, dùng biến toàn cục để bảo toàn kết nối khi HMR (Hot Module Replacement)
+  // Trong môi trường Dev, dùng global variable để giữ kết nối qua các lần HMR (Hot Module Replacement)
   if (!global._mongoClientPromise) {
     client = new MongoClient(uri, options);
     global._mongoClientPromise = client.connect();
   }
   clientPromise = global._mongoClientPromise;
 } else {
-  // Trong môi trường production, tốt nhất là không dùng biến toàn cục
+  // Trong môi trường Production (Vercel)
   client = new MongoClient(uri, options);
   clientPromise = client.connect();
 }
 
-
-// Xuất khẩu một MongoClient promise đã được share (singleton)
+export { dbName };
 export default clientPromise;

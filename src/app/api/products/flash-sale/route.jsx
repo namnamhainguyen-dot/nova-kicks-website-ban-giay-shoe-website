@@ -1,18 +1,11 @@
 // app/api/products/flash-sale/route.js
 import { NextResponse } from "next/server";
-import { MongoClient } from "mongodb";
-
-// Thay thế bằng chuỗi kết nối MongoDB của bạn (thường lưu ở file .env)
-const uri = process.env.MONGODB_URI || "mongodb://localhost:27017"; 
-const client = new MongoClient(uri);
+import clientPromise, { dbName } from "@/libs/mongodb";
 
 export async function GET() {
   try {
-    // Kết nối tới MongoDB Server
-    await client.connect();
-    
-    // Tên database của bạn (Ví dụ: "nova_kicks")
-    const database = client.db("nova_kicks"); 
+    const client = await clientPromise;
+    const database = client.db(dbName);
     const productsCollection = database.collection("products");
 
     // Lọc thẳng các Document có trường isFlashSale bằng true
@@ -35,8 +28,5 @@ export async function GET() {
       { message: "Lỗi kết nối cơ sở dữ liệu", error: error.message },
       { status: 500 }
     );
-  } finally {
-    // Đóng kết nối sau khi lấy xong dữ liệu
-    await client.close();
   }
 }
