@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useContext } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { CartContext } from '@/components/CartContext';
 
@@ -15,7 +14,7 @@ export default function MobileMenu({ categories = [] }) {
   // Toggle mở/đóng drawer
   const toggleMenu = () => setIsOpen(!isOpen);
 
-  // 1. Lấy dữ liệu giỏ hàng từ CartContext (giống bản máy tính)
+  // 1. Lấy dữ liệu giỏ hàng từ CartContext
   const { cart } = useContext(CartContext) || {};
   const totalItems = Array.isArray(cart)
     ? cart.reduce((sum, item) => sum + (item.quantity || 1), 0)
@@ -35,7 +34,7 @@ export default function MobileMenu({ categories = [] }) {
     }
   };
 
-  // 3. Đồng bộ các Event Listeners với bản PC (userLogin, userProfileUpdated)
+  // 3. Đồng bộ các Event Listeners với bản PC
   useEffect(() => {
     setIsMounted(true);
     fetchUserData();
@@ -95,18 +94,16 @@ export default function MobileMenu({ categories = [] }) {
       {/* Offcanvas Drawer */}
       <div className={`nk-mobile-drawer ${isOpen ? 'active' : ''}`}>
         
-        {/* Header Drawer (Nền xanh đen + Logo + Nút ✕) */}
-        <div className="nk-drawer-header">
-          <div className="nk-drawer-brand">
-            <Image 
-              src="/img/df0accc9-68c0-4de5-b2c4-c7b28ba43e80.jpg"
-              alt="Nova Kicks Logo" 
-              width={130}
-              height={36}
-              style={{ objectFit: 'contain', filter: 'brightness(0) invert(1)' }}
-            />
-          </div>
-          <button className="nk-drawer-close" onClick={toggleMenu} aria-label="Đóng Menu">
+        {/* Header Drawer (Đã bỏ logo, chuyển màu nền sang Cam #d96c34) */}
+        <div 
+          className="nk-drawer-header d-flex justify-content-end align-items-center p-3"
+          style={{ backgroundColor: '#d96c34' }}
+        >
+          <button 
+            className="nk-drawer-close border-0 bg-transparent text-white fs-4 p-0" 
+            onClick={toggleMenu} 
+            aria-label="Đóng Menu"
+          >
             <i className="fas fa-times"></i>
           </button>
         </div>
@@ -114,7 +111,7 @@ export default function MobileMenu({ categories = [] }) {
         {/* Body Drawer (Nội dung chính) */}
         <div className="nk-drawer-body p-0">
 
-          {/* SECTION 1: USER BAR & GIỎ HÀNG (Chuẩn giao diện ảnh mẫu) */}
+          {/* SECTION 1: USER BAR & GIỎ HÀNG */}
           {isMounted && (
             <div className="border-bottom bg-white">
               {user ? (
@@ -126,7 +123,7 @@ export default function MobileMenu({ categories = [] }) {
                       className="d-flex align-items-center gap-2 text-decoration-none text-dark fw-bold text-uppercase fs-6"
                     >
                       <i className="far fa-user-circle fs-5"></i>
-                      <span>CHÀO, {user.fullname || 'NGUYỄN HOÀNG HẢI NAM'}</span>
+                      <span>CHÀO, {user.fullname || 'KHÁCH'}</span>
                     </Link>
 
                     {/* Biểu tượng Giỏ hàng có Badge số lượng */}
@@ -264,6 +261,9 @@ export default function MobileMenu({ categories = [] }) {
         .style-heading {
           font-size: 0.72rem;
           letter-spacing: 0.5px;
+        }
+        .nk-drawer-header {
+          background-color: #d96c34 !important;
         }
       `}</style>
     </>
