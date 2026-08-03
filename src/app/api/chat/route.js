@@ -29,7 +29,14 @@ export async function POST(req) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // Tối ưu: Bật responseMimeType để ép Gemini trả về chuẩn JSON
+    const model = genAI.getGenerativeModel({
+      model: "gemini-flash-latest",
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
 
     const productsContext = products.map((p) => ({
       id: p._id?.$oid || p._id || p.id,
@@ -48,11 +55,11 @@ export async function POST(req) {
       Lịch sử trò chuyện:
       ${JSON.stringify(history)}
 
-      Khách hàng vừa nhắn: "${userMessage}"
+      Khách hàng vừa nhắn: ${JSON.stringify(userMessage)}
 
       Nhiệm vụ:
       - Dựa vào lịch sử và tin nhắn mới nhất, lọc ra danh sách các product ID phù hợp (về tên, size, màu sắc, tầm giá...).
-      - Trả về KẾT QUẢ DẠNG JSON DUY NHẤT (không kèm markdown \`\`\`json):
+      - Trả về JSON theo đúng cấu trúc sau:
       {
         "reply": "Câu trả lời tư vấn ngắn gọn (2-3 câu), xưng 'mình' gọi 'bạn'.",
         "matchedIds": ["id1", "id2"]
@@ -68,13 +75,15 @@ export async function POST(req) {
     };
 
     try {
+      parsedData = JSON.parse(textResponse);
+    } catch (e) {
+      console.warn("Lỗi parse JSON:", e, "Raw text:", textResponse);
       const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedData = JSON.parse(jsonMatch[0]);
+      } else {
+        parsedData.reply = textResponse;
       }
-    } catch (e) {
-      console.warn("Lỗi parse JSON:", e, "Raw text:", textResponse);
-      parsedData.reply = textResponse;
     }
 
     return NextResponse.json(parsedData);
