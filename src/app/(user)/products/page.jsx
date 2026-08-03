@@ -87,7 +87,7 @@ export default async function ProductsPage({ searchParams }) {
         }
         .nk-card:hover, .card-product:hover, [class*="card"]:hover {
           transform: translateY(-8px);
-          box-shadow: 0 16px 36px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.02) !important;
+box-shadow: 0 16px 36px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.02) !important;
         }
         .img-hover-scale, [class*="card"] img {
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
