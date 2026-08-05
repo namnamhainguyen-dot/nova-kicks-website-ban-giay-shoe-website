@@ -50,8 +50,7 @@ export default function ForgotPassword() {
     }
   };
 
-  // 🌟 BƯỚC 2: CHUYỂN TIẾP SANG BƯỚC THIẾT LẬP MẬT KHẨU
-  // Không gọi API verify trung gian nữa nhằm giữ mã OTP lại cho Backend xử lý 1 lần ở Bước 3
+  // 🌟 BƯỚC 2: GỌI API XÁC THỰC MÃ OTP VỚI BACKEND TRƯỚC KHI CHO QUA BƯỚC SAU
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError("");
@@ -62,11 +61,34 @@ export default function ForgotPassword() {
       return;
     }
 
-    setSuccess("Mã số xác nhận hợp lệ! Hãy thiết lập lại mật khẩu.");
-    setTimeout(() => {
-      setStep("RESET"); // Chuyển thẳng sang bước đổi mật khẩu mới
-      setSuccess("");
-    }, 1200);
+    setLoading(true);
+    try {
+      // Gọi API kiểm tra tính đúng đắn của OTP trước
+      const res = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          email: email.trim(), 
+          otp: otp.trim() 
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Mã OTP không chính xác hoặc đã hết hạn!");
+      }
+
+      setSuccess("Mã số xác nhận hợp lệ! Hãy thiết lập lại mật khẩu.");
+      setTimeout(() => {
+        setStep("RESET"); // Chuyển sang bước đổi mật khẩu mới
+        setSuccess("");
+      }, 1200);
+    } catch (err) {
+      setError(err.message || "Xác thực mã OTP thất bại!");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // 🌟 BƯỚC 3: CẬP NHẬT MẬT KHẨU MỚI VÀO CƠ SỞ DỮ LIỆU
@@ -92,7 +114,7 @@ export default function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: email.trim(), 
-          otp: otp.trim(), // Truyền kèm OTP để backend đối chiếu và kiểm tra quyền cập nhật
+          otp: otp.trim(), 
           password: newPassword 
         }),
       });
