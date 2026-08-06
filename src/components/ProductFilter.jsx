@@ -50,7 +50,7 @@ export default function FilterPanel({
     }
   }, [handleApplyPrice]);
 
-  // Hàm xử lý preset giá
+  // Hàm xử lý preset giá (Đã fix lỗi truyền min: "" thành min: 0 cho các khoảng bắt đầu từ đầu)
   const handlePresetPrice = useCallback((preset) => {
     const presetMinStr = preset.min !== '' && preset.min !== undefined ? preset.min.toString() : '';
     const presetMaxStr = preset.max !== '' && preset.max !== undefined ? preset.max.toString() : '';
@@ -87,9 +87,9 @@ export default function FilterPanel({
     return currentMin === presetMin && currentMax === presetMax;
   }, [localMin, localMax]);
 
-  // Các preset giá
+  // Các preset giá (Đã chuẩn hóa min/max cho từng khoảng)
   const pricePresets = useMemo(() => [
-    { label: "Dưới 200k", min: "", max: 200000 },
+    { label: "Dưới 200k", min: 0, max: 200000 },
     { label: "200k–500k", min: 200000, max: 500000 },
     { label: "500k–1tr", min: 500000, max: 1000000 },
     { label: "1tr–3tr", min: 1000000, max: 3000000 },
@@ -311,7 +311,7 @@ export default function FilterPanel({
         </div>
 
         {/* Hiển thị tóm tắt khoảng giá đang chọn */}
-        {(localMin || localMax) && (
+        {(localMin !== '' || localMax !== '') && (
           <div style={{ 
             marginTop: "10px",
             padding: "6px 10px",
@@ -324,7 +324,7 @@ export default function FilterPanel({
           }}>
             <span>Khoảng giá:</span>
             <span style={{ fontWeight: 600, color: "#111" }}>
-              {localMin ? formatPrice(localMin) : '0'} - {localMax ? formatPrice(localMax) : '∞'} đ
+              {localMin !== '' ? formatPrice(localMin) : '0'} - {localMax !== '' ? formatPrice(localMax) : '∞'} đ
             </span>
           </div>
         )}
