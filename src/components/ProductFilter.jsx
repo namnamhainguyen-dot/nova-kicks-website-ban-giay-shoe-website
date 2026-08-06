@@ -5,80 +5,19 @@ import Link from "next/link";
 import AddToCart from "@/components/AddToCart";
 import { WishlistContext } from "@/components/WishlistContext";
 
-export default function ProductFilter({ products }) {
-  const [selectedSizes, setSelectedSizes] = useState([]);
-  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  // 🌟 State lọc sản phẩm yêu thích
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-
-  const { toggleWishlist, isFavorite } = useContext(WishlistContext);
-
-  // ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants
-  const processedProducts = useMemo(() => {
-    return (products || []).map((p) => {
-      const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
-      const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
-
-      const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
-      const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
-
-      return {
-        ...p,
-        displayColors: uniqueColors,
-        displaySizes: uniqueSizes,
-      };
-    });
-  }, [products]);
-
-  // Lấy danh sách tổng hợp các size duy nhất
-  const allSizes = useMemo(() => {
-    const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
-    return [...new Set(sizes)].sort((a, b) => a - b);
-  }, [processedProducts]);
-
-  // Logic lọc sản phẩm theo khoảng giá, kích cỡ và YÊU THÍCH
-  const filtered = useMemo(() => {
-    return processedProducts.filter((p) => {
-      const productId = p._id?.$oid || p._id;
-      
-      // Lọc theo trạng thái yêu thích nếu được bật
-      if (showFavoritesOnly && !isFavorite(productId)) {
-        return false;
-      }
-
-      const price = Number(p.price) || 0;
-      const minOk = priceRange.min === "" || price === null || price >= Number(priceRange.min);
-      const maxOk = priceRange.max === "" || price === null || price <= Number(priceRange.max);
-        
-      const sizeOk =
-        selectedSizes.length === 0 ||
-        selectedSizes.some((s) => (p.displaySizes || []).includes(Number(s)));
-        
-      return minOk && maxOk && sizeOk;
-    });
-  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite]);
-
-  // Đếm số lượng bộ lọc đang hoạt động (bao gồm cả lọc yêu thích)
-  const activeCount =
-    selectedSizes.length +
-    (priceRange.min !== "" && priceRange.min !== null || priceRange.max !== "" && priceRange.max !== null ? 1 : 0) +
-    (showFavoritesOnly ? 1 : 0);
-
-  // SỬA LỖI: Hàm toggle chọn/hủy chọn kích thước hoạt động chính xác hơn
-  function toggleItem(value) {
-    setSelectedSizes((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  }
-
-  function clearAll() {
-    setSelectedSizes([]);
-    setPriceRange({ min: "", max: "" });
-    setShowFavoritesOnly(false); // Reset cả lọc yêu thích
-  }
-
-  const FilterPanel = () => (
+// 🌟 TÁCH FilterPanel ra ngoài để tránh việc bị re-render lại từ đầu gây mất focus ô input
+function FilterPanel({
+  priceRange,
+  setPriceRange,
+  selectedSizes,
+  toggleItem,
+  allSizes,
+  showFavoritesOnly,
+  setShowFavoritesOnly,
+  activeCount,
+  clearAll,
+}) {
+  return (
     <div
       style={{
         background: "var(--surface-card, #fff)",
@@ -295,6 +234,92 @@ export default function ProductFilter({ products }) {
       )}
     </div>
   );
+}
+
+export default function ProductFilter({ products }) {
+  const [selectedSizes, setSelectedSizes] = useState([]);
+  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  // 🌟 State lọc sản phẩm yêu thích
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+
+  const { toggleWishlist, isFavorite } = useContext(WishlistContext);
+
+  // ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants
+  const processedProducts = useMemo(() => {
+    return (products || []).map((p) => {
+      const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
+      const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
+
+      const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
+      const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
+
+      return {
+        ...p,
+        displayColors: uniqueColors,
+        displaySizes: uniqueSizes,
+      };
+    });
+  }, [products]);
+
+  // Lấy danh sách tổng hợp các size duy nhất
+  const allSizes = useMemo(() => {
+    const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
+    return [...new Set(sizes)].sort((a, b) => a - b);
+  }, [processedProducts]);
+
+  // Logic lọc sản phẩm theo khoảng giá, kích cỡ và YÊU THÍCH
+  const filtered = useMemo(() => {
+    return processedProducts.filter((p) => {
+      const productId = p._id?.$oid || p._id;
+      
+      // Lọc theo trạng thái yêu thích nếu được bật
+      if (showFavoritesOnly && !isFavorite(productId)) {
+        return false;
+      }
+
+      const price = Number(p.price) || 0;
+      const minOk = priceRange.min === "" || price === null || price >= Number(priceRange.min);
+      const maxOk = priceRange.max === "" || price === null || price <= Number(priceRange.max);
+        
+      const sizeOk =
+        selectedSizes.length === 0 ||
+        selectedSizes.some((s) => (p.displaySizes || []).includes(Number(s)));
+        
+      return minOk && maxOk && sizeOk;
+    });
+  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite]);
+
+  // Đếm số lượng bộ lọc đang hoạt động (bao gồm cả lọc yêu thích)
+  const activeCount =
+    selectedSizes.length +
+    (priceRange.min !== "" && priceRange.min !== null || priceRange.max !== "" && priceRange.max !== null ? 1 : 0) +
+    (showFavoritesOnly ? 1 : 0);
+
+  // SỬA LỖI: Hàm toggle chọn/hủy chọn kích thước hoạt động chính xác hơn
+  function toggleItem(value) {
+    setSelectedSizes((prev) =>
+      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
+    );
+  }
+
+  function clearAll() {
+    setSelectedSizes([]);
+    setPriceRange({ min: "", max: "" });
+    setShowFavoritesOnly(false); // Reset cả lọc yêu thích
+  }
+
+  const filterPanelProps = {
+    priceRange,
+    setPriceRange,
+    selectedSizes,
+    toggleItem,
+    allSizes,
+    showFavoritesOnly,
+    setShowFavoritesOnly,
+    activeCount,
+    clearAll,
+  };
 
   return (
     <div>
@@ -358,7 +383,7 @@ export default function ProductFilter({ products }) {
                 ✕
               </button>
             </div>
-            <FilterPanel />
+            <FilterPanel {...filterPanelProps} />
           </div>
         </div>
       )}
@@ -366,7 +391,7 @@ export default function ProductFilter({ products }) {
       <div className="row g-4">
         {/* Sidebar desktop */}
         <div className="col-md-3 d-none d-md-block">
-          <FilterPanel />
+          <FilterPanel {...filterPanelProps} />
         </div>
 
         {/* Product grid */}
