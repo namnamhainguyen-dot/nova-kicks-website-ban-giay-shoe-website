@@ -674,7 +674,7 @@ export default function Profile() {
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
           <div className="col-lg-3">
-            <div className="card border border-2 border-white-50 shadow-lg rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.2)", backdropFilter: "blur(12px)" }}>
+            <div className="card border border-2 border-white-50 shadow-lg rounded-4 p-4 p-md-5 mb-3" style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(12px)" }}>
               <div className="d-flex align-items-center gap-3 px-2">
                 <div className="position-relative flex-shrink-0">
                   {user.avatar ? (
@@ -692,42 +692,42 @@ export default function Profile() {
                   )}
                 </div>
                 <div className="overflow-hidden">
-                  <div className="text-muted small">Xin chào,</div>
-                  <div className="fw-bold text-dark text-truncate">{user.fullname || "Tài khoản của tôi"}</div>
+                  <div className="text-white-50 small">Xin chào,</div>
+                  <div className="fw-bold text-white text-truncate">{user.fullname || "Tài khoản của tôi"}</div>
                 </div>
               </div>
             </div>
 
-            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-2" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(8px)" }}>
+            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-2" style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(8px)" }}>
               <div className="d-flex flex-column gap-1">
                 <button
                   onClick={() => {
                     setActiveTab("profile");
                     setIsEditingProfile(false);
                   }}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "profile" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "profile" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "profile" ? "text-white shadow-sm" : "text-white-50 bg-transparent"}`}
+                  style={activeTab === "profile" ? { color: "#d97706", backgroundColor: "rgba(255, 255, 255, 0.25)" } : {}}
                 >
                   <i className="bi bi-person-badge"></i> Hồ Sơ Của Tôi
                 </button>
                 <button
                   onClick={() => setActiveTab("address")}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "address" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "address" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "address" ? "text-white shadow-sm" : "text-white-50 bg-transparent"}`}
+                  style={activeTab === "address" ? { color: "#d97706", backgroundColor: "rgba(255, 255, 255, 0.25)" } : {}}
                 >
                   <i className="bi bi-geo-alt"></i> Địa Chỉ Nhận Hàng
                 </button>
                 <button
                   onClick={() => setActiveTab("orders")}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "orders" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "orders" ? "text-white shadow-sm" : "text-white-50 bg-transparent"}`}
+                  style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "rgba(255, 255, 255, 0.25)" } : {}}
                 >
                   <i className="bi bi-bag-check"></i> Đơn Hàng Của Tôi
                 </button>
                 <button
                   onClick={() => setActiveTab("password")}
-                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "password" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "password" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "password" ? "text-white shadow-sm" : "text-white-50 bg-transparent"}`}
+                  style={activeTab === "password" ? { color: "#d97706", backgroundColor: "rgba(255, 255, 255, 0.25)" } : {}}
                 >
                   <i className="bi bi-shield-lock"></i> Đổi Mật Khẩu
                 </button>
@@ -735,22 +735,22 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: NỘI DUNG CHÍNH (HIỆU ỨNG KÍNH MỜ TRONG SUỐT VỪA PHẢI) */}
+          {/* CỘT PHẢI: NỘI DUNG CHÍNH (ĐÃ BỎ NỀN TRẮNG, DÙNG KÍNH MỜ TRONG SUỐT) */}
           <div className="col-lg-9">
             
             {/* TAB 1: HỒ SƠ CÁ NHÂN */}
             {activeTab === "profile" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
-                <div className="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5 text-white" style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(12px)" }}>
+                <div className="border-bottom border-white-50 pb-3 mb-4 d-flex justify-content-between align-items-center">
                   <div>
-                    <h4 className="fw-bold text-dark mb-1">Hồ Sơ Của Tôi</h4>
-                    <p className="text-muted small mb-0">Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
+                    <h4 className="fw-bold text-white mb-1">Hồ Sơ Của Tôi</h4>
+                    <p className="text-white-50 small mb-0">Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
                   </div>
                   {!isEditingProfile && (
                     <button 
                       type="button" 
-                      className="btn btn-sm px-3 rounded-2 fw-semibold d-flex align-items-center gap-1"
-                      style={{ color: "#d97706", borderColor: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" }}
+                      className="btn btn-sm px-3 rounded-2 fw-semibold d-flex align-items-center gap-1 text-white border-warning"
+                      style={{ backgroundColor: "rgba(217, 119, 6, 0.7)" }}
                       onClick={() => setIsEditingProfile(true)}
                     >
                       <i className="bi bi-pencil-square"></i> Chỉnh sửa thông tin
@@ -762,13 +762,13 @@ export default function Profile() {
                   
                   {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN */}
                   <div className="mb-4 row align-items-center">
-                    <label className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Ảnh đại diện</label>
+                    <label className="col-sm-3 col-form-label text-white-50 text-sm-end fw-medium">Ảnh đại diện</label>
                     <div className="col-sm-9 d-flex align-items-center gap-3">
                       {user.avatar ? (
                         <img 
                           src={user.avatar} 
                           alt="Avatar preview" 
-                          className="rounded-circle border object-fit-cover shadow-sm"
+                          className="rounded-circle border border-2 border-warning object-fit-cover shadow-sm"
                           style={{ width: "70px", height: "70px" }}
                           onError={(e) => { e.target.src = "https://placehold.co/70x70?text=Avatar"; }}
                         />
@@ -780,23 +780,21 @@ export default function Profile() {
 
                       {isEditingProfile && (
                         <div className="flex-grow-1">
-                          <label className="form-label small text-muted mb-1">Chọn ảnh từ máy tính:</label>
+                          <label className="form-label small text-white-50 mb-1">Chọn ảnh từ máy tính:</label>
                           <input 
                             type="file" 
                             accept="image/*" 
-                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mb-2 bg-white bg-opacity-75" 
+                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mb-2 bg-transparent text-white border-white-50" 
                             onChange={handleFileChange}
-                            style={{ borderColor: "#d97706" }} 
                           />
-                          <div className="text-muted small" style={{ fontSize: "0.75rem" }}>Hoặc dán đường dẫn URL ảnh:</div>
+                          <div className="text-white-50 small" style={{ fontSize: "0.75rem" }}>Hoặc dán đường dẫn URL ảnh:</div>
                           <input 
                             type="url" 
-                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mt-1 bg-white bg-opacity-75" 
+                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mt-1 bg-transparent text-white border-white-50" 
                             id="avatar" 
                             value={user.avatar || ""} 
                             onChange={handleInputChange} 
                             placeholder="https://example.com/avatar.jpg"
-                            style={{ borderColor: "#d97706" }} 
                           />
                         </div>
                       )}
@@ -804,42 +802,41 @@ export default function Profile() {
                   </div>
 
                   <div className="mb-3 row align-items-center">
-                    <label htmlFor="email" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Tên đăng nhập</label>
+                    <label htmlFor="email" className="col-sm-3 col-form-label text-white-50 text-sm-end fw-medium">Tên đăng nhập</label>
                     <div className="col-sm-9">
-                      <p className="mb-0 text-dark fw-medium py-2">{user.email || ""}</p>
+                      <p className="mb-0 text-white fw-medium py-2">{user.email || ""}</p>
                     </div>
                   </div>
 
                   <div className="mb-3 row align-items-center">
-                    <label htmlFor="fullname" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Họ và tên</label>
+                    <label htmlFor="fullname" className="col-sm-3 col-form-label text-white-50 text-sm-end fw-medium">Họ và tên</label>
                     <div className="col-sm-9">
                       {isEditingProfile ? (
-                        <input type="text" className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required style={{ borderColor: "#d97706" }} />
+                        <input type="text" className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-white-50" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required />
                       ) : (
-                        <p className="mb-0 text-dark fw-medium py-2">{user.fullname || ""}</p>
+                        <p className="mb-0 text-white fw-medium py-2">{user.fullname || ""}</p>
                       )}
                     </div>
                   </div>
 
                   <div className="mb-3 row align-items-center">
-                    <label htmlFor="phone" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Số điện thoại</label>
+                    <label htmlFor="phone" className="col-sm-3 col-form-label text-white-50 text-sm-end fw-medium">Số điện thoại</label>
                     <div className="col-sm-9">
                       {isEditingProfile ? (
                         <>
                           <input
                             type="tel"
                             maxLength={10}
-                            className={`form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75 ${phoneError ? "is-invalid" : ""}`}
+                            className={`form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-white-50 ${phoneError ? "is-invalid" : ""}`}
                             id="phone"
                             value={user.phone || ""}
                             onChange={handleInputChange}
                             required
-                            style={{ borderColor: phoneError ? undefined : "#d97706" }}
                           />
                           {phoneError && <div className="invalid-feedback">{phoneError}</div>}
                         </>
                       ) : (
-                        <p className="mb-0 text-dark fw-medium py-2">{user.phone || "Chưa cập nhật"}</p>
+                        <p className="mb-0 text-white fw-medium py-2">{user.phone || "Chưa cập nhật"}</p>
                       )}
                     </div>
                   </div>
@@ -852,7 +849,7 @@ export default function Profile() {
                         </button>
                         <button 
                           type="button" 
-                          className="btn btn-light px-4 py-2 rounded-2 border text-secondary bg-white bg-opacity-75"
+                          className="btn btn-outline-light px-4 py-2 rounded-2 border text-white bg-transparent"
                           onClick={() => {
                             setIsEditingProfile(false);
                             window.location.reload();
@@ -869,11 +866,11 @@ export default function Profile() {
 
             {/* TAB 2: ĐỊA CHỈ NHẬN HÀNG */}
             {activeTab === "address" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
-                <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5 text-white" style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(12px)" }}>
+                <div className="d-flex justify-content-between align-items-center border-bottom border-white-50 pb-3 mb-4">
                   <div>
-                    <h4 className="fw-bold text-dark mb-1">Địa Chỉ Nhận Hàng</h4>
-                    <p className="text-muted small mb-0">Quản lý các địa chỉ giao hàng đã lưu</p>
+                    <h4 className="fw-bold text-white mb-1">Địa Chỉ Nhận Hàng</h4>
+                    <p className="text-white-50 small mb-0">Quản lý các địa chỉ giao hàng đã lưu</p>
                   </div>
                   <button className="btn text-white btn-sm rounded-2 fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }} onClick={handleOpenAddModal}>
                     <i className="bi bi-plus-lg"></i> Thêm Địa Chỉ Mới
@@ -881,40 +878,40 @@ export default function Profile() {
                 </div>
 
                 {(!user.addresses || user.addresses.length === 0) ? (
-                  <div className="text-center py-5 bg-white bg-opacity-50 rounded-4">
-                    <p className="text-muted mb-0">Bạn chưa có địa chỉ nhận hàng nào.</p>
+                  <div className="text-center py-5 bg-white bg-opacity-10 rounded-4">
+                    <p className="text-white-50 mb-0">Bạn chưa có địa chỉ nhận hàng nào.</p>
                   </div>
                 ) : (
                   <div className="d-flex flex-column gap-3">
                     {user.addresses.map((addr) => (
-                      <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white bg-opacity-90 shadow-sm position-relative transition-all">
+                      <div key={addr._id} className="p-4 border border-2 border-white-50 rounded-4 shadow-sm position-relative transition-all" style={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}>
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                           
                           <div className="flex-grow-1">
                             <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
-                              <span className="fw-bold text-dark fs-6">{addr.receiverName || user.fullname}</span>
-                              <span className="text-muted">|</span>
-                              <span className="text-secondary fw-medium">{addr.receiverPhone || user.phone}</span>
+                              <span className="fw-bold text-white fs-6">{addr.receiverName || user.fullname}</span>
+                              <span className="text-white-50">|</span>
+                              <span className="text-white-50 fw-medium">{addr.receiverPhone || user.phone}</span>
                               {addr.isDefault && (
                                 <span className="badge rounded-pill px-2.5 py-1 text-white ms-1" style={{ backgroundColor: "#d97706", fontSize: "0.75rem" }}>
                                   Mặc định
                                 </span>
                               )}
                               {addr.label && !addr.isDefault && (
-                                <span className="badge rounded-pill px-2.5 py-1 bg-light text-secondary border ms-1" style={{ fontSize: "0.75rem" }}>
+                                <span className="badge rounded-pill px-2.5 py-1 bg-dark text-white-50 border border-secondary ms-1" style={{ fontSize: "0.75rem" }}>
                                   {addr.label}
                                 </span>
                               )}
                             </div>
-                            <div className="text-secondary small line-clamp-2" style={{ lineHeight: "1.6" }}>
+                            <div className="text-white-50 small line-clamp-2" style={{ lineHeight: "1.6" }}>
                               {addr.fullAddress}
                             </div>
                           </div>
 
-                          <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-md-top-0">
+                          <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-secondary border-md-top-0">
                             <div className="d-flex align-items-center gap-2">
                               <button 
-                                className="btn btn-sm btn-light border px-3 py-1 rounded-2 text-dark fw-medium bg-white"
+                                className="btn btn-sm btn-outline-light px-3 py-1 rounded-2 fw-medium bg-transparent"
                                 style={{ fontSize: "0.85rem" }}
                                 onClick={() => handleOpenEditModal(addr)}
                               >
@@ -933,8 +930,8 @@ export default function Profile() {
                             
                             {!addr.isDefault && (
                               <button 
-                                className="btn btn-link text-decoration-none p-0 text-muted small fw-medium mt-md-1"
-                                style={{ fontSize: "0.8rem", color: "#d97706" }}
+                                className="btn btn-link text-decoration-none p-0 small fw-medium mt-md-1"
+                                style={{ fontSize: "0.8rem", color: "#f6ad55" }}
                                 onClick={() => handleSetDefault(addr._id)}
                               >
                                 Thiết lập mặc định
@@ -952,14 +949,14 @@ export default function Profile() {
 
             {/* TAB 3: ĐƠN MUA */}
             {activeTab === "orders" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
-                <div className="border-bottom pb-3 mb-4">
-                  <h4 className="fw-bold text-dark mb-1">Đơn Hàng Của Tôi</h4>
-                  <p className="text-muted small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5 text-white" style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(12px)" }}>
+                <div className="border-bottom border-white-50 pb-3 mb-4">
+                  <h4 className="fw-bold text-white mb-1">Đơn Hàng Của Tôi</h4>
+                  <p className="text-white-50 small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
                 </div>
 
                 {/* THANH LỌC TRẠNG THÁI ĐƠN HÀNG */}
-                <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
+                <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom border-white-50">
                   {[
                     { key: "all", label: "Tất cả" },
                     { key: "pending", label: "Chờ xác nhận" },
@@ -972,7 +969,7 @@ export default function Profile() {
                       key={tab.key}
                       onClick={() => setOrderFilter(tab.key)}
                       className={`btn btn-sm px-3 py-2 rounded-pill fw-semibold transition-all ${
-                        orderFilter === tab.key ? "text-white shadow-sm" : "btn-light text-secondary border bg-white bg-opacity-75"
+                        orderFilter === tab.key ? "text-white shadow-sm" : "btn-outline-light text-white-50 bg-transparent border-secondary"
                       }`}
                       style={orderFilter === tab.key ? { backgroundColor: "#d97706" } : {}}
                     >
@@ -999,11 +996,12 @@ export default function Profile() {
                       return (
                         <div 
                           key={order._id || order.id}
-                          className="border border-2 rounded-4 p-3 p-md-4 bg-white bg-opacity-90 shadow-sm transition-all"
+                          className="border border-2 border-white-50 rounded-4 p-3 p-md-4 shadow-sm transition-all"
+                          style={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
                         >
-                          <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom border-secondary gap-2">
                             <div className="d-flex align-items-center gap-2">
-                              <span className="text-muted fw-medium d-flex align-items-center gap-1">
+                              <span className="text-white-50 fw-medium d-flex align-items-center gap-1">
                                 <i className="bi bi-calendar3"></i> {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
                               </span>
                             </div>
@@ -1045,23 +1043,23 @@ export default function Profile() {
                                       <img 
                                         src={itemImage} 
                                         alt={itemName} 
-                                        className="rounded-2 border flex-shrink-0 object-fit-cover"
+                                        className="rounded-2 border border-secondary flex-shrink-0 object-fit-cover"
                                         style={{ width: "60px", height: "60px" }}
                                         onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
                                       />
                                       <div className="overflow-hidden">
                                         <div className="d-flex align-items-center gap-2 mb-1">
-                                          <h6 className="fw-semibold text-dark text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
+                                          <h6 className="fw-semibold text-white text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
                                             {itemName}
                                           </h6>
-                                          <span className="text-muted small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
+                                          <span className="text-white-50 small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
                                             x{itemQuantity}
                                           </span>
                                         </div>
                                         
                                         {detailsArray.length > 0 && (
-                                          <div className="text-muted small mb-0">
-                                            Phân loại: <span className="text-dark">{detailsArray.join(" | ")}</span>
+                                          <div className="text-white-50 small mb-0">
+                                            Phân loại: <span className="text-white">{detailsArray.join(" | ")}</span>
                                           </div>
                                         )}
                                       </div>
@@ -1071,7 +1069,7 @@ export default function Profile() {
                                       {discountAmount > 0 && (
                                         <div className="d-flex align-items-center justify-content-end gap-2 mb-1" style={{ fontSize: "0.8rem" }}>
                                           {originalPrice > 0 && (
-                                            <span className="text-muted text-decoration-line-through">
+                                            <span className="text-white-50 text-decoration-line-through">
                                               {originalPrice.toLocaleString("vi-VN")}đ
                                             </span>
                                           )}
@@ -1081,7 +1079,7 @@ export default function Profile() {
                                         </div>
                                       )}
 
-                                      <div className="fw-semibold text-dark">
+                                      <div className="fw-semibold text-white">
                                         {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
                                       </div>
                                     </div>
@@ -1089,30 +1087,30 @@ export default function Profile() {
                                 );
                               })
                             ) : (
-                              <div className="text-muted small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
+                              <div className="text-white-50 small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
                             )}
                           </div>
 
                           {isCancelled && (
-                            <div className="bg-white p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
+                            <div className="bg-dark bg-opacity-50 p-3 rounded-3 text-sm my-3 border border-secondary d-flex align-items-center gap-2">
                               <i className="bi bi-info-circle text-danger"></i>
                               <div>
-                                <span className="fw-bold text-dark">Lý do hủy: </span>
-                                <span className="text-secondary">{order.cancelReason || "Không có lý do cụ thể"}</span>
+                                <span className="fw-bold text-white">Lý do hủy: </span>
+                                <span className="text-white-50">{order.cancelReason || "Không có lý do cụ thể"}</span>
                               </div>
                             </div>
                           )}
 
-                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
-                            <div className="small text-muted d-flex align-items-center gap-1">
-                              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top border-secondary gap-2">
+                            <div className="small text-white-50 d-flex align-items-center gap-1">
+                              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-white">{displayPayment}</span>
                             </div>
                             
                             <div className="d-flex flex-column align-items-end gap-1">
                               <div className="d-flex align-items-center gap-3">
                                 <div>
-                                  <span className="small text-muted me-2">Tổng tiền:</span>
-                                  <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
+                                  <span className="small text-white-50 me-2">Tổng tiền:</span>
+                                  <span className="fw-bold fs-5 text-warning">
                                     {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
                                   </span>
                                 </div>
@@ -1144,7 +1142,7 @@ export default function Profile() {
                     })
                   ) : (
                     <div className="text-center py-5">
-                      <p className="text-muted m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
+                      <p className="text-white-50 m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
                     </div>
                   )}
                 </div>
@@ -1153,49 +1151,46 @@ export default function Profile() {
 
             {/* TAB 4: ĐỔI MẬT KHẨU */}
             {activeTab === "password" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
-                <div className="border-bottom pb-3 mb-4">
-                  <h4 className="fw-bold text-dark mb-1">Đổi Mật Khẩu</h4>
-                  <p className="text-muted small mb-0">Để bảo mật tài khoản, vui lòng không chia sẻ mật khẩu cho người khác</p>
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5 text-white" style={{ backgroundColor: "rgba(255, 255, 255, 0.15)", backdropFilter: "blur(12px)" }}>
+                <div className="border-bottom border-white-50 pb-3 mb-4">
+                  <h4 className="fw-bold text-white mb-1">Đổi Mật Khẩu</h4>
+                  <p className="text-white-50 small mb-0">Để bảo mật tài khoản, vui lòng không chia sẻ mật khẩu cho người khác</p>
                 </div>
 
                 <form onSubmit={handleChangePassword} style={{ maxWidth: "550px" }}>
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold text-muted">Mật khẩu hiện tại *</label>
+                    <label className="form-label small fw-semibold text-white-50">Mật khẩu hiện tại *</label>
                     <input
                       type="password"
-                      className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75"
+                      className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-white-50"
                       placeholder="Nhập mật khẩu cũ"
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
                       required
-                      style={{ borderColor: "#d97706" }}
                     />
                   </div>
 
                   <div className="mb-3">
-                    <label className="form-label small fw-semibold text-muted">Mật khẩu mới *</label>
+                    <label className="form-label small fw-semibold text-white-50">Mật khẩu mới *</label>
                     <input
                       type="password"
-                      className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75"
+                      className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-white-50"
                       placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
-                      style={{ borderColor: "#d97706" }}
                     />
                   </div>
 
                   <div className="mb-4">
-                    <label className="form-label small fw-semibold text-muted">Xác nhận mật khẩu mới *</label>
+                    <label className="form-label small fw-semibold text-white-50">Xác nhận mật khẩu mới *</label>
                     <input
                       type="password"
-                      className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75"
+                      className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-white-50"
                       placeholder="Nhập lại mật khẩu mới"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
-                      style={{ borderColor: "#d97706" }}
                     />
                   </div>
 
@@ -1217,113 +1212,107 @@ export default function Profile() {
 
       {/* MODAL THÊM / SỬA ĐỊA CHỈ GIAO HÀNG */}
       {showAddressModal && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1050 }}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content rounded-4 border-0 shadow-lg p-3">
+            <div className="modal-content rounded-4 border-0 shadow-lg p-3 bg-dark text-white border border-secondary">
               <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                <h5 className="modal-title fw-bold text-white d-flex align-items-center gap-2">
                   <i className="bi bi-geo-alt-fill text-warning"></i> {editingAddressId ? "Cập Nhật Địa Chỉ" : "Thêm Địa Chỉ Mới"}
                 </h5>
-                <button type="button" className="btn-close shadow-none" onClick={() => setShowAddressModal(false)}></button>
+                <button type="button" className="btn-close btn-close-white shadow-none" onClick={() => setShowAddressModal(false)}></button>
               </div>
               <form onSubmit={handleSaveAddress}>
                 <div className="modal-body p-3 p-md-4">
                   <div className="row g-3">
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold">Họ và tên người nhận *</label>
+                      <label className="form-label small fw-semibold text-white-50">Họ và tên người nhận *</label>
                       <input
                         type="text"
-                        className="form-control rounded-2 shadow-none py-2 px-3"
+                        className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-secondary"
                         placeholder="Nhập tên người nhận"
                         value={receiverName}
                         onChange={(e) => setReceiverName(e.target.value)}
                         required
-                        style={{ borderColor: "#d97706" }}
                       />
                     </div>
                     <div className="col-md-6">
-                      <label className="form-label small fw-semibold">Số điện thoại *</label>
+                      <label className="form-label small fw-semibold text-white-50">Số điện thoại *</label>
                       <input
                         type="tel"
                         maxLength={10}
-                        className="form-control rounded-2 shadow-none py-2 px-3"
+                        className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-secondary"
                         placeholder="Nhập số điện thoại 10 số"
                         value={receiverPhone}
                         onChange={(e) => setReceiverPhone(e.target.value.replace(/\D/g, ""))}
                         required
-                        style={{ borderColor: "#d97706" }}
                       />
                     </div>
 
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Phường / Xã *</label>
+                      <label className="form-label small fw-semibold text-white-50">Phường / Xã *</label>
                       <select 
-                        className="form-select rounded-2 shadow-none py-2 px-3" 
+                        className="form-select rounded-2 shadow-none py-2 px-3 bg-dark text-white border-secondary" 
                         value={selectedWard} 
                         onChange={(e) => setSelectedWard(e.target.value)} 
                         disabled={!selectedDistrict} 
                         required 
-                        style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Phường/Xã --</option>
+                        <option value="" className="bg-dark text-white">-- Chọn Phường/Xã --</option>
                         {wards.map((w) => (
-                          <option key={w.id} value={w.id}>{w.full_name}</option>
+                          <option key={w.id} value={w.id} className="bg-dark text-white">{w.full_name}</option>
                         ))}
                       </select>
                     </div>
 
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Quận / Huyện *</label>
+                      <label className="form-label small fw-semibold text-white-50">Quận / Huyện *</label>
                       <select 
-                        className="form-select rounded-2 shadow-none py-2 px-3" 
+                        className="form-select rounded-2 shadow-none py-2 px-3 bg-dark text-white border-secondary" 
                         value={selectedDistrict} 
                         onChange={handleDistrictChange} 
                         disabled={!selectedProvince} 
                         required 
-                        style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Quận/Huyện --</option>
+                        <option value="" className="bg-dark text-white">-- Chọn Quận/Huyện --</option>
                         {districts.map((d) => (
-                          <option key={d.id} value={d.id}>{d.full_name}</option>
+                          <option key={d.id} value={d.id} className="bg-dark text-white">{d.full_name}</option>
                         ))}
                       </select>
                     </div>
 
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
+                      <label className="form-label small fw-semibold text-white-50">Tỉnh / Thành phố *</label>
                       <select 
-                        className="form-select rounded-2 shadow-none py-2 px-3" 
+                        className="form-select rounded-2 shadow-none py-2 px-3 bg-dark text-white border-secondary" 
                         value={selectedProvince} 
                         onChange={handleProvinceChange} 
                         required 
-                        style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Tỉnh/Thành --</option>
+                        <option value="" className="bg-dark text-white">-- Chọn Tỉnh/Thành --</option>
                         {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>{p.full_name}</option>
+                          <option key={p.id} value={p.id} className="bg-dark text-white">{p.full_name}</option>
                         ))}
                       </select>
                     </div>
 
                     <div className="col-md-8">
-                      <label className="form-label small fw-semibold">Số nhà, tên đường *</label>
+                      <label className="form-label small fw-semibold text-white-50">Số nhà, tên đường *</label>
                       <input
                         type="text"
-                        className="form-control rounded-2 shadow-none py-2 px-3"
+                        className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent text-white border-secondary"
                         placeholder="Ví dụ: 123 Đường CVPM Quang Trung"
                         value={houseNumber}
                         onChange={(e) => setHouseNumber(e.target.value)}
                         required
-                        style={{ borderColor: "#d97706" }}
                       />
                     </div>
 
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Loại địa chỉ</label>
-                      <select className="form-select rounded-2 shadow-none py-2 px-3" value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)} style={{ borderColor: "#d97706" }}>
-                        <option value="Nhà riêng">Nhà riêng</option>
-                        <option value="Công ty">Công ty / Văn phòng</option>
-                        <option value="Khác">Khác</option>
+                      <label className="form-label small fw-semibold text-white-50">Loại địa chỉ</label>
+                      <select className="form-select rounded-2 shadow-none py-2 px-3 bg-dark text-white border-secondary" value={addressLabel} onChange={(e) => setAddressLabel(e.target.value)}>
+                        <option value="Nhà riêng" className="bg-dark text-white">Nhà riêng</option>
+                        <option value="Công ty" className="bg-dark text-white">Công ty / Văn phòng</option>
+                        <option value="Khác" className="bg-dark text-white">Khác</option>
                       </select>
                     </div>
 
@@ -1331,13 +1320,13 @@ export default function Profile() {
                       <div className="form-check">
                         <input
                           type="checkbox"
-                          className="form-check-input shadow-none"
+                          className="form-check-input shadow-none bg-transparent border-secondary"
                           id="defaultCheck"
                           checked={isDefaultAddress}
                           onChange={(e) => setIsDefaultAddress(e.target.checked)}
                           style={{ accentColor: "#d97706" }}
                         />
-                        <label className="form-check-label small text-dark fw-medium" htmlFor="defaultCheck">
+                        <label className="form-check-label small text-white-50 fw-medium" htmlFor="defaultCheck">
                           Đặt làm địa chỉ nhận hàng mặc định
                         </label>
                       </div>
@@ -1346,7 +1335,7 @@ export default function Profile() {
                 </div>
 
                 <div className="modal-footer border-0 pt-0 pb-3 px-4">
-                  <button type="button" className="btn btn-light rounded-2 px-4 text-secondary fw-medium" onClick={() => setShowAddressModal(false)} disabled={submitting}>
+                  <button type="button" className="btn btn-outline-light rounded-2 px-4 text-white bg-transparent border-secondary fw-medium" onClick={() => setShowAddressModal(false)} disabled={submitting}>
                     Hủy bỏ
                   </button>
                   <button type="submit" className="btn text-white rounded-2 px-4 fw-bold shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }} disabled={submitting}>
@@ -1361,19 +1350,19 @@ export default function Profile() {
 
       {/* MODAL CHỌN LÝ DO HỦY ĐƠN HÀNG */}
       {showCancelModal && (
-        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1050 }}>
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: "rgba(0,0,0,0.6)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content rounded-4 border-0 p-3 shadow-lg">
+            <div className="modal-content rounded-4 border-0 p-3 shadow-lg bg-dark text-white border border-secondary">
               <div className="modal-header border-0 pb-0">
-                <h5 className="modal-title fw-bold text-dark d-flex align-items-center gap-2">
+                <h5 className="modal-title fw-bold text-white d-flex align-items-center gap-2">
                   <i className="bi bi-exclamation-triangle text-danger"></i> Lý do hủy đơn hàng
                 </h5>
-                <button type="button" className="btn-close shadow-none" onClick={() => setShowCancelModal(false)}></button>
+                <button type="button" className="btn-close btn-close-white shadow-none" onClick={() => setShowCancelModal(false)}></button>
               </div>
               
               <form onSubmit={handleConfirmCancelOrder}>
                 <div className="modal-body py-3">
-                  <p className="text-muted small mb-3">Vui lòng chọn lý do bạn muốn hủy đơn hàng này:</p>
+                  <p className="text-white-50 small mb-3">Vui lòng chọn lý do bạn muốn hủy đơn hàng này:</p>
                   
                   <div className="d-flex flex-column gap-2 mb-3">
                     {[
@@ -1386,7 +1375,7 @@ export default function Profile() {
                       <div className="form-check" key={idx}>
                         <input 
                           type="radio" 
-                          className="form-check-input shadow-none" 
+                          className="form-check-input shadow-none bg-transparent border-secondary" 
                           name="cancelReasonGroup" 
                           id={`reason_${idx}`}
                           value={reason}
@@ -1394,7 +1383,7 @@ export default function Profile() {
                           onChange={(e) => setCancelReasonOption(e.target.value)}
                           style={{ accentColor: "#d97706" }}
                         />
-                        <label className="form-check-label text-dark small fw-medium" htmlFor={`reason_${idx}`}>
+                        <label className="form-check-label text-white small fw-medium" htmlFor={`reason_${idx}`}>
                           {reason}
                         </label>
                       </div>
@@ -1403,22 +1392,21 @@ export default function Profile() {
 
                   {cancelReasonOption === "Khác (Nhập cụ thể)" && (
                     <div className="mt-2">
-                      <label className="form-label small fw-semibold text-muted">Nhập lý do cụ thể của bạn:</label>
+                      <label className="form-label small fw-semibold text-white-50">Nhập lý do cụ thể của bạn:</label>
                       <textarea 
-                        className="form-control rounded-3 shadow-none" 
+                        className="form-control rounded-3 shadow-none bg-transparent text-white border-secondary" 
                         rows="3" 
                         value={customCancelReason}
                         onChange={(e) => setCustomCancelReason(e.target.value)}
                         placeholder="Nhập lý do hủy đơn..."
                         required
-                        style={{ borderColor: "#d97706" }}
                       ></textarea>
                     </div>
                   )}
                 </div>
 
                 <div className="modal-footer border-0 pt-0 pb-3 px-3">
-                  <button type="button" className="btn btn-light rounded-2 px-4 text-secondary fw-medium" onClick={() => setShowCancelModal(false)}>
+                  <button type="button" className="btn btn-outline-light rounded-2 px-4 text-white bg-transparent border-secondary fw-medium" onClick={() => setShowCancelModal(false)}>
                     Đóng
                   </button>
                   <button type="submit" className="btn btn-danger rounded-2 px-4 fw-semibold shadow-sm d-flex align-items-center gap-1">
