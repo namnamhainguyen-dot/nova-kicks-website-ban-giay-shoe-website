@@ -61,7 +61,7 @@ export default function Layout({ children }) {
         />
         <link rel="stylesheet" href="/css/admin.css" />
 
-        {/* CSS Tùy chỉnh hiệu ứng Sidebar: Nền đen, hover cam nhẹ & active cam chủ đạo */}
+        {/* CSS tinh chỉnh riêng cho hiệu ứng Sidebar thu gọn / mở rộng */}
         <style>{`
           .sidebar-link {
             transition: all 0.2s ease-in-out;
@@ -79,26 +79,27 @@ export default function Layout({ children }) {
         `}</style>
       </head>
 
-      <body className="bg-light m-0">
-        {/* DÙNG FLEXBOX BAO QUOÀN TOÀN BỘ TRANG ĐỂ KHÔNG BỊ HỤT KHÔNG GIAN */}
-        <div className="d-flex min-vh-100">
+      <body>
+        {/* CONTAINER CHÍNH DÙNG FLEXBOX */}
+        <div className="d-flex w-100 min-vh-100 position-relative m-0 p-0">
           
-          {/* SIDEBAR (Đứng cố định bên trái, tự động đổi kích thước width) */}
+          {/* SIDEBAR CỐ ĐỊNH BÊN TRÁI */}
           <div 
             className="d-flex flex-column p-3 text-white shadow-sm"
             style={{
-              width: isCollapsed ? "80px" : "260px",
-              minWidth: isCollapsed ? "80px" : "260px",
+              width: isCollapsed ? "80px" : "250px",
+              minWidth: isCollapsed ? "80px" : "250px",
               height: "100vh",
-              position: "sticky",
+              position: "fixed",
               top: 0,
-              backgroundColor: "#111827",
+              left: 0,
+              backgroundColor: "#212529", // Đồng bộ màu nền với CSS .sidebar
               transition: "width 0.3s ease, min-width 0.3s ease",
               zIndex: 1000,
               overflowY: "auto"
             }}
           >
-            {/* LOGO / BRAND & NÚT THU GỌN */}
+            {/* LOGO & NÚT THU GỌN */}
             <div className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom border-secondary border-opacity-25">
               {!isCollapsed && (
                 <div className="overflow-hidden text-truncate">
@@ -119,7 +120,7 @@ export default function Layout({ children }) {
               </button>
             </div>
 
-            {/* USER INFO CARD */}
+            {/* USER INFO */}
             {currentUser && !isCollapsed && (
               <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
                 <div className="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem" }}>
@@ -136,8 +137,8 @@ export default function Layout({ children }) {
               </div>
             )}
 
-            {/* NAVIGATION MENU */}
-            <ul className="nav flex-column gap-1 flex-grow-1" style={{ fontSize: "0.85rem" }}>
+            {/* MENU LINKS */}
+            <ul className="nav flex-column gap-1 flex-grow-1" style={{ fontSize: "0.85rem", paddingLeft: 0, listStyle: "none" }}>
               {[
                 { href: "/admin", label: "Tổng quan", icon: "bi-speedometer2" },
                 { href: "/admin/category", label: "Quản lý Danh mục", icon: "bi-folder" },
@@ -163,7 +164,7 @@ export default function Layout({ children }) {
               ))}
             </ul>
 
-            {/* LOGOUT BUTTON */}
+            {/* LOGOUT */}
             <div className="pt-3 mt-3 border-top border-secondary border-opacity-25">
               <button 
                 type="button" 
@@ -178,10 +179,15 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          {/* MAIN CONTENT (Dùng flex-grow-1 để tự động lấp đầy phần màn hình còn lại) */}
+          {/* MAIN CONTENT (TỰ ĐỘNG CO GIÃN ĐỘ RỘNG KHÔNG BỊ KHOẢNG TRỐNG) */}
           <div 
-            className="flex-grow-1 p-4 overflow-x-hidden"
-            style={{ backgroundColor: "#f8f9fa", minWidth: 0 }}
+            className="content"
+            style={{ 
+              marginLeft: isCollapsed ? "80px" : "250px",
+              width: isCollapsed ? "calc(100vw - 80px)" : "calc(100vw - 250px)",
+              transition: "margin-left 0.3s ease, width 0.3s ease",
+              boxSizing: "border-box"
+            }}
           >
             {children}
           </div>
