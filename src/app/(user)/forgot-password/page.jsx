@@ -50,9 +50,8 @@ export default function ForgotPassword() {
     }
   };
 
-  // 🌟 BƯỚC 2: KIỂM TRA ĐỘ DÀI MÃ OTP VÀ CHUYỂN SANG BƯỚC ĐỔI MẬT KHẨU
-  // (Mã OTP sẽ được giữ lại trong state 'otp' để gửi lên Backend cùng lúc ở Bước 3)
-  const handleVerifyOtpLocally = (e) => {
+  // 🌟 BƯỚC 2: GỌI API XÁC THỰC MÃ OTP NGAY TẠI CHỖ (CHẶN MÃ CŨ / MÃ SAI NGAY LẬP TỨC)
+  const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -62,14 +61,34 @@ export default function ForgotPassword() {
       return;
     }
 
-    setSuccess("Mã số hợp lệ! Hãy thiết lập lại mật khẩu.");
-    setTimeout(() => {
-      setStep("RESET"); // Chuyển sang bước nhập mật khẩu mới
-      setSuccess("");
-    }, 1000);
+    setLoading(true);
+    try {
+      // Gọi API kiểm tra tính hợp lệ của OTP trước khi cho phép sang bước đổi mật khẩu
+      const res = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Mã OTP không chính xác hoặc đã hết hạn!");
+      }
+
+      setSuccess("Mã số hợp lệ! Hãy thiết lập lại mật khẩu.");
+      setTimeout(() => {
+        setStep("RESET"); // Chuyển sang bước nhập mật khẩu mới
+        setSuccess("");
+      }, 1000);
+    } catch (err) {
+      setError(err.message || "Xác thực mã OTP thất bại!");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 🌟 BƯỚC 3: GỬI EMAIL, OTP VÀ MẬT KHẨU MỚI LÊN BACKEND ĐỂ XỬ LÝ 1 LẦN DUY NHẤT
+  // 🌟 BƯỚC 3: GỬI EMAIL, OTP VÀ MẬT KHẨU MỚI LÊN BACKEND ĐỂ CẬP NHẬT
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError("");
@@ -92,7 +111,7 @@ export default function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: email.trim(), 
-          otp: otp.trim(), // Gửi kèm OTP để Backend đối chiếu chính xác
+          otp: otp.trim(), 
           password: newPassword 
         }),
       });
@@ -176,7 +195,7 @@ export default function ForgotPassword() {
 
           {/* 🌟 BƯỚC 2: FORM NHẬP MÃ SỐ OTP */}
           {step === "OTP" && (
-            <form onSubmit={handleVerifyOtpLocally}>
+            <form onSubmit={handleVerifyOtp}>
               <div className="mb-4 text-center">
                 <p className="small text-muted mb-3">Mã số xác nhận đã gửi đến <strong>{email}</strong></p>
                 <input
@@ -190,8 +209,8 @@ export default function ForgotPassword() {
                   required
                 />
               </div>
-              <button type="submit" className="btn btn-dark w-100 rounded-0 py-2.5 text-uppercase fw-bold tracking-widest border-0" style={{ backgroundColor: "#012a3a" }}>
-                Xác nhận mã số
+              <button type="submit" className="btn btn-dark w-100 rounded-0 py-2.5 text-uppercase fw-bold tracking-widest border-0" style={{ backgroundColor: "#012a3a" }} disabled={loading}>
+                {loading ? "Đang kiểm tra..." : "Xác nhận mã số"}
               </button>
               <div className="text-center mt-3">
                 <button type="button" className="btn btn-link btn-sm text-secondary text-decoration-none small" onClick={() => setStep("EMAIL")}>
