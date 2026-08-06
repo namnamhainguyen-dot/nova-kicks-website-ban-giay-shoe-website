@@ -61,20 +61,21 @@ export default function Layout({ children }) {
         />
         <link rel="stylesheet" href="/css/admin.css" />
 
-        {/* CSS tinh chỉnh riêng cho hiệu ứng Sidebar thu gọn / mở rộng */}
+        {/* CSS tùy chỉnh chuyển sang tông màu cam nhẹ (pastel orange) giống profile */}
         <style>{`
           .sidebar-link {
             transition: all 0.2s ease-in-out;
             color: #d1d5db !important;
           }
           .sidebar-link:hover {
-            background-color: rgba(234, 88, 12, 0.25) !important;
-            color: #ffffff !important;
+            background-color: rgba(234, 88, 12, 0.15) !important;
+            color: #fdba74 !important;
           }
           .sidebar-link.active-link {
-            background-color: #ea580c !important;
-            color: #ffffff !important;
+            background-color: rgba(234, 88, 12, 0.25) !important;
+            color: #ff8c42 !important;
             font-weight: bold;
+            border-left: 4px solid #ea580c;
           }
         `}</style>
       </head>
@@ -104,10 +105,10 @@ export default function Layout({ children }) {
               {!isCollapsed && (
                 <div className="overflow-hidden text-truncate">
                   <h4 className="fw-black text-uppercase tracking-wider m-0 fs-5" style={{ letterSpacing: "1px" }}>
-                    Nova<span style={{ color: "#ea580c" }}>Kicks</span>
+                    Nova<span style={{ color: "#fb923c" }}>Kicks</span>
                   </h4>
-                  {/* Đã đổi sang badge màu cam */}
-                  <span className="badge text-white mt-1 text-uppercase" style={{ fontSize: "0.55rem", backgroundColor: "#ea580c" }}>
+                  {/* Badge màu cam nhẹ dịu mắt */}
+                  <span className="badge text-dark mt-1 text-uppercase fw-semibold" style={{ fontSize: "0.55rem", backgroundColor: "#ffedd5", color: "#c2410c !important" }}>
                     Admin Panel
                   </span>
                 </div>
@@ -124,8 +125,7 @@ export default function Layout({ children }) {
             {/* USER INFO */}
             {currentUser && !isCollapsed && (
               <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
-                {/* Đã đổi avatar chữ cái sang nền cam */}
-                <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem", backgroundColor: "#ea580c" }}>
+                <div className="text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem", backgroundColor: "#ffedd5", color: "#c2410c" }}>
                   {(currentUser.fullname || "A").charAt(0).toUpperCase()}
                 </div>
                 <div className="overflow-hidden">
