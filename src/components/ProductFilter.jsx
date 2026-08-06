@@ -1,19 +1,20 @@
 "use client";
 
-import { useState, useMemo, useContext } from "react";
+import { useState, useMemo, useContext, useEffect } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import AddToCart from "@/components/AddToCart";
 import { WishlistContext } from "@/components/WishlistContext";
 
-// 🌟 TÁCH FilterPanel ra ngoài để tránh việc bị re-render lại từ đầu gây mất focus ô input
+// 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
 function FilterPanel({
   priceRange,
-  setPriceRange,
+  setPriceParam,
   selectedSizes,
-  toggleItem,
+  toggleSizeParam,
   allSizes,
   showFavoritesOnly,
-  setShowFavoritesOnly,
+  toggleFavoriteParam,
   activeCount,
   clearAll,
 }) {
@@ -70,7 +71,7 @@ function FilterPanel({
           Tùy chọn
         </p>
         <button
-          onClick={() => setShowFavoritesOnly(!showFavoritesOnly)}
+          onClick={toggleFavoriteParam}
           style={{
             display: "flex",
             alignItems: "center",
@@ -121,9 +122,7 @@ function FilterPanel({
             type="number"
             placeholder="Từ"
             value={priceRange.min}
-            onChange={(e) =>
-              setPriceRange((prev) => ({ ...prev, min: e.target.value }))
-            }
+            onChange={(e) => setPriceParam("min", e.target.value)}
             style={{
               flex: 1,
               border: "1px solid #e5e7eb",
@@ -139,9 +138,7 @@ function FilterPanel({
             type="number"
             placeholder="Đến"
             value={priceRange.max}
-            onChange={(e) =>
-              setPriceRange((prev) => ({ ...prev, max: e.target.value }))
-            }
+            onChange={(e) => setPriceParam("max", e.target.value)}
             style={{
               flex: 1,
               border: "1px solid #e5e7eb",
@@ -165,13 +162,15 @@ function FilterPanel({
             return (
               <button
                 key={preset.label}
-                onClick={() =>
-                  setPriceRange(
-                    active
-                      ? { min: "", max: "" }
-                      : { min: preset.min, max: preset.max }
-                  )
-                }
+                onClick={() => {
+                  if (active) {
+                    setPriceParam("min", "");
+                    setPriceParam("max", "");
+                  } else {
+                    setPriceParam("min", preset.min);
+                    setPriceParam("max", preset.max);
+                  }
+                }}
                 style={{
                   fontSize: "11px",
                   padding: "3px 9px",
@@ -212,7 +211,7 @@ function FilterPanel({
               return (
                 <button
                   key={size}
-                  onClick={() => toggleItem(size)}
+                  onClick={() => toggleSizeParam(size)}
                   style={{
                     padding: "5px 12px",
                     borderRadius: "8px",
@@ -237,13 +236,71 @@ function FilterPanel({
 }
 
 export default function ProductFilter({ products }) {
-  const [selectedSizes, setSelectedSizes] = useState([]);
-  const [priceRange, setPriceRange] = useState({ min: "", max: "" });
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // 🌟 State lọc sản phẩm yêu thích
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
 
   const { toggleWishlist, isFavorite } = useContext(WishlistContext);
+
+  // Đọc dữ liệu trực tiếp từ URL Search Params để tránh bị reset khi re-render/load lại
+  const priceRange = {
+    min: searchParams.get("minPrice") ?? "",
+    max: searchParams.get("maxPrice") ?? "",
+  };
+
+  const selectedSizes = useMemo(() => {
+    const sizesParam = searchParams.get("sizes");
+    return sizesParam ? sizesParam.split(",").map(Number) : [];
+  }, [searchParams]);
+
+  const showFavoritesOnly = searchParams.get("favorites") === "true";
+
+  // Hàm cập nhật query param trên URL mà không làm mất trang hiện tại
+  const updateQueryParam = (key, value) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value !== "" && value !== null && value !== undefined && value !== false) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  // Cập nhật riêng cho min/max giá để xử lý mượt mà khi gõ
+  const setPriceParam = (type, value) => {
+    const params = new URLSearchParams(searchParams.toString());
+    const key = type === "min" ? "minPrice" : "maxPrice";
+    if (value !== "") {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
+
+  // Toggle size trong URL
+  const toggleSizeParam = (size) => {
+    const params = new URLSearchParams(searchParams.toString());
+    let currentSizes = selectedSizes.includes(size)
+      ? selectedSizes.filter((s) => s !== size)
+      : [...selectedSizes, size];
+
+    if (currentSizes.length > 0) {
+      params.set("sizes", currentSizes.join(","));
+    } else {
+      params.delete("sizes");
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  };
+
+  // Toggle yêu thích trong URL
+  const toggleFavoriteParam = () => {
+    updateQueryParam("favorites", !showFavoritesOnly ? "true" : "");
+  };
+
+  function clearAll() {
+    router.push(window.location.pathname, { scroll: false });
+  }
 
   // ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants
   const processedProducts = useMemo(() => {
@@ -273,14 +330,13 @@ export default function ProductFilter({ products }) {
     return processedProducts.filter((p) => {
       const productId = p._id?.$oid || p._id;
       
-      // Lọc theo trạng thái yêu thích nếu được bật
       if (showFavoritesOnly && !isFavorite(productId)) {
         return false;
       }
 
       const price = Number(p.price) || 0;
-      const minOk = priceRange.min === "" || price === null || price >= Number(priceRange.min);
-      const maxOk = priceRange.max === "" || price === null || price <= Number(priceRange.max);
+      const minOk = priceRange.min === "" || price >= Number(priceRange.min);
+      const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
         
       const sizeOk =
         selectedSizes.length === 0 ||
@@ -290,33 +346,20 @@ export default function ProductFilter({ products }) {
     });
   }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite]);
 
-  // Đếm số lượng bộ lọc đang hoạt động (bao gồm cả lọc yêu thích)
+  // Đếm số lượng bộ lọc đang hoạt động
   const activeCount =
     selectedSizes.length +
-    (priceRange.min !== "" && priceRange.min !== null || priceRange.max !== "" && priceRange.max !== null ? 1 : 0) +
+    (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0) +
     (showFavoritesOnly ? 1 : 0);
-
-  // SỬA LỖI: Hàm toggle chọn/hủy chọn kích thước hoạt động chính xác hơn
-  function toggleItem(value) {
-    setSelectedSizes((prev) =>
-      prev.includes(value) ? prev.filter((v) => v !== value) : [...prev, value]
-    );
-  }
-
-  function clearAll() {
-    setSelectedSizes([]);
-    setPriceRange({ min: "", max: "" });
-    setShowFavoritesOnly(false); // Reset cả lọc yêu thích
-  }
 
   const filterPanelProps = {
     priceRange,
-    setPriceRange,
+    setPriceParam,
     selectedSizes,
-    toggleItem,
+    toggleSizeParam,
     allSizes,
     showFavoritesOnly,
-    setShowFavoritesOnly,
+    toggleFavoriteParam,
     activeCount,
     clearAll,
   };
