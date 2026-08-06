@@ -649,22 +649,25 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
+    <div 
+      className="min-vh-100 d-flex flex-column text-secondary"
+      style={{ 
+        backgroundImage: `url('img/background_profile.jpg')`, 
+        backgroundSize: 'cover', 
+        backgroundPosition: 'center',
+        backgroundAttachment: 'fixed'
+      }}
+    >
 
-      <main 
-        className="container mb-5 flex-grow-1 p-4 rounded-4" 
-        style={{ 
-          backgroundImage: `url('img/background_profile.jpg')`, 
-          backgroundSize: 'cover', 
-          backgroundPosition: 'center' 
-        }}
-      >
-        {/* Tiêu đề */}
-        <div className="mb-4">
-          <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
-          <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
+      {/* TIÊU ĐỀ TRANG TÀI KHOẢN (Nằm ngoài khung, chữ màu trắng nổi bật trên nền) */}
+      <div className="container pt-3 pb-2">
+        <div>
+          <h2 className="fw-bold mb-1 text-white shadow-sm">Trang Tài Khoản</h2>
+          <p className="text-light small mb-0 shadow-sm">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
         </div>
-
+      </div>
+      
+      <main className="container mb-5 flex-grow-1">
         <div className="row g-3">
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
