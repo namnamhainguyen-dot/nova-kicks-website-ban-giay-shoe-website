@@ -18,49 +18,51 @@ function FilterPanel({
   activeCount,
   clearAll,
 }) {
-  // State tạm cho input để xử lý debounce
+  // State tạm cho input để xử lý mượt mà, không gọi router liên tục khi đang gõ
   const [localMin, setLocalMin] = useState(priceRange.min);
   const [localMax, setLocalMax] = useState(priceRange.max);
-  const debounceTimerRef = useRef(null);
 
-  // Đồng bộ local state với URL params khi thay đổi từ bên ngoài
+  // Đồng bộ local state với URL params khi thay đổi từ bên ngoài (ví dụ: nút Xóa tất cả, Preset)
   useEffect(() => {
     setLocalMin(priceRange.min);
     setLocalMax(priceRange.max);
   }, [priceRange.min, priceRange.max]);
 
-  // Cleanup timer khi unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
+  // Hàm áp dụng giá trị vào URL
+  const applyPriceFilter = useCallback((minVal, maxVal) => {
+    setPriceParam('min', minVal);
+    setPriceParam('max', maxVal);
+  }, [setPriceParam]);
+
+  // Xử lý thay đổi input trực tiếp (chỉ cập nhật giao diện state nội bộ, KHÔNG gọi router)
+  const handleInputChange = useCallback((type, e) => {
+    const value = e.target.value.replace(/,/g, '');
+    if (value === '' || /^\d*$/.test(value)) {
+      if (type === 'min') {
+        setLocalMin(value);
+      } else {
+        setLocalMax(value);
       }
-    };
+    }
   }, []);
 
-  // Hàm xử lý thay đổi input với debounce
-  const handlePriceInput = useCallback((type, value) => {
-    // Cập nhật local state ngay lập tức
-    if (type === 'min') {
-      setLocalMin(value);
-    } else {
-      setLocalMax(value);
+  // Xử lý khi người dùng rời khỏi ô input (Blur) thì mới cập nhật URL lọc sản phẩm
+  const handleInputBlur = useCallback((type) => {
+    if (type === 'min' && localMin) {
+      setLocalMin(Number(localMin).toString());
     }
-
-    // Clear timer cũ nếu có
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+    if (type === 'max' && localMax) {
+      setLocalMax(Number(localMax).toString());
     }
+    applyPriceFilter(localMin, localMax);
+  }, [localMin, localMax, applyPriceFilter]);
 
-    // Set timer mới để cập nhật URL sau 500ms
-    debounceTimerRef.current = setTimeout(() => {
-      if (type === 'min') {
-        setPriceParam('min', value);
-      } else {
-        setPriceParam('max', value);
-      }
-    }, 500);
-  }, [setPriceParam]);
+  // Xử lý khi người dùng bấm Enter
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur(); // Kích hoạt blur để lưu giá trị và gọi lọc
+    }
+  }, []);
 
   // Hàm xử lý preset giá
   const handlePresetPrice = useCallback((preset) => {
@@ -98,24 +100,6 @@ function FilterPanel({
     const presetMin = min?.toString() || '';
     const presetMax = max?.toString() || '';
     return currentMin === presetMin && currentMax === presetMax;
-  }, [localMin, localMax]);
-
-  // Xử lý onChange cho input
-  const handleInputChange = useCallback((type, e) => {
-    const value = e.target.value.replace(/,/g, '');
-    if (value === '' || /^\d*$/.test(value)) {
-      handlePriceInput(type, value);
-    }
-  }, [handlePriceInput]);
-
-  // Xử lý onBlur cho input
-  const handleInputBlur = useCallback((type) => {
-    if (type === 'min' && localMin) {
-      setLocalMin(Number(localMin).toString());
-    }
-    if (type === 'max' && localMax) {
-      setLocalMax(Number(localMax).toString());
-    }
   }, [localMin, localMax]);
 
   // Các preset giá
@@ -236,6 +220,7 @@ function FilterPanel({
               value={localMin}
               onChange={(e) => handleInputChange('min', e)}
               onBlur={() => handleInputBlur('min')}
+              onKeyDown={handleKeyDown}
               style={{
                 width: "100%",
                 border: "1px solid #e5e7eb",
@@ -270,6 +255,7 @@ function FilterPanel({
               value={localMax}
               onChange={(e) => handleInputChange('max', e)}
               onBlur={() => handleInputBlur('max')}
+              onKeyDown={handleKeyDown}
               style={{
                 width: "100%",
                 border: "1px solid #e5e7eb",
@@ -294,6 +280,26 @@ function FilterPanel({
               </span>
             )}
           </div>
+        </div>
+
+        {/* Nút bấm áp dụng khoảng giá nhanh cho người dùng */}
+        <div style={{ marginTop: "10px" }}>
+          <button
+            onClick={() => applyPriceFilter(localMin, localMax)}
+            style={{
+              width: "100%",
+              padding: "6px",
+              borderRadius: "6px",
+              background: "#111",
+              color: "#fff",
+              border: "none",
+              fontSize: "12px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Áp dụng giá
+          </button>
         </div>
 
         {/* Preset buttons */}
