@@ -6,9 +6,10 @@ import { useRouter, usePathname } from "next/navigation";
 
 export default function Layout({ children }) {
   const router = useRouter();
-  const pathname = usePathname(); // Dùng để xác định active link
+  const pathname = usePathname();
   const [authorized, setAuthorized] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false); // Trạng thái thu gọn/mở rộng sidebar
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -41,7 +42,6 @@ export default function Layout({ children }) {
     return null;
   }
 
-  // Hàm kiểm tra active link
   const isActive = (path) => pathname === path;
 
   return (
@@ -55,7 +55,6 @@ export default function Layout({ children }) {
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"
           rel="stylesheet"
         />
-        {/* Thêm Bootstrap Icons để Sidebar đẹp hơn */}
         <link
           rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
@@ -64,40 +63,52 @@ export default function Layout({ children }) {
       </head>
 
       <body className="bg-light">
-        {/* SIDEBAR HIỆN ĐẠI */}
+        {/* SIDEBAR MÀU CAM & CÓ TÍNH NĂNG THU GỌN */}
         <div 
           className="sidebar d-flex flex-column p-3 text-white shadow-sm"
           style={{
-            width: "260px",
+            width: isCollapsed ? "80px" : "260px",
             minHeight: "100vh",
-            backgroundColor: "#111827", // Màu nền tối sang trọng (Tailwind Gray 900)
+            backgroundColor: "#ea580c", // 🟢 Màu cam chủ đạo mới
             position: "fixed",
             top: 0,
             left: 0,
-            zIndex: 1000
+            zIndex: 1000,
+            transition: "width 0.3s ease" // Hiệu ứng chuyển động mượt mà khi thu gọn
           }}
         >
-          {/* LOGO / BRAND */}
-          <div className="text-center py-3 mb-3 border-bottom border-secondary border-opacity-25">
-            <h4 className="fw-black text-uppercase tracking-wider m-0" style={{ letterSpacing: "1px" }}>
-              Nova<span className="text-info">Kicks</span>
-            </h4>
-            <span className="badge bg-info text-dark mt-1 text-uppercase" style={{ fontSize: "0.6rem" }}>
-              Admin Panel
-            </span>
+          {/* LOGO / BRAND & NÚT THU GỌN */}
+          <div className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom border-white border-opacity-25">
+            {!isCollapsed && (
+              <div className="overflow-hidden text-truncate">
+                <h4 className="fw-black text-uppercase tracking-wider m-0 fs-5" style={{ letterSpacing: "1px" }}>
+                  Nova<span className="text-dark">Kicks</span>
+                </h4>
+                <span className="badge bg-dark text-white mt-1 text-uppercase" style={{ fontSize: "0.55rem" }}>
+                  Admin Panel
+                </span>
+              </div>
+            )}
+            <button 
+              onClick={() => setIsCollapsed(!isCollapsed)} 
+              className="btn btn-sm text-white bg-dark bg-opacity-25 border-0 ms-auto"
+              title={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
+            >
+              <i className={`bi ${isCollapsed ? "bi-chevron-right" : "bi-chevron-left"}`}></i>
+            </button>
           </div>
 
-          {/* USER INFO CARD */}
-          {currentUser && (
-            <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-10">
-              <div className="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "36px", height: "36px", fontSize: "0.9rem" }}>
+          {/* USER INFO CARD (Tự ẩn khi thu gọn) */}
+          {currentUser && !isCollapsed && (
+            <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-25 border border-white border-opacity-15">
+              <div className="bg-white text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem" }}>
                 {(currentUser.fullname || "A").charAt(0).toUpperCase()}
               </div>
               <div className="overflow-hidden">
-                <div className="small fw-bold text-truncate text-white" style={{ fontSize: "0.8rem" }}>
+                <div className="small fw-bold text-truncate text-white" style={{ fontSize: "0.78rem" }}>
                   {currentUser.fullname || "Administrator"}
                 </div>
-                <div className="text-success" style={{ fontSize: "0.65rem" }}>
+                <div className="text-light opacity-75" style={{ fontSize: "0.6rem" }}>
                   ● Đang hoạt động
                 </div>
               </div>
@@ -105,118 +116,55 @@ export default function Layout({ children }) {
           )}
 
           {/* NAVIGATION MENU */}
-          <ul className="nav flex-column gap-1 flex-grow-1" style={{ fontSize: "0.88rem" }}>
-            <li className="nav-item">
-              <Link 
-                href="/admin" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 transition-all ${isActive("/admin") ? "bg-primary fw-bold shadow-sm" : "hover-bg-dark"}`}
-              >
-                <i className="bi bi-speedometer2"></i> Tổng quan
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/category" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/category") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-folder"></i> Quản lý Danh mục
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/product" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/product") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-box-seam"></i> Quản lý Sản phẩm
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/order" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/order") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-cart-check"></i> Quản lý đơn hàng
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/account" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/account") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-people"></i> Quản lý người dùng
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/voucher" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/voucher") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-ticket-perforated"></i> Quản lý voucher
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/comments" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/comments") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-chat-square-text"></i> Đánh giá sản phẩm
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/feedback" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/feedback") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-headset"></i> Quản lý Liên hệ
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/news" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/news") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-newspaper"></i> Quản lý tin tức
-              </Link>
-            </li>
-
-            <li className="nav-item">
-              <Link 
-                href="/admin/chat" 
-                className={`nav-link text-white d-flex align-items-center gap-2 px-3 py-2 rounded-2 ${isActive("/admin/chat") ? "bg-primary fw-bold shadow-sm" : ""}`}
-              >
-                <i className="bi bi-chat-dots"></i> Hỗ trợ trực tiếp
-              </Link>
-            </li>
+          <ul className="nav flex-column gap-1 flex-grow-1" style={{ fontSize: "0.85rem" }}>
+            {[
+              { href: "/admin", label: "Tổng quan", icon: "bi-speedometer2" },
+              { href: "/admin/category", label: "Quản lý Danh mục", icon: "bi-folder" },
+              { href: "/admin/product", label: "Quản lý Sản phẩm", icon: "bi-box-seam" },
+              { href: "/admin/order", label: "Quản lý đơn hàng", icon: "bi-cart-check" },
+              { href: "/admin/account", label: "Quản lý người dùng", icon: "bi-people" },
+              { href: "/admin/voucher", label: "Quản lý voucher", icon: "bi-ticket-perforated" },
+              { href: "/admin/comments", label: "Đánh giá sản phẩm", icon: "bi-chat-square-text" },
+              { href: "/admin/feedback", label: "Quản lý Liên hệ", icon: "bi-headset" },
+              { href: "/admin/news", label: "Quản lý tin tức", icon: "bi-newspaper" },
+              { href: "/admin/chat", label: "Hỗ trợ trực tiếp", icon: "bi-chat-dots" },
+            ].map((item) => (
+              <li className="nav-item" key={item.href}>
+                <Link 
+                  href={item.href} 
+                  className={`nav-link text-white d-flex align-items-center gap-3 px-3 py-2 rounded-2 ${isActive(item.href) ? "bg-dark bg-opacity-25 fw-bold shadow-sm" : "hover-orange"}`}
+                  title={isCollapsed ? item.label : ""}
+                >
+                  <i className={`bi ${item.icon} fs-5`}></i>
+                  {!isCollapsed && <span className="text-truncate">{item.label}</span>}
+                </Link>
+              </li>
+            ))}
           </ul>
 
           {/* LOGOUT BUTTON */}
-          <div className="pt-3 mt-3 border-top border-secondary border-opacity-25">
+          <div className="pt-3 mt-3 border-top border-white border-opacity-25">
             <button 
               type="button" 
-              className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 py-2 rounded-2 text-uppercase fw-bold"
-              style={{ fontSize: "0.75rem" }}
+              className="btn btn-dark w-100 d-flex align-items-center justify-content-center gap-2 py-2 rounded-2 text-uppercase fw-bold shadow-sm"
+              style={{ fontSize: "0.72rem" }}
               onClick={handleLogout}
+              title={isCollapsed ? "Đăng xuất" : ""}
             >
-              <i className="bi bi-box-arrow-right"></i> Đăng xuất
+              <i className="bi bi-box-arrow-right fs-6"></i>
+              {!isCollapsed && <span>Đăng xuất</span>}
             </button>
           </div>
         </div>
 
-        {/* MAIN CONTENT (Được đẩy lề trái sang 260px để không bị đè bởi Sidebar) */}
+        {/* MAIN CONTENT (Tự động co giãn lề trái theo kích thước của Sidebar) */}
         <div 
           className="main-content" 
           style={{ 
-            marginLeft: "260px", 
+            marginLeft: isCollapsed ? "80px" : "260px", 
             minHeight: "100vh",
-            backgroundColor: "#f8f9fa" 
+            backgroundColor: "#f8f9fa",
+            transition: "margin-left 0.3s ease" 
           }}
         >
           {children}
