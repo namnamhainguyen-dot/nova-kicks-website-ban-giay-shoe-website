@@ -48,8 +48,8 @@ export default function ProductFilter({ products }) {
       }
 
       const price = Number(p.price) || 0;
-      const minOk = priceRange.min === "" || price >= Number(priceRange.min);
-      const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
+      const minOk = priceRange.min === "" || price === null || price >= Number(priceRange.min);
+      const maxOk = priceRange.max === "" || price === null || price <= Number(priceRange.max);
         
       const sizeOk =
         selectedSizes.length === 0 ||
@@ -62,7 +62,7 @@ export default function ProductFilter({ products }) {
   // Đếm số lượng bộ lọc đang hoạt động (bao gồm cả lọc yêu thích)
   const activeCount =
     selectedSizes.length +
-    (priceRange.min !== "" || priceRange.max !== "" ? 1 : 0) +
+    (priceRange.min !== "" && priceRange.min !== null || priceRange.max !== "" && priceRange.max !== null ? 1 : 0) +
     (showFavoritesOnly ? 1 : 0);
 
   // SỬA LỖI: Hàm toggle chọn/hủy chọn kích thước hoạt động chính xác hơn
@@ -216,13 +216,13 @@ export default function ProductFilter({ products }) {
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
           {[
-            { label: "Dưới 200k", max: 200000 },
+            { label: "Dưới 200k", min: "", max: 200000 },
             { label: "200k–500k", min: 200000, max: 500000 },
-            { label: "Trên 500k", min: 500000 },
+            { label: "Trên 500k", min: 500000, max: "" },
           ].map((preset) => {
             const active =
-              priceRange.min == (preset.min ?? "") &&
-              priceRange.max == (preset.max ?? "");
+              Number(priceRange.min === "" ? 0 : priceRange.min) === Number(preset.min === "" ? 0 : preset.min) &&
+              Number(priceRange.max === "" ? 0 : priceRange.max) === Number(preset.max === "" ? 0 : preset.max);
             return (
               <button
                 key={preset.label}
@@ -230,7 +230,7 @@ export default function ProductFilter({ products }) {
                   setPriceRange(
                     active
                       ? { min: "", max: "" }
-                      : { min: preset.min ?? "", max: preset.max ?? "" }
+                      : { min: preset.min, max: preset.max }
                   )
                 }
                 style={{
