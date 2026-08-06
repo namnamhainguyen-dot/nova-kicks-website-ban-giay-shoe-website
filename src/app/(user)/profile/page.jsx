@@ -658,9 +658,8 @@ export default function Profile() {
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
         </div>
       </div>
-
-      {/* Đẩy phần nội dung hồ sơ lên sát tiêu đề hơn bằng marginTop: 0 */}
-      <main className="container mb-5 flex-grow-1" style={{ marginTop: "0px" }}>
+      
+        <main className="container-fluid px-4 mb-5 flex-grow-1">
         <div className="row g-4">
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
