@@ -54,6 +54,12 @@ export default function Profile() {
   const [cancelReasonOption, setCancelReasonOption] = useState("Đổi ý, không muốn mua nữa");
   const [customCancelReason, setCustomCancelReason] = useState("");
 
+  // --- STATE CHO TAB ĐỔI MẬT KHẨU ---
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   // Tab điều hướng
   const [activeTab, setActiveTab] = useState("profile");
 
@@ -65,7 +71,7 @@ export default function Profile() {
     }
   }, []);
 
-  // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình (Giữ màu gốc nhưng tăng độ đậm/chữ đậm cho tất cả trạng thái dễ nhìn hơn)
+  // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình
   const statusBadges = {
     pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
     processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-arrow-repeat" },
@@ -349,14 +355,72 @@ export default function Profile() {
     }
   };
 
-  // 6. QUẢN LÝ ĐA ĐỊA CHỈ
+  // 6. XỬ LÝ ĐỔI MẬT KHẨU
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      alert("Vui lòng điền đầy đủ thông tin mật khẩu!");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert("Mật khẩu mới phải có ít nhất 6 ký tự.");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      alert("Mật khẩu mới và xác nhận mật khẩu không khớp!");
+      return;
+    }
+
+    try {
+      setPasswordLoading(true);
+      let rawId = user._id || user.id;
+      if (typeof rawId === "object" && rawId !== null) {
+        rawId = rawId.$oid || rawId.toString();
+      }
+
+      const res = await fetch("/api/change-password", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: String(rawId).trim(),
+          oldPassword,
+          newPassword,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok) {
+        alert("Đổi mật khẩu thành công!");
+        setOldPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+      } else {
+        alert(`Lỗi: ${data.error || "Không thể đổi mật khẩu"}`);
+      }
+    } catch (err) {
+      console.error("Lỗi kết nối:", err);
+      alert("Không thể kết nối đến máy chủ.");
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // 7. QUẢN LÝ ĐA ĐỊA CHỈ
   const syncAddressesToStorageAndServer = async (newAddresses) => {
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
 
     try {
-      await fetch(`/api/users/${user._id}`, {
+      let rawId = user._id || user.id;
+      if (typeof rawId === "object" && rawId !== null) {
+        rawId = rawId.$oid || rawId.toString();
+      }
+      await fetch(`/api/users/${String(rawId).trim()}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -415,111 +479,107 @@ export default function Profile() {
   };
 
   const handleSaveAddress = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!receiverName.trim() || !receiverPhone.trim() || !houseNumber.trim()) {
-    alert("Vui lòng điền đầy đủ Tên, Số điện thoại người nhận và Số nhà!");
-    return;
-  }
-
-  if (!selectedProvince || !selectedDistrict || !selectedWard) {
-    alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
-    return;
-  }
-
-  setSubmitting(true);
-
-  const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
-  const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
-  const wardObj = wards.find((w) => String(w.id) === String(selectedWard));
-
-  const fullAddrString = [
-    houseNumber.trim(),
-    wardObj ? wardObj.full_name : "",
-    districtObj ? districtObj.full_name : "",
-    provinceObj ? provinceObj.full_name : "",
-  ]
-    .filter(Boolean)
-    .join(", ");
-
-  let updatedList = [...(user.addresses || [])];
-
-  if (isDefaultAddress) {
-    updatedList = updatedList.map((a) => ({ ...a, isDefault: false }));
-  }
-
-  if (editingAddressId) {
-    updatedList = updatedList.map((a) =>
-      a._id === editingAddressId
-        ? {
-            ...a,
-            label: addressLabel,
-            receiverName,
-            receiverPhone,
-            detailAddress: houseNumber,
-            provinceId: selectedProvince,
-            districtId: selectedDistrict,
-            wardId: selectedWard,
-            fullAddress: fullAddrString,
-            isDefault: isDefaultAddress,
-          }
-        : a
-    );
-  } else {
-    const newAddressItem = {
-      _id: "addr_" + Date.now(),
-      label: addressLabel,
-      receiverName,
-      receiverPhone,
-      detailAddress: houseNumber,
-      provinceId: selectedProvince,
-      districtId: selectedDistrict,
-      wardId: selectedWard,
-      fullAddress: fullAddrString,
-      isDefault: isDefaultAddress || updatedList.length === 0,
-    };
-    updatedList.push(newAddressItem);
-  }
-
-  // --- LƯU VÀO DATABASE MÁY CHỦ ---
-  try {
-    let rawId = user._id || user.id;
-    if (typeof rawId === "object" && rawId !== null) {
-      rawId = rawId.$oid || rawId.toString();
+    if (!receiverName.trim() || !receiverPhone.trim() || !houseNumber.trim()) {
+      alert("Vui lòng điền đầy đủ Tên, Số điện thoại người nhận và Số nhà!");
+      return;
     }
-    const currentUserId = String(rawId || "").trim();
 
-    const res = await fetch(`/api/users/${currentUserId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fullname: user.fullname,
-        phone: user.phone,
-        addresses: updatedList, // Gửi danh sách địa chỉ mới lên server
-      }),
-    });
+    if (!selectedProvince || !selectedDistrict || !selectedWard) {
+      alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện, Phường/Xã!");
+      return;
+    }
 
-    if (res.ok) {
-      // 1. Cập nhật React State
-      const updatedUser = { ...user, addresses: updatedList };
-      setUser(updatedUser);
+    setSubmitting(true);
 
-      // 2. Cập nhật LocalStorage
-      localStorage.setItem("user", JSON.stringify(updatedUser));
+    const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
+    const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
+    const wardObj = wards.find((w) => String(w.id) === String(selectedWard));
 
-      alert("Lưu địa chỉ thành công!");
-      setShowAddressModal(false);
+    const fullAddrString = [
+      houseNumber.trim(),
+      wardObj ? wardObj.full_name : "",
+      districtObj ? districtObj.full_name : "",
+      provinceObj ? provinceObj.full_name : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
+
+    let updatedList = [...(user.addresses || [])];
+
+    if (isDefaultAddress) {
+      updatedList = updatedList.map((a) => ({ ...a, isDefault: false }));
+    }
+
+    if (editingAddressId) {
+      updatedList = updatedList.map((a) =>
+        a._id === editingAddressId
+          ? {
+              ...a,
+              label: addressLabel,
+              receiverName,
+              receiverPhone,
+              detailAddress: houseNumber,
+              provinceId: selectedProvince,
+              districtId: selectedDistrict,
+              wardId: selectedWard,
+              fullAddress: fullAddrString,
+              isDefault: isDefaultAddress,
+            }
+          : a
+      );
     } else {
-      const errData = await res.json();
-      alert(`Lỗi lưu địa chỉ: ${errData.error || "Không thể lưu vào cơ sở dữ liệu"}`);
+      const newAddressItem = {
+        _id: "addr_" + Date.now(),
+        label: addressLabel,
+        receiverName,
+        receiverPhone,
+        detailAddress: houseNumber,
+        provinceId: selectedProvince,
+        districtId: selectedDistrict,
+        wardId: selectedWard,
+        fullAddress: fullAddrString,
+        isDefault: isDefaultAddress || updatedList.length === 0,
+      };
+      updatedList.push(newAddressItem);
     }
-  } catch (err) {
-    console.error("Lỗi khi kết nối server:", err);
-    alert("Không thể kết nối đến máy chủ để lưu địa chỉ!");
-  } finally {
-    setSubmitting(false);
-  }
-};
+
+    try {
+      let rawId = user._id || user.id;
+      if (typeof rawId === "object" && rawId !== null) {
+        rawId = rawId.$oid || rawId.toString();
+      }
+      const currentUserId = String(rawId || "").trim();
+
+      const res = await fetch(`/api/users/${currentUserId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullname: user.fullname,
+          phone: user.phone,
+          addresses: updatedList,
+        }),
+      });
+
+      if (res.ok) {
+        const updatedUser = { ...user, addresses: updatedList };
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+
+        alert("Lưu địa chỉ thành công!");
+        setShowAddressModal(false);
+      } else {
+        const errData = await res.json();
+        alert(`Lỗi lưu địa chỉ: ${errData.error || "Không thể lưu vào cơ sở dữ liệu"}`);
+      }
+    } catch (err) {
+      console.error("Lỗi khi kết nối server:", err);
+      alert("Không thể kết nối đến máy chủ để lưu địa chỉ!");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const handleDeleteAddress = (id) => {
     if (!confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
@@ -612,6 +672,13 @@ export default function Profile() {
                   style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
                 >
                   <i className="bi bi-bag-check"></i> Đơn Hàng Của Tôi
+                </button>
+                <button
+                  onClick={() => setActiveTab("password")}
+                  className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "password" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
+                  style={activeTab === "password" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                >
+                  <i className="bi bi-shield-lock"></i> Đổi Mật Khẩu
                 </button>
               </div>
             </div>
@@ -725,7 +792,7 @@ export default function Profile() {
                 ) : (
                   <div className="d-flex flex-column gap-3">
                     {user.addresses.map((addr) => (
-                      <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white shadow-sm position-relative transition-all hover-shadow">
+                      <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white shadow-sm position-relative transition-all">
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                           
                           <div className="flex-grow-1">
@@ -796,7 +863,7 @@ export default function Profile() {
                   <p className="text-muted small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
                 </div>
 
-                {/* --- THANH LỌC TRẠNG THÁI ĐƠN HÀNG --- */}
+                {/* THANH LỌC TRẠNG THÁI ĐƠN HÀNG */}
                 <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
                   {[
                     { key: "all", label: "Tất cả" },
@@ -832,7 +899,6 @@ export default function Profile() {
                       const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
                       const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
 
-                      // Tính toán số tiền giảm giá của đơn hàng
                       const orderDiscount = Number(order.discountAmount || order.discount || 0);
 
                       return (
@@ -840,7 +906,6 @@ export default function Profile() {
                           key={order._id || order.id}
                           className="border border-2 rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
                         >
-                          {/* Header đơn hàng: Ngày giờ, Nhãn giảm giá & Trạng thái */}
                           <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
                             <div className="d-flex align-items-center gap-2">
                               <span className="text-muted fw-medium d-flex align-items-center gap-1">
@@ -859,7 +924,6 @@ export default function Profile() {
                             </div>
                           </div>
 
-                          {/* Danh sách sản phẩm */}
                           <div className="d-flex flex-column gap-3 mb-3">
                             {itemsList.length > 0 ? (
                               itemsList.map((item, idx) => {
@@ -934,7 +998,6 @@ export default function Profile() {
                             )}
                           </div>
 
-                          {/* KHỐI HIỂN THỊ LÝ DO HỦY ĐƠN HÀNG */}
                           {isCancelled && (
                             <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
                               <i className="bi bi-info-circle text-danger"></i>
@@ -945,14 +1008,12 @@ export default function Profile() {
                             </div>
                           )}
 
-                          {/* Footer đơn hàng */}
                           <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
                             <div className="small text-muted d-flex align-items-center gap-1">
                               <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
                             </div>
                             
                             <div className="d-flex flex-column align-items-end gap-1">
-
                               <div className="d-flex align-items-center gap-3">
                                 <div>
                                   <span className="small text-muted me-2">Tổng tiền:</span>
@@ -992,6 +1053,66 @@ export default function Profile() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* TAB 4: ĐỔI MẬT KHẨU */}
+            {activeTab === "password" && (
+              <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-4 p-md-5">
+                <div className="border-bottom pb-3 mb-4">
+                  <h4 className="fw-bold text-dark mb-1">Đổi Mật Khẩu</h4>
+                  <p className="text-muted small mb-0">Để bảo mật tài khoản, vui lòng không chia sẻ mật khẩu cho người khác</p>
+                </div>
+
+                <form onSubmit={handleChangePassword} style={{ maxWidth: "550px" }}>
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Mật khẩu hiện tại *</label>
+                    <input
+                      type="password"
+                      className="form-control rounded-2 shadow-none py-2 px-3"
+                      placeholder="Nhập mật khẩu cũ"
+                      value={oldPassword}
+                      onChange={(e) => setOldPassword(e.target.value)}
+                      required
+                      style={{ borderColor: "#d97706" }}
+                    />
+                  </div>
+
+                  <div className="mb-3">
+                    <label className="form-label small fw-semibold text-muted">Mật khẩu mới *</label>
+                    <input
+                      type="password"
+                      className="form-control rounded-2 shadow-none py-2 px-3"
+                      placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      required
+                      style={{ borderColor: "#d97706" }}
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="form-label small fw-semibold text-muted">Xác nhận mật khẩu mới *</label>
+                    <input
+                      type="password"
+                      className="form-control rounded-2 shadow-none py-2 px-3"
+                      placeholder="Nhập lại mật khẩu mới"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      required
+                      style={{ borderColor: "#d97706" }}
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
+                    style={{ backgroundColor: "#d97706" }}
+                    disabled={passwordLoading}
+                  >
+                    <i className="bi bi-check-lg"></i> {passwordLoading ? "Đang xử lý..." : "Xác Nhận Đổi Mật Khẩu"}
+                  </button>
+                </form>
               </div>
             )}
 
@@ -1039,9 +1160,6 @@ export default function Profile() {
                       />
                     </div>
 
-                    {/* THỨ TỰ HIỂN THỊ ĐÃ SỬA: PHƯỜNG/XÃ -> QUẬN/HUYỆN -> TỈNH/THÀNH */}
-                    
-                    {/* 1. Chọn Phường/Xã (Cột đầu tiên) */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Phường / Xã *</label>
                       <select 
@@ -1054,14 +1172,11 @@ export default function Profile() {
                       >
                         <option value="">-- Chọn Phường/Xã --</option>
                         {wards.map((w) => (
-                          <option key={w.id} value={w.id}>
-                            {w.full_name}
-                          </option>
+                          <option key={w.id} value={w.id}>{w.full_name}</option>
                         ))}
                       </select>
                     </div>
 
-                    {/* 2. Chọn Quận/Huyện (Cột ở giữa) */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Quận / Huyện *</label>
                       <select 
@@ -1074,14 +1189,11 @@ export default function Profile() {
                       >
                         <option value="">-- Chọn Quận/Huyện --</option>
                         {districts.map((d) => (
-                          <option key={d.id} value={d.id}>
-                            {d.full_name}
-                          </option>
+                          <option key={d.id} value={d.id}>{d.full_name}</option>
                         ))}
                       </select>
                     </div>
 
-                    {/* 3. Chọn Tỉnh/Thành phố (Cột ngoài cùng) */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
                       <select 
@@ -1093,9 +1205,7 @@ export default function Profile() {
                       >
                         <option value="">-- Chọn Tỉnh/Thành --</option>
                         {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.full_name}
-                          </option>
+                          <option key={p.id} value={p.id}>{p.full_name}</option>
                         ))}
                       </select>
                     </div>
