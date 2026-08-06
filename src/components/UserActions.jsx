@@ -116,7 +116,7 @@ export default function UserActions() {
                 border: "1px solid #dee2e6",
               }}
             />
-            <span>👋 CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
+            <span>CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
           </Link>
 
           <ul
