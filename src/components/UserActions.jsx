@@ -111,16 +111,16 @@ export default function UserActions() {
             className="dropdown-menu dropdown-menu-end rounded-0 shadow-sm"
             aria-labelledby="userDropdown"
           >
-            {user.role === "admin" && (
-              <li>
-                <Link
-                  className="dropdown-item small text-primary fw-bold"
-                  href="/admin"
-                >
-                  Quản trị hệ thống
-                </Link>
-              </li>
-            )}
+            {user.role?.toLowerCase() === "admin" && (
+            <li>
+              <Link
+                className="dropdown-item small text-primary fw-bold"
+                href="/admin"
+              >
+                Quản trị hệ thống
+              </Link>
+            </li>
+          )}
 
             <li>
               <Link className="dropdown-item small" href="/profile">
