@@ -119,10 +119,20 @@ export default function AccountManagement() {
                     <td className="ps-4">
                       <div className="d-flex align-items-center gap-3">
                         <img
-                          src={acc.avatar || "https://i.pravatar.cc/80?img=32"}
-                          alt={acc.name}
+                          src={
+                            (acc.avatar && acc.avatar.trim() !== "") 
+                              ? acc.avatar 
+                              : (acc.image && acc.image.trim() !== "") 
+                                ? acc.image 
+                                : "https://i.pravatar.cc/80?img=32"
+                          }
+                          alt={acc.name || "User Avatar"}
                           className="rounded-circle"
                           style={{ width: "40px", height: "40px", objectFit: "cover" }}
+                          onError={(e) => {
+                            e.target.onerror = null; 
+                            e.target.src = "https://i.pravatar.cc/80?img=32";
+                          }}
                         />
                         <div>
                           <div className="fw-semibold text-dark">{acc.name}</div>
