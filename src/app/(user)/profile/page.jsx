@@ -674,7 +674,7 @@ export default function Profile() {
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
           <div className="col-lg-3">
-            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-3 mb-3" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(8px)" }}>
+            <div className="card border border-2 border-white-50 shadow-lg rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.2)", backdropFilter: "blur(12px)" }}>
               <div className="d-flex align-items-center gap-3 px-2">
                 <div className="position-relative flex-shrink-0">
                   {user.avatar ? (
