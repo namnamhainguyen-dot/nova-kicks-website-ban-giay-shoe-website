@@ -640,7 +640,7 @@ export default function Profile() {
         className="position-relative w-100" 
         style={{ 
           height: "260px", 
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url('/images/image_c6211a.jpg')`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url('/img/1786003437818_3231377475978160852_3231377475978160852_eca929e34de90adaaa18dd75bf77d889.jpg')`,
           backgroundSize: "cover",
           backgroundPosition: "center"
         }}
