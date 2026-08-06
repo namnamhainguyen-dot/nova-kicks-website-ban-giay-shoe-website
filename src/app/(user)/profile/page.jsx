@@ -651,8 +651,15 @@ export default function Profile() {
   return (
     <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
-      <main className="container mb-5 flex-grow-1">
-        {/* Tiêu đề được đưa vào chung trong main */}
+      <main 
+        className="container mb-5 flex-grow-1 p-4 rounded-4" 
+        style={{ 
+          backgroundImage: `url('img/background_profile.jpg')`, 
+          backgroundSize: 'cover', 
+          backgroundPosition: 'center' 
+        }}
+      >
+        {/* Tiêu đề */}
         <div className="mb-4">
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
