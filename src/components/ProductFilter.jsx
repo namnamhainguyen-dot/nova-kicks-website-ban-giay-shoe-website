@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { WishlistContext } from "@/components/WishlistContext";
 
 // 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
+// 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
 function FilterPanel({
   priceRange,
   setPriceParam,
@@ -39,10 +40,10 @@ function FilterPanel({
     }
   }, []);
 
-  // Hàm áp dụng giá trị vào URL chính thức
+  // 🛠️ SỬA LẠI HÀM NÀY: Đảm bảo chuyển đổi đúng định dạng và đẩy thẳng lên URL
   const handleApplyPrice = useCallback(() => {
-    const minVal = localMin !== '' ? Number(localMin).toString() : '';
-    const maxVal = localMax !== '' ? Number(localMax).toString() : '';
+    const minVal = localMin !== '' ? String(Number(localMin)) : '';
+    const maxVal = localMax !== '' ? String(Number(localMax)) : '';
     
     setPriceParam('min', minVal);
     setPriceParam('max', maxVal);
@@ -58,8 +59,8 @@ function FilterPanel({
 
   // Hàm xử lý preset giá
   const handlePresetPrice = useCallback((preset) => {
-    const presetMinStr = preset.min !== '' && preset.min !== undefined ? preset.min.toString() : '';
-    const presetMaxStr = preset.max !== '' && preset.max !== undefined ? preset.max.toString() : '';
+    const presetMinStr = preset.min !== '' && preset.min !== undefined ? String(preset.min) : '';
+    const presetMaxStr = preset.max !== '' && preset.max !== undefined ? String(preset.max) : '';
 
     const isActive = 
       Number(localMin || 0) === Number(presetMinStr || 0) && 
@@ -73,8 +74,8 @@ function FilterPanel({
     } else {
       setLocalMin(presetMinStr);
       setLocalMax(presetMaxStr);
-      setPriceParam('min', preset.min);
-      setPriceParam('max', preset.max);
+      setPriceParam('min', presetMinStr);
+      setPriceParam('max', presetMaxStr);
     }
   }, [localMin, localMax, setPriceParam]);
 
@@ -101,6 +102,8 @@ function FilterPanel({
     { label: "1tr–3tr", min: 1000000, max: 3000000 },
     { label: "Trên 3tr", min: 3000000, max: "" },
   ], []);
+
+  // ... (phần render giao diện giữ nguyên như cũ)
 
   return (
     <div
