@@ -103,50 +103,76 @@ export default function UserActions() {
             role="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-            style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
+            style={{ fontSize: "0.75rem", textTransform: "uppercase" }}
           >
             {/* AVATAR */}
             <img
               src={userAvatar || "https://via.placeholder.com/30"}
               alt="Avatar"
-              className="rounded-circle object-fit-cover"
+              className="rounded-circle object-fit-cover shadow-sm"
               style={{
-                width: "24px",
-                height: "24px",
-                border: "1px solid #dee2e6",
+                width: "28px",
+                height: "28px",
+                border: "2px solid #fff",
+                boxShadow: "0 0 0 1px #e5e7eb",
               }}
             />
             <span>CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
           </Link>
 
+          {/* ✨ DROPDOWN MENU ĐÃ ĐƯỢC THIẾT KẾ LẠI */}
           <ul
-            className="dropdown-menu dropdown-menu-end rounded-0 shadow-sm"
+            className="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 mt-2"
             aria-labelledby="userDropdown"
+            style={{
+              borderRadius: "14px",
+              minWidth: "210px",
+              animation: "fadeIn 0.2s ease-in-out",
+            }}
           >
+            {/* Header nhỏ hiển thị nhanh thông tin tài khoản */}
+            <li className="px-3 py-2 mb-1 border-bottom">
+              <span className="d-block text-muted" style={{ fontSize: "0.7rem" }}>Tài khoản đang đăng nhập</span>
+              <span className="d-block text-dark fw-bold text-truncate" style={{ fontSize: "0.8rem" }}>
+                {user.email || user.username || user.fullname || user.name}
+              </span>
+            </li>
+
             {user.role?.toLowerCase() === "admin" && (
               <li>
                 <Link
-                  className="dropdown-item small text-primary fw-bold"
+                  className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 fw-semibold text-primary"
                   href="/admin"
+                  style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
                 >
+                  <i className="fas fa-shield-alt" style={{ width: "16px" }}></i>
                   Quản trị hệ thống
                 </Link>
               </li>
             )}
 
             <li>
-              <Link className="dropdown-item small" href="/profile">
+              <Link
+                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 text-dark"
+                href="/profile"
+                style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
+              >
+                <i className="fas fa-user-circle text-secondary" style={{ width: "16px" }}></i>
                 Hồ sơ của tôi
               </Link>
             </li>
+
             <li>
-              <hr className="dropdown-divider" />
+              <hr className="dropdown-divider my-1 bg-light" />
             </li>
+
             <li>
               <button
-                className="dropdown-item small text-danger bg-transparent border-0 w-100 text-start"
+                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 text-danger bg-transparent border-0 w-100 text-start fw-medium"
                 onClick={handleLogout}
+                style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
               >
+                <i className="fas fa-sign-out-alt" style={{ width: "16px" }}></i>
                 Đăng xuất
               </button>
             </li>
