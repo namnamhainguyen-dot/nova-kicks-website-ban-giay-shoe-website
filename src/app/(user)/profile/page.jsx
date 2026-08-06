@@ -660,7 +660,7 @@ export default function Profile() {
       <div 
         className="position-fixed top-0 start-0 w-100 h-100" 
         style={{ 
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url('/img/1786003437818_3231377475978160852_3231377475978160852_eca929e34de90adaaa18dd75bf77d889.jpg')`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url('/img/background_profile.jpg')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           filter: "blur(4px)",
