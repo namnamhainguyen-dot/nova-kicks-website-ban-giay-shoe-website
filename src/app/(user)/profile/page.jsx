@@ -776,16 +776,6 @@ export default function Profile() {
                             onChange={handleFileChange}
                             style={{ borderColor: "#d97706" }} 
                           />
-                          <div className="text-muted small" style={{ fontSize: "0.75rem" }}>Hoặc dán đường dẫn URL ảnh:</div>
-                          <input 
-                            type="url" 
-                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mt-1" 
-                            id="avatar" 
-                            value={user.avatar || ""} 
-                            onChange={handleInputChange} 
-                            placeholder="https://example.com/avatar.jpg"
-                            style={{ borderColor: "#d97706" }} 
-                          />
                         </div>
                       )}
                     </div>
