@@ -12,10 +12,6 @@ export default function Login() {
     identifier: "",
     password: "",
   });
-  const DEMO_ADMIN = {
-    identifier: "admin@novakicks.com",
-    password: "Admin@123",
-  };
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -38,14 +34,13 @@ export default function Login() {
         });
 
         if (googleBtnRef.current) {
-          // Lấy độ rộng thực tế của container cha để ép nút Google rộng full 100%
           const btnWidth = googleBtnRef.current.offsetWidth || 350;
 
           window.google.accounts.id.renderButton(googleBtnRef.current, {
             type: "standard",
             theme: "outline",
             size: "large",
-            width: btnWidth, // 🟢 ĐÃ SỬA: Đưa kích thước chính xác chiều rộng container
+            width: btnWidth,
             text: "continue_with",
             shape: "rectangular",
             logo_alignment: "left",
@@ -60,6 +55,31 @@ export default function Login() {
       }
     };
   }, []);
+
+  // Hàm xử lý lưu session chung cho cả Google và Form Login
+  const handleAuthSuccess = (data) => {
+    if (data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+      document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`;
+    }
+    if (data.token) {
+      localStorage.setItem("token", data.token);
+      document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}`;
+    }
+
+    // Kiểm tra chuẩn role (chuyển về chữ thường để tránh lỗi lệch ký tự hoa/thường)
+    const userRole = data.user?.role?.toLowerCase();
+
+    setTimeout(() => {
+      window.dispatchEvent(new Event("userLogin"));
+      
+      if (userRole === "admin") {
+        router.push("/admin");
+      } else {
+        router.push("/");
+      }
+    }, 1000);
+  };
 
   // 2. XỬ LÝ DỮ LIỆU GOOGLE TRẢ VỀ
   const handleGoogleResponse = async (response) => {
@@ -82,29 +102,11 @@ export default function Login() {
         throw new Error(data.message || "Xác thực tài khoản Google thất bại!");
       }
 
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`;
-      }
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}`;
-      }
-
       setSuccess("Đăng nhập bằng Google thành công! Đang chuyển hướng...");
-
-      setTimeout(() => {
-        window.dispatchEvent(new Event("userLogin"));
-        if (data.user?.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/");
-        }
-      }, 1000);
+      handleAuthSuccess(data);
 
     } catch (err) {
       setError(err.message || "Đăng nhập bằng Google thất bại. Vui lòng thử lại!");
-    } finally {
       setLoading(false);
     }
   };
@@ -114,7 +116,9 @@ export default function Login() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  const submitLogin = async (identifier, password) => {
+  // 3. XỬ LÝ ĐĂNG NHẬP THƯỜNG (EMAIL/PHONE & PASSWORD)
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setError("");
     setSuccess("");
     setLoading(true);
@@ -124,8 +128,8 @@ export default function Login() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          identifier: identifier.trim(),
-          password,
+          identifier: formData.identifier.trim(),
+          password: formData.password,
         }),
       });
 
@@ -136,33 +140,12 @@ export default function Login() {
       }
 
       setSuccess("Đăng nhập thành công! Đang chuyển hướng...");
-      if (data.user) {
-        localStorage.setItem("user", JSON.stringify(data.user));
-        document.cookie = `user=${encodeURIComponent(JSON.stringify(data.user))}; path=/; max-age=${60 * 60 * 24 * 7}`;
-      }
-      if (data.token) {
-        localStorage.setItem("token", data.token);
-        document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}`;
-      }
+      handleAuthSuccess(data);
 
-      setTimeout(() => {
-        if (data.user?.role === "admin") {
-          router.push("/admin");
-        } else {
-          window.dispatchEvent(new Event("userLogin"));
-          router.push("/");
-        }
-      }, 1000);
     } catch (err) {
       setError(err.message);
-    } finally {
       setLoading(false);
     }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    await submitLogin(formData.identifier, formData.password);
   };
 
   return (
@@ -191,7 +174,6 @@ export default function Login() {
         {error && <div className="alert alert-danger rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{error}</div>}
         {success && <div className="alert alert-success rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{success}</div>}
 
-        {/* 🟢 KHUNG CHỨA NÚT GOOGLE ĐÃ ĐƯỢC CHỈNH DẠNG NGUYÊN KHỐI FULL WIDTH */}
         <div className="w-100 mb-4 d-flex justify-content-center">
           <div ref={googleBtnRef} className="w-100 d-flex justify-content-center" style={{ minHeight: "44px" }}></div>
         </div>
@@ -223,7 +205,7 @@ export default function Login() {
             </label>
             <input 
               type="password" 
-              className="form-control rounded-0 border-secondary bg-white text-dark py-2" 
+              className="form-key rounded-0 border-secondary bg-white text-dark py-2 form-control" 
               id="password" 
               placeholder="••••••••"
               value={formData.password}

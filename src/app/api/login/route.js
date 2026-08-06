@@ -95,6 +95,8 @@ export async function POST(request) {
           phone: user.phone || null,
           role: user.role || "user",
         },
+        // 🟢 ĐÃ BỔ SUNG: Trả về token cho người dùng thường (có thể dùng _id hoặc JWT thực tế của bạn)
+        token: user._id.toString(), 
       },
       { status: 200 }
     );
