@@ -218,24 +218,24 @@ export default function AdminOrderPage() {
   const totalRevenue = orders.filter((o) => o.status === "completed").reduce((sum, o) => sum + Number(o.final_total || o.total || 0), 0);
 
   const statusBadges = {
-    pending: { text: "⏳ Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning text-dark" },
-    preparing: { text: "📦 Đang đóng gói", class: "bg-info bg-opacity-10 text-info" },
-    shipping: { text: "🚚 Đang giao", class: "bg-primary bg-opacity-10 text-primary" },
-    completed: { text: "✅ Hoàn thành", class: "bg-success bg-opacity-10 text-success" },
-    cancelled: { text: "❌ Đã hủy", class: "bg-danger bg-opacity-10 text-danger" },
-    boomed: { text: "💥 Boom hàng", class: "bg-danger bg-opacity-10 text-danger" },
-    returned: { text: "↩️ Trả hàng", class: "bg-warning bg-opacity-10 text-warning text-dark" },
+    pending: { text: "Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning text-dark" },
+    preparing: { text: "Đang đóng gói", class: "bg-info bg-opacity-10 text-info" },
+    shipping: { text: "Đang giao", class: "bg-primary bg-opacity-10 text-primary" },
+    completed: { text: "Hoàn thành", class: "bg-success bg-opacity-10 text-success" },
+    cancelled: { text: "Đã hủy", class: "bg-danger bg-opacity-10 text-danger" },
+    boomed: { text: "Boom hàng", class: "bg-danger bg-opacity-10 text-danger" },
+    returned: { text: "Trả hàng", class: "bg-warning bg-opacity-10 text-warning text-dark" },
   };
 
   const getAllowedOptions = (currentStatus) => {
     const allOpts = [
-      { value: "pending", label: "⏳ Chờ xác nhận" },
-      { value: "preparing", label: "📦 Đóng gói" },
-      { value: "shipping", label: "🚚 Đang giao" },
-      { value: "completed", label: "✅ Hoàn thành" },
-      { value: "cancelled", label: "❌ Hủy" },
-      { value: "returned", label: "↩️ Trả hàng" },
-      { value: "boomed", label: "💥 Boom" },
+      { value: "pending", label: "Chờ xác nhận" },
+      { value: "preparing", label: "Đóng gói" },
+      { value: "shipping", label: "Đang giao" },
+      { value: "completed", label: "Hoàn thành" },
+      { value: "cancelled", label: "Hủy" },
+      { value: "returned", label: "Trả hàng" },
+      { value: "boomed", label: "Boom" },
     ];
 
     if (["completed", "cancelled", "returned", "boomed"].includes(currentStatus)) {
@@ -391,10 +391,10 @@ export default function AdminOrderPage() {
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title fw-bold">
                   {actionModal.type === "cancelled"
-                    ? "❌ Lý do hủy đơn"
+                    ? "Lý do hủy đơn"
                     : actionModal.type === "boomed"
-                    ? "💥 Thông tin boom hàng"
-                    : "↩️ Thông tin trả hàng"}
+                    ? "Thông tin boom hàng"
+                    : "Thông tin trả hàng"}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setActionModal({ ...actionModal, isOpen: false })}></button>
               </div>
@@ -428,7 +428,7 @@ export default function AdminOrderPage() {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
-            📦 Quản lý đơn hàng nâng cao
+            Quản lý đơn hàng nâng cao
           </h2>
           <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
             Theo dõi, xử lý hàng loạt và xuất báo cáo doanh thu trực tuyến.
@@ -439,7 +439,7 @@ export default function AdminOrderPage() {
           onClick={exportToCSV}
           style={{ fontSize: "0.9rem" }}
         >
-          📊 Xuất Excel / CSV
+          Xuất Excel / CSV
         </button>
       </div>
 
@@ -551,19 +551,19 @@ export default function AdminOrderPage() {
               className="btn btn-sm btn-info text-white fw-semibold rounded-pill px-3"
               onClick={() => handleBatchUpdate("preparing")}
             >
-              📦 Chuyển sang Đóng gói
+              Chuyển sang Đóng gói
             </button>
             <button
               className="btn btn-sm btn-primary fw-semibold rounded-pill px-3"
               onClick={() => handleBatchUpdate("shipping")}
             >
-              🚚 Chuyển sang Đang giao
+              Chuyển sang Đang giao
             </button>
             <button
               className="btn btn-sm btn-success fw-semibold rounded-pill px-3"
               onClick={() => handleBatchUpdate("completed")}
             >
-              ✅ Hoàn thành hàng loạt
+              Hoàn thành hàng loạt
             </button>
           </div>
         </div>
