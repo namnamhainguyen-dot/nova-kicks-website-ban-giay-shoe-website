@@ -283,7 +283,7 @@ export default function Profile() {
     }
   };
 
-  // 4. Xử lý đổi tên, sđt, avatar cá nhân
+  // 4. Xử lý đổi tên, sđt cá nhân
   const handleInputChange = (e) => {
     const { id, value } = e.target;
 
@@ -304,6 +304,22 @@ export default function Profile() {
       ...prev,
       [id]: value,
     }));
+  };
+
+  // XỬ LÝ CHỌN ẢNH TỪ MÁY TÍNH (Chuyển thành Base64)
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert("Kích thước ảnh quá lớn! Vui lòng chọn ảnh dưới 2MB.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUser((prev) => ({ ...prev, avatar: reader.result }));
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // 5. Cập nhật thông tin cơ bản & Avatar
@@ -633,27 +649,35 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-vh-100 d-flex flex-column text-secondary" style={{ backgroundColor: "#f1f5f9", fontFamily: "'Inter', sans-serif" }}>
+    <div 
+      className="min-vh-100 d-flex flex-column text-secondary position-relative" 
+      style={{ 
+        fontFamily: "'Inter', sans-serif" 
+      }}
+    >
       
-      {/* ẢNH NỀN BANNER CHO TRANG PROFILE */}
+      {/* ẢNH NỀN FULL TOÀN TRANG & LÀM MỜ (BLUR) */}
       <div 
-        className="position-relative w-100" 
+        className="position-fixed top-0 start-0 w-100 h-100" 
         style={{ 
-          height: "260px", 
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url('/img/1786003437818_3231377475978160852_3231377475978160852_eca929e34de90adaaa18dd75bf77d889.jpg')`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url('/img/image_c6211a.jpg')`,
           backgroundSize: "cover",
-          backgroundPosition: "center"
+          backgroundPosition: "center",
+          filter: "blur(4px)",
+          transform: "scale(1.05)",
+          zIndex: -1
         }}
-      >
-        <div className="container h-100 d-flex align-items-end pb-4">
-          <div className="text-white">
-            <h2 className="fw-bold mb-1">Trang Tài Khoản</h2>
-            <p className="text-white-50 small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
-          </div>
+      ></div>
+
+      {/* TIÊU ĐỀ TRANG TRÊN NỀN MỜ */}
+      <div className="container pt-4 pb-2">
+        <div className="text-white">
+          <h2 className="fw-bold mb-1">Trang Tài Khoản</h2>
+          <p className="text-white-50 small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
         </div>
       </div>
 
-      <main className="container mb-4 flex-grow-1 position-relative" style={{ marginTop: "-35px", zIndex: 2 }}>
+      <main className="container mb-5 flex-grow-1 position-relative" style={{ zIndex: 2, marginTop: "15px" }}>
         <div className="row g-4">
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
@@ -744,7 +768,7 @@ export default function Profile() {
 
                 <form onSubmit={handleUpdateProfile} style={{ maxWidth: "650px" }}>
                   
-                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN */}
+                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN (HỖ TRỢ CẢ CHỌN FILE TỪ MÁY HOẶC URL) */}
                   <div className="mb-4 row align-items-center">
                     <label className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Ảnh đại diện</label>
                     <div className="col-sm-9 d-flex align-items-center gap-3">
@@ -764,10 +788,18 @@ export default function Profile() {
 
                       {isEditingProfile && (
                         <div className="flex-grow-1">
-                          <label className="form-label small text-muted mb-1">Nhập đường dẫn (URL) ảnh đại diện mới:</label>
+                          <label className="form-label small text-muted mb-1">Chọn ảnh từ máy tính:</label>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mb-2" 
+                            onChange={handleFileChange}
+                            style={{ borderColor: "#d97706" }} 
+                          />
+                          <div className="text-muted small" style={{ fontSize: "0.75rem" }}>Hoặc dán đường dẫn URL ảnh:</div>
                           <input 
                             type="url" 
-                            className="form-control rounded-2 shadow-none py-2 px-3 small" 
+                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mt-1" 
                             id="avatar" 
                             value={user.avatar || ""} 
                             onChange={handleInputChange} 
