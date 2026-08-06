@@ -660,7 +660,7 @@ export default function Profile() {
       <div 
         className="position-fixed top-0 start-0 w-100 h-100" 
         style={{ 
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url('/img/background_profile.jpg')`,
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), url('/img/background_profile.jpg')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
           backgroundRepeat: "no-repeat",
@@ -681,7 +681,7 @@ export default function Profile() {
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
           <div className="col-lg-3">
-            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-3 mb-3" style={{ backgroundColor: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(8px)" }}>
+            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-3 mb-3" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(8px)" }}>
               <div className="d-flex align-items-center gap-3 px-2">
                 <div className="position-relative flex-shrink-0">
                   {user.avatar ? (
@@ -705,7 +705,7 @@ export default function Profile() {
               </div>
             </div>
 
-            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-2" style={{ backgroundColor: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(8px)" }}>
+            <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-2" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(8px)" }}>
               <div className="d-flex flex-column gap-1">
                 <button
                   onClick={() => {
@@ -713,28 +713,28 @@ export default function Profile() {
                     setIsEditingProfile(false);
                   }}
                   className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "profile" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "profile" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                  style={activeTab === "profile" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
                 >
                   <i className="bi bi-person-badge"></i> Hồ Sơ Của Tôi
                 </button>
                 <button
                   onClick={() => setActiveTab("address")}
                   className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "address" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "address" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                  style={activeTab === "address" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
                 >
                   <i className="bi bi-geo-alt"></i> Địa Chỉ Nhận Hàng
                 </button>
                 <button
                   onClick={() => setActiveTab("orders")}
                   className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "orders" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                  style={activeTab === "orders" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
                 >
                   <i className="bi bi-bag-check"></i> Đơn Hàng Của Tôi
                 </button>
                 <button
                   onClick={() => setActiveTab("password")}
                   className={`btn text-start border-0 py-2.5 px-3 rounded-3 fw-semibold transition-all d-flex align-items-center gap-2 ${activeTab === "password" ? "text-dark shadow-sm" : "text-secondary bg-transparent"}`}
-                  style={activeTab === "password" ? { color: "#d97706", backgroundColor: "#fff7ed" } : {}}
+                  style={activeTab === "password" ? { color: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" } : {}}
                 >
                   <i className="bi bi-shield-lock"></i> Đổi Mật Khẩu
                 </button>
@@ -742,12 +742,12 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: NỘI DUNG CHÍNH (HIỆU ỨNG KÍNH MỜ) */}
+          {/* CỘT PHẢI: NỘI DUNG CHÍNH (HIỆU ỨNG KÍNH MỜ TRONG SUỐT VỪA PHẢI) */}
           <div className="col-lg-9">
             
             {/* TAB 1: HỒ SƠ CÁ NHÂN */}
             {activeTab === "profile" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(10px)" }}>
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
                 <div className="border-bottom pb-3 mb-4 d-flex justify-content-between align-items-center">
                   <div>
                     <h4 className="fw-bold text-dark mb-1">Hồ Sơ Của Tôi</h4>
@@ -757,7 +757,7 @@ export default function Profile() {
                     <button 
                       type="button" 
                       className="btn btn-sm px-3 rounded-2 fw-semibold d-flex align-items-center gap-1"
-                      style={{ color: "#d97706", borderColor: "#d97706", backgroundColor: "#fff7ed" }}
+                      style={{ color: "#d97706", borderColor: "#d97706", backgroundColor: "rgba(255, 247, 237, 0.9)" }}
                       onClick={() => setIsEditingProfile(true)}
                     >
                       <i className="bi bi-pencil-square"></i> Chỉnh sửa thông tin
@@ -791,14 +791,14 @@ export default function Profile() {
                           <input 
                             type="file" 
                             accept="image/*" 
-                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mb-2 bg-transparent" 
+                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mb-2 bg-white bg-opacity-75" 
                             onChange={handleFileChange}
                             style={{ borderColor: "#d97706" }} 
                           />
                           <div className="text-muted small" style={{ fontSize: "0.75rem" }}>Hoặc dán đường dẫn URL ảnh:</div>
                           <input 
                             type="url" 
-                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mt-1 bg-transparent" 
+                            className="form-control rounded-2 shadow-none py-1.5 px-3 small mt-1 bg-white bg-opacity-75" 
                             id="avatar" 
                             value={user.avatar || ""} 
                             onChange={handleInputChange} 
@@ -821,7 +821,7 @@ export default function Profile() {
                     <label htmlFor="fullname" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Họ và tên</label>
                     <div className="col-sm-9">
                       {isEditingProfile ? (
-                        <input type="text" className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required style={{ borderColor: "#d97706" }} />
+                        <input type="text" className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required style={{ borderColor: "#d97706" }} />
                       ) : (
                         <p className="mb-0 text-dark fw-medium py-2">{user.fullname || ""}</p>
                       )}
@@ -836,7 +836,7 @@ export default function Profile() {
                           <input
                             type="tel"
                             maxLength={10}
-                            className={`form-control rounded-2 shadow-none py-2 px-3 bg-transparent ${phoneError ? "is-invalid" : ""}`}
+                            className={`form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75 ${phoneError ? "is-invalid" : ""}`}
                             id="phone"
                             value={user.phone || ""}
                             onChange={handleInputChange}
@@ -859,7 +859,7 @@ export default function Profile() {
                         </button>
                         <button 
                           type="button" 
-                          className="btn btn-light px-4 py-2 rounded-2 border text-secondary bg-transparent"
+                          className="btn btn-light px-4 py-2 rounded-2 border text-secondary bg-white bg-opacity-75"
                           onClick={() => {
                             setIsEditingProfile(false);
                             window.location.reload();
@@ -876,7 +876,7 @@ export default function Profile() {
 
             {/* TAB 2: ĐỊA CHỈ NHẬN HÀNG */}
             {activeTab === "address" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(10px)" }}>
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
                 <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
                   <div>
                     <h4 className="fw-bold text-dark mb-1">Địa Chỉ Nhận Hàng</h4>
@@ -894,7 +894,7 @@ export default function Profile() {
                 ) : (
                   <div className="d-flex flex-column gap-3">
                     {user.addresses.map((addr) => (
-                      <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white bg-opacity-75 shadow-sm position-relative transition-all">
+                      <div key={addr._id} className="p-4 border border-2 rounded-4 bg-white bg-opacity-90 shadow-sm position-relative transition-all">
                         <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
                           
                           <div className="flex-grow-1">
@@ -921,7 +921,7 @@ export default function Profile() {
                           <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-md-top-0">
                             <div className="d-flex align-items-center gap-2">
                               <button 
-                                className="btn btn-sm btn-light border px-3 py-1 rounded-2 text-dark fw-medium bg-transparent"
+                                className="btn btn-sm btn-light border px-3 py-1 rounded-2 text-dark fw-medium bg-white"
                                 style={{ fontSize: "0.85rem" }}
                                 onClick={() => handleOpenEditModal(addr)}
                               >
@@ -959,7 +959,7 @@ export default function Profile() {
 
             {/* TAB 3: ĐƠN MUA */}
             {activeTab === "orders" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(10px)" }}>
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
                 <div className="border-bottom pb-3 mb-4">
                   <h4 className="fw-bold text-dark mb-1">Đơn Hàng Của Tôi</h4>
                   <p className="text-muted small mb-0">Danh sách toàn bộ các đơn hàng bạn đã đặt mua</p>
@@ -979,7 +979,7 @@ export default function Profile() {
                       key={tab.key}
                       onClick={() => setOrderFilter(tab.key)}
                       className={`btn btn-sm px-3 py-2 rounded-pill fw-semibold transition-all ${
-                        orderFilter === tab.key ? "text-white shadow-sm" : "btn-light text-secondary border bg-transparent"
+                        orderFilter === tab.key ? "text-white shadow-sm" : "btn-light text-secondary border bg-white bg-opacity-75"
                       }`}
                       style={orderFilter === tab.key ? { backgroundColor: "#d97706" } : {}}
                     >
@@ -1006,7 +1006,7 @@ export default function Profile() {
                       return (
                         <div 
                           key={order._id || order.id}
-                          className="border border-2 rounded-4 p-3 p-md-4 bg-white bg-opacity-75 shadow-sm transition-all"
+                          className="border border-2 rounded-4 p-3 p-md-4 bg-white bg-opacity-90 shadow-sm transition-all"
                         >
                           <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
                             <div className="d-flex align-items-center gap-2">
@@ -1160,7 +1160,7 @@ export default function Profile() {
 
             {/* TAB 4: ĐỔI MẬT KHẨU */}
             {activeTab === "password" && (
-              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.9)", backdropFilter: "blur(10px)" }}>
+              <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-4 p-md-5" style={{ backgroundColor: "rgba(255, 255, 255, 0.75)", backdropFilter: "blur(10px)" }}>
                 <div className="border-bottom pb-3 mb-4">
                   <h4 className="fw-bold text-dark mb-1">Đổi Mật Khẩu</h4>
                   <p className="text-muted small mb-0">Để bảo mật tài khoản, vui lòng không chia sẻ mật khẩu cho người khác</p>
@@ -1171,7 +1171,7 @@ export default function Profile() {
                     <label className="form-label small fw-semibold text-muted">Mật khẩu hiện tại *</label>
                     <input
                       type="password"
-                      className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent"
+                      className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75"
                       placeholder="Nhập mật khẩu cũ"
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
@@ -1184,7 +1184,7 @@ export default function Profile() {
                     <label className="form-label small fw-semibold text-muted">Mật khẩu mới *</label>
                     <input
                       type="password"
-                      className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent"
+                      className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75"
                       placeholder="Nhập mật khẩu mới (ít nhất 6 ký tự)"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
@@ -1197,7 +1197,7 @@ export default function Profile() {
                     <label className="form-label small fw-semibold text-muted">Xác nhận mật khẩu mới *</label>
                     <input
                       type="password"
-                      className="form-control rounded-2 shadow-none py-2 px-3 bg-transparent"
+                      className="form-control rounded-2 shadow-none py-2 px-3 bg-white bg-opacity-75"
                       placeholder="Nhập lại mật khẩu mới"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
