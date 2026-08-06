@@ -18,7 +18,7 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🌟 BƯỚC 1: GỌI API ĐỂ GỬI MÃ OTP VỀ MAIL THẬT
+  // 🌟 BƯỚC 1: GỌI API ĐỂ GỬI MÃ OTP VỀ MAIL
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     setError("");
@@ -50,8 +50,9 @@ export default function ForgotPassword() {
     }
   };
 
-  // 🌟 BƯỚC 2: GỌI API XÁC THỰC MÃ OTP VỚI BACKEND TRƯỚC KHI CHO QUA BƯỚC SAU
-  const handleVerifyOtp = async (e) => {
+  // 🌟 BƯỚC 2: KIỂM TRA ĐỘ DÀI MÃ OTP VÀ CHUYỂN SANG BƯỚC ĐỔI MẬT KHẨU
+  // (Mã OTP sẽ được giữ lại trong state 'otp' để gửi lên Backend cùng lúc ở Bước 3)
+  const handleVerifyOtpLocally = (e) => {
     e.preventDefault();
     setError("");
     setSuccess("");
@@ -61,37 +62,14 @@ export default function ForgotPassword() {
       return;
     }
 
-    setLoading(true);
-    try {
-      // Gọi API kiểm tra tính đúng đắn của OTP trước
-      const res = await fetch("/api/verify-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: email.trim(), 
-          otp: otp.trim() 
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.message || "Mã OTP không chính xác hoặc đã hết hạn!");
-      }
-
-      setSuccess("Mã số xác nhận hợp lệ! Hãy thiết lập lại mật khẩu.");
-      setTimeout(() => {
-        setStep("RESET"); // Chuyển sang bước đổi mật khẩu mới
-        setSuccess("");
-      }, 1200);
-    } catch (err) {
-      setError(err.message || "Xác thực mã OTP thất bại!");
-    } finally {
-      setLoading(false);
-    }
+    setSuccess("Mã số hợp lệ! Hãy thiết lập lại mật khẩu.");
+    setTimeout(() => {
+      setStep("RESET"); // Chuyển sang bước nhập mật khẩu mới
+      setSuccess("");
+    }, 1000);
   };
 
-  // 🌟 BƯỚC 3: CẬP NHẬT MẬT KHẨU MỚI VÀO CƠ SỞ DỮ LIỆU
+  // 🌟 BƯỚC 3: GỬI EMAIL, OTP VÀ MẬT KHẨU MỚI LÊN BACKEND ĐỂ XỬ LÝ 1 LẦN DUY NHẤT
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError("");
@@ -114,7 +92,7 @@ export default function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: email.trim(), 
-          otp: otp.trim(), 
+          otp: otp.trim(), // Gửi kèm OTP để Backend đối chiếu chính xác
           password: newPassword 
         }),
       });
@@ -198,7 +176,7 @@ export default function ForgotPassword() {
 
           {/* 🌟 BƯỚC 2: FORM NHẬP MÃ SỐ OTP */}
           {step === "OTP" && (
-            <form onSubmit={handleVerifyOtp}>
+            <form onSubmit={handleVerifyOtpLocally}>
               <div className="mb-4 text-center">
                 <p className="small text-muted mb-3">Mã số xác nhận đã gửi đến <strong>{email}</strong></p>
                 <input
@@ -209,15 +187,14 @@ export default function ForgotPassword() {
                   placeholder="000000"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} // Chỉ cho phép nhập số
-                  disabled={loading}
                   required
                 />
               </div>
-              <button type="submit" className="btn btn-dark w-100 rounded-0 py-2.5 text-uppercase fw-bold tracking-widest border-0" style={{ backgroundColor: "#012a3a" }} disabled={loading}>
-                {loading ? "Đang kiểm tra..." : "Xác nhận mã số"}
+              <button type="submit" className="btn btn-dark w-100 rounded-0 py-2.5 text-uppercase fw-bold tracking-widest border-0" style={{ backgroundColor: "#012a3a" }}>
+                Xác nhận mã số
               </button>
               <div className="text-center mt-3">
-                <button type="button" className="btn btn-link btn-sm text-secondary text-decoration-none small" onClick={() => setStep("EMAIL")} disabled={loading}>
+                <button type="button" className="btn btn-link btn-sm text-secondary text-decoration-none small" onClick={() => setStep("EMAIL")}>
                   &larr; Thay đổi email khác
                 </button>
               </div>
