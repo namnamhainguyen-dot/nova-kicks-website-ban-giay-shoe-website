@@ -363,6 +363,10 @@ export default function Profile() {
         alert("Cập nhật thông tin cá nhân thành công! 🎉");
         const updatedUserData = { ...user, ...payload, _id: currentUserId };
         localStorage.setItem("user", JSON.stringify(updatedUserData));
+        
+        // 🔔 Phát tín hiệu đồng bộ dữ liệu (avatar, fullname) sang các component khác như Header / Admin
+        window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updatedUserData }));
+
         setIsEditingProfile(false);
         window.location.reload();
       } else {
