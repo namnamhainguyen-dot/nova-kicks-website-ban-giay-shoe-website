@@ -656,15 +656,14 @@ export default function Profile() {
       }}
     >
       
-      {/* ẢNH NỀN FULL TOÀN TRANG & LÀM MỜ (BLUR) */}
+      {/* ẢNH NỀN FULL TOÀN TRANG */}
       <div 
         className="position-fixed top-0 start-0 w-100 h-100" 
         style={{ 
           backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0.65)), url('/img/background_profile.jpg')`,
           backgroundSize: "cover",
           backgroundPosition: "center",
-          filter: "blur(4px)",
-          transform: "scale(1.05)",
+          backgroundRepeat: "no-repeat",
           zIndex: -1
         }}
       ></div>
