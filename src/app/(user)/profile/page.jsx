@@ -652,14 +652,14 @@ export default function Profile() {
     <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
       {/* TIÊU ĐỀ TRANG BÌNH THƯỜNG - Thu hẹp khoảng cách bằng pt-2 pb-0 */}
-      <div className="container pt-2 pb-0">
+      <div className="container pt-2 pb-2">
         <div>
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
         </div>
       </div>
-      
-        <main className="container-fluid px-4 mb-5 flex-grow-1">
+
+        <main className="container mb-5 flex-grow-1">
         <div className="row g-4">
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
