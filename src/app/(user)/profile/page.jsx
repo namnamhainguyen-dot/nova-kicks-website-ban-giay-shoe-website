@@ -13,6 +13,7 @@ export default function Profile() {
     fullname: "",
     email: "",
     phone: "",
+    avatar: "",
     addresses: [],
   });
   const [orders, setOrders] = useState([]);
@@ -123,6 +124,7 @@ export default function Profile() {
                   parsedUser.addresses = freshUserData.addresses || parsedUser.addresses || [];
                   parsedUser.phone = freshUserData.phone || parsedUser.phone;
                   parsedUser.fullname = freshUserData.fullname || parsedUser.fullname;
+                  parsedUser.avatar = freshUserData.avatar || parsedUser.avatar;
                   localStorage.setItem("user", JSON.stringify(parsedUser));
                 }
               }
@@ -281,7 +283,7 @@ export default function Profile() {
     }
   };
 
-  // 4. Xử lý đổi tên, sđt cá nhân
+  // 4. Xử lý đổi tên, sđt, avatar cá nhân
   const handleInputChange = (e) => {
     const { id, value } = e.target;
 
@@ -304,7 +306,7 @@ export default function Profile() {
     }));
   };
 
-  // 5. Cập nhật thông tin cơ bản
+  // 5. Cập nhật thông tin cơ bản & Avatar
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
@@ -329,6 +331,7 @@ export default function Profile() {
       const payload = {
         fullname: user.fullname?.trim() || "",
         phone: user.phone?.trim() || "",
+        avatar: user.avatar?.trim() || "",
         addresses: user.addresses || [],
       };
 
@@ -426,6 +429,7 @@ export default function Profile() {
         body: JSON.stringify({
           fullname: user.fullname?.trim() || "",
           phone: user.phone?.trim() || "",
+          avatar: user.avatar?.trim() || "",
           addresses: newAddresses,
         }),
       });
@@ -558,6 +562,7 @@ export default function Profile() {
         body: JSON.stringify({
           fullname: user.fullname,
           phone: user.phone,
+          avatar: user.avatar,
           addresses: updatedList,
         }),
       });
@@ -630,6 +635,24 @@ export default function Profile() {
   return (
     <div className="min-vh-100 d-flex flex-column text-secondary" style={{ backgroundColor: "#f1f5f9", fontFamily: "'Inter', sans-serif" }}>
       
+      {/* ẢNH NỀN BANNER CHO TRANG PROFILE */}
+      <div 
+        className="position-relative w-100" 
+        style={{ 
+          height: "260px", 
+          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.6)), url('/images/image_c6211a.jpg')`,
+          backgroundSize: "cover",
+          backgroundPosition: "center"
+        }}
+      >
+        <div className="container h-100 d-flex align-items-end pb-4">
+          <div className="text-white">
+            <h2 className="fw-bold mb-1">Trang Tài Khoản</h2>
+            <p className="text-white-50 small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
+          </div>
+        </div>
+      </div>
+
       <main className="container mb-4 flex-grow-1 position-relative" style={{ marginTop: "-35px", zIndex: 2 }}>
         <div className="row g-4">
           
@@ -637,8 +660,20 @@ export default function Profile() {
           <div className="col-lg-3">
             <div className="card border border-2 border-light-subtle shadow-sm rounded-4 bg-white p-3 mb-3">
               <div className="d-flex align-items-center gap-3 px-2">
-                <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm flex-shrink-0" style={{ width: "50px", height: "50px", fontSize: "20px", backgroundColor: "#d97706" }}>
-                  {user.fullname ? user.fullname.charAt(0).toUpperCase() : <i className="bi bi-person-fill"></i>}
+                <div className="position-relative flex-shrink-0">
+                  {user.avatar ? (
+                    <img 
+                      src={user.avatar} 
+                      alt="Avatar" 
+                      className="rounded-circle border border-2 border-warning object-fit-cover shadow-sm"
+                      style={{ width: "55px", height: "55px" }}
+                      onError={(e) => { e.target.style.display = "none"; }}
+                    />
+                  ) : (
+                    <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style={{ width: "55px", height: "55px", fontSize: "20px", backgroundColor: "#d97706" }}>
+                      {user.fullname ? user.fullname.charAt(0).toUpperCase() : <i className="bi bi-person-fill"></i>}
+                    </div>
+                  )}
                 </div>
                 <div className="overflow-hidden">
                   <div className="text-muted small">Xin chào,</div>
@@ -708,6 +743,42 @@ export default function Profile() {
                 </div>
 
                 <form onSubmit={handleUpdateProfile} style={{ maxWidth: "650px" }}>
+                  
+                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN */}
+                  <div className="mb-4 row align-items-center">
+                    <label className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Ảnh đại diện</label>
+                    <div className="col-sm-9 d-flex align-items-center gap-3">
+                      {user.avatar ? (
+                        <img 
+                          src={user.avatar} 
+                          alt="Avatar preview" 
+                          className="rounded-circle border object-fit-cover shadow-sm"
+                          style={{ width: "70px", height: "70px" }}
+                          onError={(e) => { e.target.src = "https://placehold.co/70x70?text=Avatar"; }}
+                        />
+                      ) : (
+                        <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold shadow-sm" style={{ width: "70px", height: "70px", fontSize: "24px", backgroundColor: "#d97706" }}>
+                          {user.fullname ? user.fullname.charAt(0).toUpperCase() : <i className="bi bi-person-fill"></i>}
+                        </div>
+                      )}
+
+                      {isEditingProfile && (
+                        <div className="flex-grow-1">
+                          <label className="form-label small text-muted mb-1">Nhập đường dẫn (URL) ảnh đại diện mới:</label>
+                          <input 
+                            type="url" 
+                            className="form-control rounded-2 shadow-none py-2 px-3 small" 
+                            id="avatar" 
+                            value={user.avatar || ""} 
+                            onChange={handleInputChange} 
+                            placeholder="https://example.com/avatar.jpg"
+                            style={{ borderColor: "#d97706" }} 
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="mb-3 row align-items-center">
                     <label htmlFor="email" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Tên đăng nhập</label>
                     <div className="col-sm-9">
