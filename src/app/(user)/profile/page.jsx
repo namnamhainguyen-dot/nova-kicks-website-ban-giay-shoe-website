@@ -679,7 +679,7 @@ export default function Profile() {
       <main className="container mb-5 flex-grow-1 position-relative" style={{ zIndex: 2, marginTop: "15px" }}>
         <div className="row g-4">
           
-          {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN (ĐÃ LÀM MỜ KHUÔN VIÊN CARD) */}
+          {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
           <div className="col-lg-3">
             <div className="card border border-2 border-white-50 shadow-sm rounded-4 p-3 mb-3" style={{ backgroundColor: "rgba(255, 255, 255, 0.85)", backdropFilter: "blur(8px)" }}>
               <div className="d-flex align-items-center gap-3 px-2">
@@ -742,7 +742,7 @@ export default function Profile() {
             </div>
           </div>
 
-          {/* CỘT PHẢI: NỘI DUNG CHÍNH (ĐÃ LÀM MỜ KÍNH MỜ) */}
+          {/* CỘT PHẢI: NỘI DUNG CHÍNH (HIỆU ỨNG KÍNH MỜ) */}
           <div className="col-lg-9">
             
             {/* TAB 1: HỒ SƠ CÁ NHÂN */}
@@ -767,7 +767,7 @@ export default function Profile() {
 
                 <form onSubmit={handleUpdateProfile} style={{ maxWidth: "650px" }}>
                   
-                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN (HỖ TRỢ CẢ CHỌN FILE TỪ MÁY HOẶC URL) */}
+                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN */}
                   <div className="mb-4 row align-items-center">
                     <label className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Ảnh đại diện</label>
                     <div className="col-sm-9 d-flex align-items-center gap-3">
