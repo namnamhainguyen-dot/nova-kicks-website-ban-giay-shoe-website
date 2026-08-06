@@ -93,7 +93,7 @@ export default function Layout({ children }) {
               position: "fixed",
               top: 0,
               left: 0,
-              backgroundColor: "#212529", // Đồng bộ màu nền với CSS .sidebar
+              backgroundColor: "#212529",
               transition: "width 0.3s ease, min-width 0.3s ease",
               zIndex: 1000,
               overflowY: "auto"
@@ -104,9 +104,10 @@ export default function Layout({ children }) {
               {!isCollapsed && (
                 <div className="overflow-hidden text-truncate">
                   <h4 className="fw-black text-uppercase tracking-wider m-0 fs-5" style={{ letterSpacing: "1px" }}>
-                    Nova<span className="text-warning">Kicks</span>
+                    Nova<span style={{ color: "#ea580c" }}>Kicks</span>
                   </h4>
-                  <span className="badge bg-warning text-dark mt-1 text-uppercase" style={{ fontSize: "0.55rem" }}>
+                  {/* Đã đổi sang badge màu cam */}
+                  <span className="badge text-white mt-1 text-uppercase" style={{ fontSize: "0.55rem", backgroundColor: "#ea580c" }}>
                     Admin Panel
                   </span>
                 </div>
@@ -123,7 +124,8 @@ export default function Layout({ children }) {
             {/* USER INFO */}
             {currentUser && !isCollapsed && (
               <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
-                <div className="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem" }}>
+                {/* Đã đổi avatar chữ cái sang nền cam */}
+                <div className="text-white rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem", backgroundColor: "#ea580c" }}>
                   {(currentUser.fullname || "A").charAt(0).toUpperCase()}
                 </div>
                 <div className="overflow-hidden">
@@ -179,7 +181,7 @@ export default function Layout({ children }) {
             </div>
           </div>
 
-          {/* MAIN CONTENT (TỰ ĐỘNG CO GIÃN ĐỘ RỘNG KHÔNG BỊ KHOẢNG TRỐNG) */}
+          {/* MAIN CONTENT */}
           <div 
             className="content"
             style={{ 
