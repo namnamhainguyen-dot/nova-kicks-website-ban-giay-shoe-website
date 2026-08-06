@@ -9,7 +9,7 @@ export default function Layout({ children }) {
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false); // Trạng thái thu gọn/mở rộng sidebar
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const handleLogout = () => {
     localStorage.removeItem("user");
@@ -60,55 +60,72 @@ export default function Layout({ children }) {
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css"
         />
         <link rel="stylesheet" href="/css/admin.css" />
+
+        {/* CSS Tùy chỉnh hiệu ứng Sidebar: Nền đen, hover cam nhẹ & active cam chủ đạo */}
+        <style>{`
+          .sidebar-link {
+            transition: all 0.2s ease-in-out;
+            color: #d1d5db !important;
+          }
+          .sidebar-link:hover {
+            background-color: rgba(234, 88, 12, 0.25) !important; /* Cam nhẹ khi hover */
+            color: #ffffff !important;
+          }
+          .sidebar-link.active-link {
+            background-color: #ea580c !important; /* Cam đậm thương hiệu khi đang chọn */
+            color: #ffffff !important;
+            font-weight: bold;
+          }
+        `}</style>
       </head>
 
       <body className="bg-light">
-        {/* SIDEBAR MÀU CAM & CÓ TÍNH NĂNG THU GỌN */}
+        {/* SIDEBAR MÀU ĐEN & TÍCH HỢP THU GỌN */}
         <div 
           className="sidebar d-flex flex-column p-3 text-white shadow-sm"
           style={{
             width: isCollapsed ? "80px" : "260px",
             minHeight: "100vh",
-            backgroundColor: "#ea580c", // 🟢 Màu cam chủ đạo mới
+            backgroundColor: "#111827", // 🟢 Màu đen chủ đạo sang trọng (Tailwind Gray 900)
             position: "fixed",
             top: 0,
             left: 0,
             zIndex: 1000,
-            transition: "width 0.3s ease" // Hiệu ứng chuyển động mượt mà khi thu gọn
+            transition: "width 0.3s ease"
           }}
         >
           {/* LOGO / BRAND & NÚT THU GỌN */}
-          <div className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom border-white border-opacity-25">
+          <div className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom border-secondary border-opacity-25">
             {!isCollapsed && (
               <div className="overflow-hidden text-truncate">
                 <h4 className="fw-black text-uppercase tracking-wider m-0 fs-5" style={{ letterSpacing: "1px" }}>
-                  Nova<span className="text-dark">Kicks</span>
+                  Nova<span className="text-warning">Kicks</span>
                 </h4>
-                <span className="badge bg-dark text-white mt-1 text-uppercase" style={{ fontSize: "0.55rem" }}>
+                <span className="badge bg-warning text-dark mt-1 text-uppercase" style={{ fontSize: "0.55rem" }}>
                   Admin Panel
                 </span>
               </div>
             )}
             <button 
               onClick={() => setIsCollapsed(!isCollapsed)} 
-              className="btn btn-sm text-white bg-dark bg-opacity-25 border-0 ms-auto"
+              className="btn btn-sm text-white bg-secondary bg-opacity-25 border-0 ms-auto"
               title={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
             >
               <i className={`bi ${isCollapsed ? "bi-chevron-right" : "bi-chevron-left"}`}></i>
             </button>
           </div>
 
-          {/* USER INFO CARD (Tự ẩn khi thu gọn) */}
+          {/* USER INFO CARD */}
           {currentUser && !isCollapsed && (
-            <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-25 border border-white border-opacity-15">
-              <div className="bg-white text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem" }}>
+            <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
+              <div className="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem" }}>
                 {(currentUser.fullname || "A").charAt(0).toUpperCase()}
               </div>
               <div className="overflow-hidden">
                 <div className="small fw-bold text-truncate text-white" style={{ fontSize: "0.78rem" }}>
                   {currentUser.fullname || "Administrator"}
                 </div>
-                <div className="text-light opacity-75" style={{ fontSize: "0.6rem" }}>
+                <div className="text-success" style={{ fontSize: "0.6rem" }}>
                   ● Đang hoạt động
                 </div>
               </div>
@@ -132,7 +149,7 @@ export default function Layout({ children }) {
               <li className="nav-item" key={item.href}>
                 <Link 
                   href={item.href} 
-                  className={`nav-link text-white d-flex align-items-center gap-3 px-3 py-2 rounded-2 ${isActive(item.href) ? "bg-dark bg-opacity-25 fw-bold shadow-sm" : "hover-orange"}`}
+                  className={`nav-link d-flex align-items-center gap-3 px-3 py-2 rounded-2 sidebar-link ${isActive(item.href) ? "active-link" : ""}`}
                   title={isCollapsed ? item.label : ""}
                 >
                   <i className={`bi ${item.icon} fs-5`}></i>
@@ -143,10 +160,10 @@ export default function Layout({ children }) {
           </ul>
 
           {/* LOGOUT BUTTON */}
-          <div className="pt-3 mt-3 border-top border-white border-opacity-25">
+          <div className="pt-3 mt-3 border-top border-secondary border-opacity-25">
             <button 
               type="button" 
-              className="btn btn-dark w-100 d-flex align-items-center justify-content-center gap-2 py-2 rounded-2 text-uppercase fw-bold shadow-sm"
+              className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 py-2 rounded-2 text-uppercase fw-bold shadow-sm"
               style={{ fontSize: "0.72rem" }}
               onClick={handleLogout}
               title={isCollapsed ? "Đăng xuất" : ""}
@@ -157,7 +174,7 @@ export default function Layout({ children }) {
           </div>
         </div>
 
-        {/* MAIN CONTENT (Tự động co giãn lề trái theo kích thước của Sidebar) */}
+        {/* MAIN CONTENT */}
         <div 
           className="main-content" 
           style={{ 
