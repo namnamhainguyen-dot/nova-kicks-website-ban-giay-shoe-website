@@ -44,7 +44,7 @@ export default function Layout({ children }) {
 
   const isActive = (path) => pathname === path;
 
-  // Các nhóm menu được Việt hóa hoàn toàn gọn gàng giống mẫu
+  // Các nhóm menu được phân chia gọn gàng bằng tiếng Việt
   const menuGroups = [
     {
       title: "TỔNG QUAN",
@@ -85,6 +85,7 @@ export default function Layout({ children }) {
         />
         <link rel="stylesheet" href="/css/admin.css" />
 
+        {/* CSS tùy chỉnh giữ nguyên màu cam đặc trưng của bạn */}
         <style>{`
           body {
             background-color: #f8fafc;
@@ -98,11 +99,14 @@ export default function Layout({ children }) {
             margin-bottom: 2px;
           }
           .sidebar-link:hover {
-            background-color: #f1f5f9 !important;
-            color: #0f172a !important;
+            background-color: #ffedd5 !important;
+            color: #ea580c !important;
+          }
+          .sidebar-link:hover i {
+            color: #ea580c !important;
           }
           .sidebar-link.active-link {
-            background-color: #0f172a !important;
+            background-color: #ea580c !important;
             color: #ffffff !important;
             font-weight: 600;
           }
@@ -134,7 +138,7 @@ export default function Layout({ children }) {
             <div className="d-flex align-items-center justify-content-between pb-3 mb-2 border-bottom">
               {!isCollapsed && (
                 <div className="d-flex align-items-center gap-2">
-                  <div className="bg-dark text-white rounded-2 d-flex align-items-center justify-content-center fw-bold fs-6 shadow-sm" style={{ width: "32px", height: "32px" }}>
+                  <div className="text-white rounded-2 d-flex align-items-center justify-content-center fw-bold fs-6 shadow-sm" style={{ width: "32px", height: "32px", backgroundColor: "#ea580c" }}>
                     N
                   </div>
                   <div>
@@ -186,7 +190,7 @@ export default function Layout({ children }) {
               <div className="pt-3 mt-auto border-top">
                 <div className="d-flex align-items-center justify-content-between p-2 rounded-3 bg-light border">
                   <div className="d-flex align-items-center gap-2 overflow-hidden">
-                    <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: "36px", height: "36px", fontSize: "0.85rem" }}>
+                    <div className="rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0 shadow-sm" style={{ width: "36px", height: "36px", fontSize: "0.85rem", backgroundColor: "#ffedd5", color: "#ea580c" }}>
                       {(currentUser.fullname || "A").charAt(0).toUpperCase()}
                     </div>
                     <div className="overflow-hidden">
