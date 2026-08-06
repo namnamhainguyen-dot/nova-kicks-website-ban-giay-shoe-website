@@ -82,7 +82,7 @@ export default async function ProductsPage({ searchParams }) {
   const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   
-  // Danh sách 10 sản phẩm của trang hiện tại
+  // Danh sách sản phẩm của trang hiện tại
   const displayedProducts = filteredProducts.slice(startIndex, endIndex);
 
   // Hàm hỗ trợ tạo URL khi bấm chuyển trang (giữ lại các query params cũ)
@@ -99,7 +99,7 @@ export default async function ProductsPage({ searchParams }) {
   return (
     <main
       className="container py-5"
-      style={{ paddingTop: "90px", minHeight: "100vh" }}
+      style={{ paddingTop: "110px", minHeight: "100vh" }}
     >
       <style>{`
         .nk-card, .card-product, [class*="card"] {
@@ -107,10 +107,12 @@ export default async function ProductsPage({ searchParams }) {
                       box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
           position: relative;
           overflow: hidden;
+          border-radius: 12px;
+          border: 1px solid rgba(0, 0, 0, 0.05);
         }
         .nk-card:hover, .card-product:hover, [class*="card"]:hover {
-          transform: translateY(-8px);
-          box-shadow: 0 16px 36px rgba(0,0,0,0.08), 0 4px 14px rgba(0,0,0,0.02) !important;
+          transform: translateY(-6px);
+          box-shadow: 0 16px 32px rgba(0,0,0,0.08) !important;
         }
         .img-hover-scale, [class*="card"] img {
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -118,88 +120,126 @@ export default async function ProductsPage({ searchParams }) {
         .nk-card:hover .img-hover-scale, 
         .card-product:hover [class*="card"] img,
         [class*="card"]:hover img {
-          transform: scale(1.07);
+          transform: scale(1.05);
         }
-        .nk-card:hover .card-title,
-        .card-product:hover [class*="title"],
-        [class*="card"]:hover h6, [class*="card"]:hover h5 {
-          color: var(--accent, #d87c3c) !important;
-          transition: color 0.3s ease;
-        }
-        .border-bottom {
+        .products-header-title {
           position: relative;
+          display: inline-block;
         }
-        .border-bottom::after {
+        .products-header-title::after {
           content: '';
           position: absolute;
-          bottom: 0; left: 0; width: 60px; height: 3px;
+          bottom: -10px;
+          left: 0;
+          width: 50px;
+          height: 3px;
           background-color: var(--accent, #d87c3c);
+          border-radius: 2px;
         }
         .pagination .page-link {
-          color: #333;
-          border-radius: 8px;
-          margin: 0 3px;
+          color: #212529;
+          border-radius: 10px;
+          margin: 0 4px;
           border: 1px solid #dee2e6;
-          font-weight: 500;
+          font-weight: 600;
+          font-size: 0.9rem;
+          padding: 8px 14px;
+          transition: all 0.2s ease;
         }
         .pagination .page-item.active .page-link {
           background-color: var(--accent, #d87c3c);
           border-color: var(--accent, #d87c3c);
           color: #fff;
+          box-shadow: 0 4px 12px rgba(216, 124, 60, 0.25);
         }
         .pagination .page-link:hover {
           background-color: #f8f9fa;
           color: var(--accent, #d87c3c);
+          border-color: var(--accent, #d87c3c);
+        }
+        .pagination .page-item.disabled .page-link {
+          background-color: #f1f3f5;
+          border-color: #e9ecef;
+          color: #adb5bd;
         }
       `}</style>
 
       {/* HEADER TIÊU ĐỀ */}
-      <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
-        <h1
-          className="fw-bold text-uppercase m-0"
-          style={{ fontSize: "1.75rem", letterSpacing: "0.05em" }}
-        >
-          {categoryID ? `Danh mục sản phẩm` : "Tất cả sản phẩm"}
-        </h1>
-        <span className="text-secondary fw-semibold">
-          Hiển thị {displayedProducts.length}/{totalItems} sản phẩm
-        </span>
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center align-items-start gap-3 pb-4 mb-4 border-bottom">
+        <div>
+          <span className="text-uppercase text-muted fw-bold tracking-wider fs-7 d-block mb-1">
+            Bộ sưu tập chính thức
+          </span>
+          <h1
+            className="fw-black text-uppercase m-0 products-header-title font-monospace"
+            style={{ fontSize: "2rem", letterSpacing: "-0.5px" }}
+          >
+            {categoryID ? `Danh mục sản phẩm` : "Tất cả sản phẩm"}
+          </h1>
+        </div>
+        <div className="bg-light px-3 py-2 rounded-pill border d-flex align-items-center gap-2">
+          <i className="fas fa-box-open text-warning fs-7"></i>
+          <span className="text-secondary fw-semibold" style={{ fontSize: "0.85rem" }}>
+            Hiển thị <strong className="text-dark">{displayedProducts.length}</strong> trên tổng số <strong className="text-dark">{totalItems}</strong> sản phẩm
+          </span>
+        </div>
       </div>
 
       {/* BANNER THÔNG BÁO KHI DÙNG BỘ LỌC TỪ AI CHATBOX */}
       {filterIdsParam && (
         <div
-          className="alert d-flex justify-content-between align-items-center mb-4 p-3 rounded-3 border-0 shadow-sm"
-          style={{ backgroundColor: "#fff3eb", color: "#d87c3c" }}
+          className="alert d-flex justify-content-between align-items-center mb-5 p-3 rounded-4 border-0 shadow-sm"
+          style={{ backgroundColor: "#fff5ee", borderLeft: "4px solid #d87c3c" }}
         >
-          <span className="fw-semibold">
-            🤖 Trợ lý AI đã tìm thấy{" "}
-            <strong>{filteredProducts.length}</strong> sản phẩm phù hợp với yêu cầu của bạn!
-          </span>
+          <div className="d-flex align-items-center gap-3">
+            <div className="bg-warning bg-opacity-10 p-2 rounded-circle text-warning d-flex align-items-center justify-content-center" style={{ width: "40px", height: "40px" }}>
+              <i className="fas fa-robot fs-5"></i>
+            </div>
+            <div>
+              <h6 className="mb-0 fw-bold text-dark">Trợ lý AI đã tìm kiếm thông minh</h6>
+              <p className="mb-0 text-secondary" style={{ fontSize: "0.85rem" }}>
+                Tìm thấy <strong>{filteredProducts.length}</strong> sản phẩm phù hợp hoàn hảo với yêu cầu của bạn.
+              </p>
+            </div>
+          </div>
           <Link
             href={
               categoryID
                 ? `/products?categoryID=${categoryID}`
                 : "/products"
             }
-            className="btn btn-sm btn-dark px-3 rounded-pill"
-            style={{ backgroundColor: "#d87c3c", borderColor: "#d87c3c" }}
+            className="btn btn-sm btn-dark px-3 rounded-pill fw-semibold shadow-sm"
+            style={{ backgroundColor: "#212529" }}
           >
-            Xóa bộ lọc AI ✕
+            Xóa bộ lọc AI <i className="fas fa-times ms-1"></i>
           </Link>
         </div>
       )}
 
-      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ 10 SẢN PHẨM TRÊN TRANG */}
+      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM */}
       <ProductFilter
         key={`${categoryID || "all"}-${filterIdsParam || "none"}-page-${validPage}`}
         products={displayedProducts}
       />
 
+      {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM NÀO */}
+      {displayedProducts.length === 0 && (
+        <div className="text-center py-5 my-5 bg-light rounded-4 border border-dashed">
+          <div className="mb-3 text-muted opacity-50" style={{ fontSize: "3rem" }}>
+            <i className="fas fa-search"></i>
+          </div>
+          <h5 className="fw-bold text-dark mb-1">Không tìm thấy sản phẩm nào</h5>
+          <p className="text-secondary small mb-4">Rất tiếc, không có sản phẩm nào khớp với tiêu chí tìm kiếm hiện tại của bạn.</p>
+          <Link href="/products" className="btn btn-dark btn-sm rounded-pill px-4 fw-semibold">
+            Xem tất cả sản phẩm
+          </Link>
+        </div>
+      )}
+
       {/* THANH PHÂN TRANG (PAGINATION) */}
       {totalPages > 1 && (
-        <nav className="d-flex justify-content-center mt-5">
-          <ul className="pagination">
+        <nav className="d-flex justify-content-center mt-5 pt-3">
+          <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
             {/* Nút Trước */}
             <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
               <Link
@@ -207,7 +247,7 @@ export default async function ProductsPage({ searchParams }) {
                 href={createPageUrl(validPage - 1)}
                 aria-label="Previous"
               >
-                &laquo; Trước
+                <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
               </Link>
             </li>
 
@@ -230,7 +270,7 @@ export default async function ProductsPage({ searchParams }) {
                 href={createPageUrl(validPage + 1)}
                 aria-label="Next"
               >
-                Sau &raquo;
+                Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
               </Link>
             </li>
           </ul>
