@@ -44,6 +44,30 @@ export default function Layout({ children }) {
 
   const isActive = (path) => pathname === path;
 
+  // Các nhóm menu được Việt hóa hoàn toàn gọn gàng giống mẫu
+  const menuGroups = [
+    {
+      title: "TỔNG QUAN",
+      items: [
+        { href: "/admin", label: "Trang chủ", icon: "bi-speedometer2" },
+        { href: "/admin/comments", label: "Đánh giá sản phẩm", icon: "bi-chat-square-text" },
+        { href: "/admin/chat", label: "Hỗ trợ trực tiếp", icon: "bi-chat-dots" },
+        { href: "/admin/feedback", label: "Phản hồi liên hệ", icon: "bi-headset" },
+        { href: "/admin/news", label: "Quản lý tin tức", icon: "bi-newspaper" },
+      ],
+    },
+    {
+      title: "QUẢN LÝ CỬA HÀNG",
+      items: [
+        { href: "/admin/category", label: "Danh mục", icon: "bi-folder" },
+        { href: "/admin/product", label: "Sản phẩm", icon: "bi-box-seam" },
+        { href: "/admin/order", label: "Đơn hàng", icon: "bi-cart-check" },
+        { href: "/admin/account", label: "Người dùng", icon: "bi-people" },
+        { href: "/admin/voucher", label: "Mã giảm giá", icon: "bi-ticket-perforated" },
+      ],
+    },
+  ];
+
   return (
     <html lang="vi" data-scroll-behavior="smooth">
       <head>
@@ -61,134 +85,140 @@ export default function Layout({ children }) {
         />
         <link rel="stylesheet" href="/css/admin.css" />
 
-        {/* CSS tùy chỉnh chuyển sang tông màu cam nhẹ (pastel orange) giống profile */}
         <style>{`
+          body {
+            background-color: #f8fafc;
+          }
           .sidebar-link {
-            transition: all 0.2s ease-in-out;
-            color: #d1d5db !important;
+            transition: all 0.15s ease-in-out;
+            color: #64748b !important;
+            font-weight: 500;
+            font-size: 0.85rem;
+            border-radius: 8px;
+            margin-bottom: 2px;
           }
           .sidebar-link:hover {
-            background-color: rgba(234, 88, 12, 0.15) !important;
-            color: #fdba74 !important;
+            background-color: #f1f5f9 !important;
+            color: #0f172a !important;
           }
           .sidebar-link.active-link {
-            background-color: rgba(234, 88, 12, 0.25) !important;
-            color: #ff8c42 !important;
-            font-weight: bold;
-            border-left: 4px solid #ea580c;
+            background-color: #0f172a !important;
+            color: #ffffff !important;
+            font-weight: 600;
+          }
+          .sidebar-link.active-link i {
+            color: #ffffff !important;
           }
         `}</style>
       </head>
 
       <body>
-        {/* CONTAINER CHÍNH DÙNG FLEXBOX */}
         <div className="d-flex w-100 min-vh-100 position-relative m-0 p-0">
           
-          {/* SIDEBAR CỐ ĐỊNH BÊN TRÁI */}
+          {/* SIDEBAR */}
           <div 
-            className="d-flex flex-column p-3 text-white shadow-sm"
+            className="d-flex flex-column p-3 bg-white border-end shadow-sm"
             style={{
-              width: isCollapsed ? "80px" : "250px",
-              minWidth: isCollapsed ? "80px" : "250px",
+              width: isCollapsed ? "80px" : "260px",
+              minWidth: isCollapsed ? "80px" : "260px",
               height: "100vh",
               position: "fixed",
               top: 0,
               left: 0,
-              backgroundColor: "#212529",
               transition: "width 0.3s ease, min-width 0.3s ease",
               zIndex: 1000,
               overflowY: "auto"
             }}
           >
-            {/* LOGO & NÚT THU GỌN */}
-            <div className="d-flex align-items-center justify-content-between pb-3 mb-3 border-bottom border-secondary border-opacity-25">
+            {/* LOGO */}
+            <div className="d-flex align-items-center justify-content-between pb-3 mb-2 border-bottom">
               {!isCollapsed && (
-                <div className="overflow-hidden text-truncate">
-                  <h4 className="fw-black text-uppercase tracking-wider m-0 fs-5" style={{ letterSpacing: "1px" }}>
-                    Nova<span style={{ color: "#fb923c" }}>Kicks</span>
-                  </h4>
-                  {/* Badge màu cam nhẹ dịu mắt */}
-                  <span className="badge text-dark mt-1 text-uppercase fw-semibold" style={{ fontSize: "0.55rem", backgroundColor: "#ffedd5", color: "#c2410c !important" }}>
-                    Admin Panel
-                  </span>
+                <div className="d-flex align-items-center gap-2">
+                  <div className="bg-dark text-white rounded-2 d-flex align-items-center justify-content-center fw-bold fs-6 shadow-sm" style={{ width: "32px", height: "32px" }}>
+                    N
+                  </div>
+                  <div>
+                    <h5 className="fw-bold tracking-tight m-0 text-dark fs-6" style={{ letterSpacing: "-0.5px" }}>
+                      Nova<span style={{ color: "#ea580c" }}>Kicks</span>
+                    </h5>
+                  </div>
                 </div>
               )}
               <button 
                 onClick={() => setIsCollapsed(!isCollapsed)} 
-                className="btn btn-sm text-white bg-secondary bg-opacity-25 border-0 ms-auto"
+                className="btn btn-sm text-secondary bg-light border-0 ms-auto rounded-circle p-1 d-flex align-items-center justify-content-center"
+                style={{ width: "28px", height: "28px" }}
                 title={isCollapsed ? "Mở rộng sidebar" : "Thu gọn sidebar"}
               >
-                <i className={`bi ${isCollapsed ? "bi-chevron-right" : "bi-chevron-left"}`}></i>
+                <i className={`bi ${isCollapsed ? "bi-chevron-right" : "bi-chevron-left"} fs-7`}></i>
               </button>
             </div>
 
-            {/* USER INFO */}
-            {currentUser && !isCollapsed && (
-              <div className="d-flex align-items-center gap-2 p-2 mb-3 rounded bg-dark bg-opacity-50 border border-secondary border-opacity-25">
-                <div className="text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold" style={{ width: "34px", height: "34px", fontSize: "0.85rem", backgroundColor: "#ffedd5", color: "#c2410c" }}>
-                  {(currentUser.fullname || "A").charAt(0).toUpperCase()}
+            {/* DANH SÁCH MENU */}
+            <div className="flex-grow-1 py-2 overflow-y-auto">
+              {menuGroups.map((group, idx) => (
+                <div key={idx} className="mb-3">
+                  {!isCollapsed && (
+                    <div className="text-uppercase text-muted fw-bold px-3 mb-1" style={{ fontSize: "0.65rem", letterSpacing: "0.8px" }}>
+                      {group.title}
+                    </div>
+                  )}
+                  <ul className="nav flex-column gap-1 p-0 m-0" style={{ listStyle: "none" }}>
+                    {group.items.map((item) => (
+                      <li className="nav-item" key={item.href}>
+                        <Link 
+                          href={item.href} 
+                          className={`nav-link d-flex align-items-center gap-3 px-3 py-2 sidebar-link ${isActive(item.href) ? "active-link" : ""}`}
+                          title={isCollapsed ? item.label : ""}
+                        >
+                          <i className={`bi ${item.icon} fs-5 text-secondary`}></i>
+                          {!isCollapsed && <span className="text-truncate">{item.label}</span>}
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-                <div className="overflow-hidden">
-                  <div className="small fw-bold text-truncate text-white" style={{ fontSize: "0.78rem" }}>
-                    {currentUser.fullname || "Administrator"}
+              ))}
+            </div>
+
+            {/* THÔNG TIN USER Ở ĐÁY */}
+            {currentUser && !isCollapsed && (
+              <div className="pt-3 mt-auto border-top">
+                <div className="d-flex align-items-center justify-content-between p-2 rounded-3 bg-light border">
+                  <div className="d-flex align-items-center gap-2 overflow-hidden">
+                    <div className="bg-dark text-white rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: "36px", height: "36px", fontSize: "0.85rem" }}>
+                      {(currentUser.fullname || "A").charAt(0).toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                      <div className="fw-semibold text-dark text-truncate" style={{ fontSize: "0.8rem" }}>
+                        {currentUser.fullname || "Quản trị viên"}
+                      </div>
+                      <div className="text-muted" style={{ fontSize: "0.68rem" }}>
+                        Admin hệ thống
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-success" style={{ fontSize: "0.6rem" }}>
-                    ● Đang hoạt động
-                  </div>
+                  <button 
+                    onClick={handleLogout}
+                    className="btn btn-sm text-danger p-1 border-0 bg-transparent"
+                    title="Đăng xuất"
+                  >
+                    <i className="bi bi-box-arrow-right fs-5"></i>
+                  </button>
                 </div>
               </div>
             )}
-
-            {/* MENU LINKS */}
-            <ul className="nav flex-column gap-1 flex-grow-1" style={{ fontSize: "0.85rem", paddingLeft: 0, listStyle: "none" }}>
-              {[
-                { href: "/admin", label: "Tổng quan", icon: "bi-speedometer2" },
-                { href: "/admin/category", label: "Quản lý Danh mục", icon: "bi-folder" },
-                { href: "/admin/product", label: "Quản lý Sản phẩm", icon: "bi-box-seam" },
-                { href: "/admin/order", label: "Quản lý đơn hàng", icon: "bi-cart-check" },
-                { href: "/admin/account", label: "Quản lý người dùng", icon: "bi-people" },
-                { href: "/admin/voucher", label: "Quản lý voucher", icon: "bi-ticket-perforated" },
-                { href: "/admin/comments", label: "Đánh giá sản phẩm", icon: "bi-chat-square-text" },
-                { href: "/admin/feedback", label: "Quản lý Liên hệ", icon: "bi-headset" },
-                { href: "/admin/news", label: "Quản lý tin tức", icon: "bi-newspaper" },
-                { href: "/admin/chat", label: "Hỗ trợ trực tiếp", icon: "bi-chat-dots" },
-              ].map((item) => (
-                <li className="nav-item" key={item.href}>
-                  <Link 
-                    href={item.href} 
-                    className={`nav-link d-flex align-items-center gap-3 px-3 py-2 rounded-2 sidebar-link ${isActive(item.href) ? "active-link" : ""}`}
-                    title={isCollapsed ? item.label : ""}
-                  >
-                    <i className={`bi ${item.icon} fs-5`}></i>
-                    {!isCollapsed && <span className="text-truncate">{item.label}</span>}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-
-            {/* LOGOUT */}
-            <div className="pt-3 mt-3 border-top border-secondary border-opacity-25">
-              <button 
-                type="button" 
-                className="btn btn-outline-danger w-100 d-flex align-items-center justify-content-center gap-2 py-2 rounded-2 text-uppercase fw-bold shadow-sm"
-                style={{ fontSize: "0.72rem" }}
-                onClick={handleLogout}
-                title={isCollapsed ? "Đăng xuất" : ""}
-              >
-                <i className="bi bi-box-arrow-right fs-6"></i>
-                {!isCollapsed && <span>Đăng xuất</span>}
-              </button>
-            </div>
           </div>
 
           {/* MAIN CONTENT */}
           <div 
-            className="content"
+            className="content flex-grow-1"
             style={{ 
-              marginLeft: isCollapsed ? "80px" : "250px",
-              width: isCollapsed ? "calc(100vw - 80px)" : "calc(100vw - 250px)",
+              marginLeft: isCollapsed ? "80px" : "260px",
+              width: isCollapsed ? "calc(100vw - 80px)" : "calc(100vw - 260px)",
               transition: "margin-left 0.3s ease, width 0.3s ease",
-              boxSizing: "border-box"
+              boxSizing: "border-box",
+              minHeight: "100vh"
             }}
           >
             {children}
