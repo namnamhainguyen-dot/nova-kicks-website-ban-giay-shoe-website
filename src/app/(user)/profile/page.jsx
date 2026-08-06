@@ -652,21 +652,14 @@ export default function Profile() {
     <div 
       className="min-vh-100 d-flex flex-column text-secondary position-relative" 
       style={{ 
-        fontFamily: "'Inter', sans-serif" 
+        fontFamily: "'Inter', sans-serif",
+        backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), url('/img/background_profile.jpg')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+        backgroundAttachment: "fixed"
       }}
     >
-      
-      {/* ẢNH NỀN FULL TOÀN TRANG */}
-      <div 
-        className="position-fixed top-0 start-0 w-100 h-100" 
-        style={{ 
-          backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), url('/img/background_profile.jpg')`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-          backgroundRepeat: "no-repeat",
-          zIndex: -1
-        }}
-      ></div>
 
       {/* TIÊU ĐỀ TRANG TRÊN NỀN MỜ */}
       <div className="container pt-4 pb-2">
