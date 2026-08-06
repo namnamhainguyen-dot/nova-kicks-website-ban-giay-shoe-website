@@ -640,7 +640,7 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
+      <div className="min-vh-100 d-flex align-items-center justify-content-center bg-white">
         <div className="spinner-border" role="status" style={{ color: "#d97706" }}>
           <span className="visually-hidden">Đang tải...</span>
         </div>
@@ -649,17 +649,17 @@ export default function Profile() {
   }
 
   return (
-    <div className="min-vh-100 d-flex flex-column text-secondary bg-light">
+    <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
       {/* TIÊU ĐỀ TRANG BÌNH THƯỜNG */}
-      <div className="container pt-4 pb-2">
+      <div className="container pt-4 pb-1">
         <div>
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
         </div>
       </div>
 
-      <main className="container mb-5 flex-grow-1" style={{ marginTop: "15px" }}>
+      <main className="container mb-5 flex-grow-1" style={{ marginTop: "8px" }}>
         <div className="row g-4">
           
           {/* CỘT TRÁI: SIDEBAR MENU TÀI KHOẢN */}
