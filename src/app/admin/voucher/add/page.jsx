@@ -51,13 +51,11 @@ export default function AddVoucher() {
         return;
       }
 
-      // Không cho phép mức giảm lớn hơn hoặc bằng giá trị đơn tối thiểu
       if (discountVal >= minOrderVal) {
         alert(`⚠️ Lỗ to! Mức giảm cố định (${discountVal.toLocaleString("vi-VN")}đ) không được lớn hơn hoặc bằng giá trị đơn tối thiểu (${minOrderVal.toLocaleString("vi-VN")}đ)!`);
         return;
       }
 
-      // Khống chế mức giảm cố định tối đa không vượt quá 50% giá trị đơn tối thiểu (đảm bảo an toàn kinh doanh)
       const maxAllowedFixed = minOrderVal * 0.5;
       if (discountVal > maxAllowedFixed) {
         alert(`⚠️ Mức giảm cố định quá cao! Đơn tối thiểu ${minOrderVal.toLocaleString("vi-VN")}đ chỉ được phép giảm tối đa 50% (${maxAllowedFixed.toLocaleString("vi-VN")}đ).`);
@@ -66,18 +64,20 @@ export default function AddVoucher() {
     }
 
     // ==========================================
-    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%)
+    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%) - ĐÃ TỐI ƯU
     // ==========================================
     if (formData.discount_type === "percentage") {
-      if (discountVal > 50) {
-        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%!");
+      // Cho phép linh hoạt từ 1% đến 100%
+      if (discountVal > 100) {
+        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 100%!");
         return;
       }
 
+      // Nếu có nhập mức giảm tối đa (đ) và đơn tối thiểu (đ)
       if (maxDiscountAmt > 0 && minOrderVal > 0) {
-        const maxAllowedDiscount = minOrderVal * 0.5;
+        const maxAllowedDiscount = minOrderVal * 0.8; // Cho phép mức giảm tối đa lên đến 80% đơn tối thiểu (hoặc tùy chỉnh theo ý bạn)
         if (maxDiscountAmt > maxAllowedDiscount) {
-          alert(`⚠️ Mức giảm tối đa (${maxDiscountAmt.toLocaleString("vi-VN")}đ) không được vượt quá 50% giá trị đơn hàng tối thiểu (${maxAllowedDiscount.toLocaleString("vi-VN")}đ)!`);
+          alert(`⚠️ Mức giảm tối đa (${maxDiscountAmt.toLocaleString("vi-VN")}đ) quá lớn so với đơn tối thiểu (${minOrderVal.toLocaleString("vi-VN")}đ)!`);
           return;
         }
       }
@@ -189,10 +189,10 @@ export default function AddVoucher() {
                     type="number"
                     name="discount_value"
                     className="form-control"
-                    placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Tối đa 50"}
+                    placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Ví dụ: 40"}
                     required
                     min="1"
-                    max={formData.discount_type === "percentage" ? "50" : undefined}
+                    max={formData.discount_type === "percentage" ? "100" : undefined}
                     value={formData.discount_value}
                     onChange={handleChange}
                   />
@@ -229,7 +229,7 @@ export default function AddVoucher() {
                     type="number"
                     name="max_discount_amount"
                     className="form-control"
-                    placeholder={formData.discount_type === "fixed" ? "Chỉ áp dụng cho loại %" : "Để trống nếu không giới hạn"}
+                    placeholder={formData.discount_type === "fixed" ? "Chỉ áp dụng cho loại %" : "Ví dụ: 150000"}
                     disabled={formData.discount_type === "fixed"}
                     min="0"
                     value={formData.discount_type === "fixed" ? "" : formData.max_discount_amount}
@@ -305,7 +305,7 @@ export default function AddVoucher() {
                   name="description"
                   className="form-control"
                   rows="3"
-                  placeholder="Giảm ngay 50k cho đơn hàng mua giày từ 400k trở lên..."
+                  placeholder="Giảm ngay 40% tối đa 150k cho đơn từ 400k..."
                   value={formData.description}
                   onChange={handleChange}
                 ></textarea>
