@@ -102,6 +102,7 @@ export default async function ProductsPage({ searchParams }) {
       style={{ paddingTop: "110px", minHeight: "100vh" }}
     >
       <style>{`
+        /* --- TỐI ƯU CARD VÀ HIỂN THỊ ẢNH SẢN PHẨM --- */
         .nk-card, .card-product, [class*="card"] {
           transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
                       box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -109,19 +110,40 @@ export default async function ProductsPage({ searchParams }) {
           overflow: hidden;
           border-radius: 12px;
           border: 1px solid rgba(0, 0, 0, 0.05);
+          background-color: #ffffff !important;
         }
+        
         .nk-card:hover, .card-product:hover, [class*="card"]:hover {
           transform: translateY(-6px);
           box-shadow: 0 16px 32px rgba(0,0,0,0.08) !important;
         }
+
+        /* Đồng bộ khung chứa ảnh thành màu trắng và tạo khoảng đệm */
+        .product-image-container, [class*="card"] .ratio, [class*="card"] .img-wrapper {
+          background-color: #ffffff !important;
+          border-radius: 12px 12px 0 0;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+        }
+
+        /* Tối ưu kích thước và hiệu ứng ảnh giày */
         .img-hover-scale, [class*="card"] img {
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          width: 100%;
+          height: 190px;
+          object-fit: contain;
+          mix-blend-mode: multiply; /* Giúp hòa trộn nền trắng của ảnh với nền khung card */
         }
+
         .nk-card:hover .img-hover-scale, 
         .card-product:hover [class*="card"] img,
         [class*="card"]:hover img {
-          transform: scale(1.05);
+          transform: scale(1.06);
         }
+
         .products-header-title {
           position: relative;
           display: inline-block;

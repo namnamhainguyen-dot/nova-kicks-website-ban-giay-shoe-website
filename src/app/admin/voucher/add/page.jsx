@@ -13,7 +13,7 @@ export default function AddVoucher() {
     discount_type: "fixed", 
     discount_value: "",
     min_order_value: "",
-    max_discount_amount: "",
+    max_discount_amount: "", // Giữ lại key để không lỗi API nếu backend yêu cầu, nhưng sẽ để trống/null
     usage_limit: 100,
     start_date: "",
     expiry_date: "",
@@ -34,7 +34,6 @@ export default function AddVoucher() {
 
     const discountVal = Number(formData.discount_value);
     const minOrderVal = formData.min_order_value ? Number(formData.min_order_value) : 0;
-    const maxDiscountAmt = formData.max_discount_amount ? Number(formData.max_discount_amount) : 0;
 
     // 1. Kiểm tra mức giảm phải lớn hơn 0
     if (discountVal <= 0) {
@@ -51,13 +50,11 @@ export default function AddVoucher() {
         return;
       }
 
-      // Không cho phép mức giảm lớn hơn hoặc bằng giá trị đơn tối thiểu
       if (discountVal >= minOrderVal) {
         alert(`⚠️ Lỗ to! Mức giảm cố định (${discountVal.toLocaleString("vi-VN")}đ) không được lớn hơn hoặc bằng giá trị đơn tối thiểu (${minOrderVal.toLocaleString("vi-VN")}đ)!`);
         return;
       }
 
-      // Khống chế mức giảm cố định tối đa không vượt quá 50% giá trị đơn tối thiểu (đảm bảo an toàn kinh doanh)
       const maxAllowedFixed = minOrderVal * 0.5;
       if (discountVal > maxAllowedFixed) {
         alert(`⚠️ Mức giảm cố định quá cao! Đơn tối thiểu ${minOrderVal.toLocaleString("vi-VN")}đ chỉ được phép giảm tối đa 50% (${maxAllowedFixed.toLocaleString("vi-VN")}đ).`);
@@ -69,17 +66,9 @@ export default function AddVoucher() {
     // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%)
     // ==========================================
     if (formData.discount_type === "percentage") {
-      if (discountVal > 50) {
-        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%!");
+      if (discountVal > 100) {
+        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 100%!");
         return;
-      }
-
-      if (maxDiscountAmt > 0 && minOrderVal > 0) {
-        const maxAllowedDiscount = minOrderVal * 0.5;
-        if (maxDiscountAmt > maxAllowedDiscount) {
-          alert(`⚠️ Mức giảm tối đa (${maxDiscountAmt.toLocaleString("vi-VN")}đ) không được vượt quá 50% giá trị đơn hàng tối thiểu (${maxAllowedDiscount.toLocaleString("vi-VN")}đ)!`);
-          return;
-        }
       }
     }
 
@@ -102,7 +91,7 @@ export default function AddVoucher() {
       code: formData.code.trim().toUpperCase(),
       discount_value: discountVal,
       min_order_value: minOrderVal,
-      max_discount_amount: formData.discount_type === "percentage" && maxDiscountAmt > 0 ? maxDiscountAmt : null,
+      max_discount_amount: null, // Đã bỏ ô này nên gửi lên là null
       usage_limit: Number(formData.usage_limit),
       start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
       expiry_date: formData.expiry_date ? new Date(formData.expiry_date).toISOString() : null,
@@ -189,10 +178,9 @@ export default function AddVoucher() {
                     type="number"
                     name="discount_value"
                     className="form-control"
-                    placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Tối đa 50"}
+                    placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Ví dụ: 40"}
                     required
                     min="1"
-                    max={formData.discount_type === "percentage" ? "50" : undefined}
                     value={formData.discount_value}
                     onChange={handleChange}
                   />
@@ -213,26 +201,6 @@ export default function AddVoucher() {
                     placeholder="Ví dụ: 400000"
                     min="0"
                     value={formData.min_order_value}
-                    onChange={handleChange}
-                  />
-                  <span className="input-group-text bg-light">đ</span>
-                </div>
-              </div>
-
-              {/* Giảm tối đa */}
-              <div className="col-md-6">
-                <label className="form-label fw-bold small text-secondary">
-                  Mức giảm tối đa {formData.discount_type === "fixed" && "(Không áp dụng)"}
-                </label>
-                <div className="input-group">
-                  <input
-                    type="number"
-                    name="max_discount_amount"
-                    className="form-control"
-                    placeholder={formData.discount_type === "fixed" ? "Chỉ áp dụng cho loại %" : "Để trống nếu không giới hạn"}
-                    disabled={formData.discount_type === "fixed"}
-                    min="0"
-                    value={formData.discount_type === "fixed" ? "" : formData.max_discount_amount}
                     onChange={handleChange}
                   />
                   <span className="input-group-text bg-light">đ</span>
@@ -305,7 +273,7 @@ export default function AddVoucher() {
                   name="description"
                   className="form-control"
                   rows="3"
-                  placeholder="Giảm ngay 50k cho đơn hàng mua giày từ 400k trở lên..."
+                  placeholder="Giảm ngay 40% cho đơn hàng từ 400k trở lên..."
                   value={formData.description}
                   onChange={handleChange}
                 ></textarea>

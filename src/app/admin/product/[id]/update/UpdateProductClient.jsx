@@ -419,7 +419,7 @@ export default function UpdateProductClient({ id }) {
             {/* Flash Sale */}
             <div className="card p-3 mb-4 rounded bg-light border-warning">
               <h6 className="form-label font-weight-bold text-danger text-uppercase mb-3">
-                🔥 Cấu hình Chương trình Flash Sale
+                Cấu hình Chương trình Flash Sale
               </h6>
               
               <div className="form-check form-switch mb-3">
