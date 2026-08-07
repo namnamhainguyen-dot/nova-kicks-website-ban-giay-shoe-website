@@ -477,7 +477,7 @@ export default function AdminFeedbackPage() {
                         <button
                           className="btn btn-danger btn-sm rounded-circle"
                           style={{ width: "32px", height: "32px" }}
-                          title="Xóa"
+                          title="Ẩn"
                           onClick={() => deleteFeedback(item._id)}
                         >
                           🗑

@@ -180,18 +180,64 @@ export async function PATCH(request, { params }) {
       updateFields.cancelReason = body.cancelReason;
     }
 
-    // Cập nhật dữ liệu vào MongoDB
-    const result = await db.collection("orders").updateOne(
-      { _id: new ObjectId(id) },
-      { $set: updateFields }
+    // // Cập nhật dữ liệu vào MongoDB
+    // const result = await db.collection("orders").updateOne(
+    //   { _id: new ObjectId(id) },
+    //   { $set: updateFields }
+    // );
+
+    // if (result.matchedCount === 0) {
+    //   return Response.json({ success: false, error: "Không tìm thấy đơn hàng" }, { status: 404 });
+    // }
+
+    // // Lấy thông tin đơn hàng đầy đủ sau khi cập nhật
+    // const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+    // Lấy đơn hàng trước khi cập nhật
+const fullOrderDetails = await db
+  .collection("orders")
+  .findOne({ _id: new ObjectId(id) });
+
+if (!fullOrderDetails) {
+  return Response.json(
+    { success: false, error: "Không tìm thấy đơn hàng" },
+    { status: 404 }
+  );
+}
+
+// ===== Kiểm tra chuyển trạng thái =====
+if (body.status) {
+  const currentStatus = fullOrderDetails.status || "pending";
+  const nextStatus = body.status;
+
+  const allowed = {
+    pending: ["preparing", "cancelled"],
+    preparing: ["shipping", "cancelled"],
+    shipping: ["completed", "returned", "boomed"],
+    completed: [],
+    cancelled: [],
+    returned: [],
+    boomed: [],
+  };
+
+  if (
+    currentStatus !== nextStatus &&
+    !allowed[currentStatus]?.includes(nextStatus)
+  ) {
+    return Response.json(
+      {
+        success: false,
+        message: `Không thể chuyển từ ${currentStatus} sang ${nextStatus}`,
+      },
+      { status: 400 }
     );
+  }
+}
 
-    if (result.matchedCount === 0) {
-      return Response.json({ success: false, error: "Không tìm thấy đơn hàng" }, { status: 404 });
-    }
-
-    // Lấy thông tin đơn hàng đầy đủ sau khi cập nhật
-    const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
+// Sau khi kiểm tra mới update
+const result = await db.collection("orders").updateOne(
+  { _id: new ObjectId(id) },
+  { $set: updateFields }
+);
 
     if (fullOrderDetails && fullOrderDetails.email && fullOrderDetails.email !== "guest") {
       
