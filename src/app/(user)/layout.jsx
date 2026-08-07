@@ -209,9 +209,9 @@ export default async function Layout({ children }) {
                     </a>
                   </li>
                   <li>
-                    <a href="mailto:support@nova-kicks.com">
+                    <a href="mailto:namnamhainguyen@gmail.com">
                       <i className="fas fa-envelope" style={{ marginRight: "8px", color: "var(--accent)", width: "16px" }}></i>
-                      support@nova-kicks.com
+                      namnamhainguyen@gmail.com
                     </a>
                   </li>
                   <li style={{ color: "var(--text-secondary)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "8px" }}>
@@ -227,7 +227,6 @@ export default async function Layout({ children }) {
                   Liên kết
                 </p>
                 <ul className="nk-footer-links">
-                  <li><a href="/about">Giới thiệu</a></li>
                   <li><a href="/products">Sản phẩm</a></li>
                   <li><a href="/new">Tin tức</a></li>
                   <li><a href="/contact">Liên hệ</a></li>
