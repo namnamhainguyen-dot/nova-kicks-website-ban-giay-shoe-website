@@ -61,6 +61,14 @@ export default function AddVoucher() {
       }
     }
 
+    // 4. Kiểm tra chống lỗ: Nếu là giảm giá cố định (fixed), số tiền giảm không được lớn hơn giá trị đơn hàng tối thiểu
+    if (formData.discount_type === "fixed" && minOrderVal > 0) {
+      if (discountVal > minOrderVal) {
+        alert(`⚠️ Mức giảm cố định (${discountVal.toLocaleString("vi-VN")}đ) không được lớn hơn giá trị đơn hàng tối thiểu (${minOrderVal.toLocaleString("vi-VN")}đ)!`);
+        return;
+      }
+    }
+
     setLoading(true);
 
     // Chuẩn hóa và làm sạch dữ liệu trước khi gửi lên API
