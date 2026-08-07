@@ -47,6 +47,12 @@ export default function Register() {
     setError("");
     setSuccess("");
 
+    // Kiểm tra độ dài mật khẩu tối thiểu 6 ký tự
+    if (formData.password.length < 6) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự!");
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError("Mật khẩu xác nhận không trùng khớp!");
       return;
@@ -58,7 +64,7 @@ export default function Register() {
       return;
     }
 
-    setLoading(true); // Đã sửa lỗi cú pháp ở đây (từ loading(true) thành setLoading(true))
+    setLoading(true);
 
     try {
       const res = await fetch("/api/register", {
@@ -99,24 +105,22 @@ export default function Register() {
       {/* CỘT TRÁI: HIỂN THỊ ẢNH NẰM FULL PHÍA DƯỚI, CHỮ NỔI LÊN TRÊN */}
       <div 
         className="col-md-5 d-flex flex-column justify-content-end p-5 text-white position-relative overflow-hidden min-vh-50 min-vh-md-100"
-        style={{ backgroundColor: "#111111" }} // Đặt nền đen gốc để làm bệ đỡ cho ảnh mờ
+        style={{ backgroundColor: "#111111" }}
       >
-        {/* Sử dụng thẻ Image tối ưu của Next.js để load ảnh chắc chắn lên */}
         <Image 
           src="https://tse4.mm.bing.net/th/id/OIP.jEvfyxNB_g23etbhZ3oMOwHaHa?r=0&cb=thfc1falcon4&rs=1&pid=ImgDetMain&o=7&rm=3"
           alt="Streetwear Background"
-          fill // Phủ kín toàn bộ vùng cột trái
+          fill
           priority
-          unoptimized // Bỏ qua tối ưu hóa domain của Next.js để nhận mọi link ảnh bên ngoài
+          unoptimized
           style={{
             objectFit: "cover",
             objectPosition: "center",
-            opacity: 0.45, // Giảm độ mờ của ảnh xuống 45% để ẩn sau chữ mượt mà
+            opacity: 0.45,
             zIndex: 0
           }}
         />
         
-        {/* Nội dung chữ được bọc và đưa lên lớp trên (z-index: 1) */}
         <div className="position-relative z-1 mb-4">
           <span className="bg-black text-white px-2 py-1 small fw-bold text-uppercase tracking-widest mb-3 d-inline-block border border-secondary" style={{ fontSize: "0.65rem" }}>
             CỘNG ĐỒNG ĐỘC QUYỀN
@@ -183,13 +187,13 @@ export default function Register() {
 
             <div className="mb-3">
               <label htmlFor="identifier" className="form-label text-uppercase small fw-bold text-secondary tracking-wider m-0 mb-1">
-                Email hoặc Số điện thoại
+                Email
               </label>
               <input
                 type="text"
                 className="form-control rounded-0 border-secondary bg-white text-dark py-2"
                 id="identifier"
-                placeholder="Nhập email hoặc số điện thoại của bạn"
+                placeholder="Nhập email của bạn"
                 value={formData.identifier}
                 onChange={handleChange}
                 required
@@ -204,10 +208,11 @@ export default function Register() {
                 type="password"
                 className="form-control rounded-0 border-secondary bg-white text-dark py-2"
                 id="password"
-                placeholder="Nhập mật khẩu an toàn"
+                placeholder="Nhập mật khẩu (tối thiểu 6 ký tự)"
                 value={formData.password}
                 onChange={handleChange}
                 required
+                minLength={6} // Thêm thuộc tính HTML5 kiểm tra nhanh phía trình duyệt
               />
             </div>
 
@@ -223,6 +228,7 @@ export default function Register() {
                 value={formData.confirmPassword}
                 onChange={handleChange}
                 required
+                minLength={6}
               />
             </div>
 
