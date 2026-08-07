@@ -286,24 +286,20 @@ export default function AdminOrderPage() {
   };
 
   // Thao tác hàng loạt: Duyệt nhanh / Chuyển sang đóng gói
+// Thao tác hàng loạt
 const handleBatchUpdate = async (nextStatus) => {
   if (selectedOrderIds.length === 0) {
     showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
     return;
   }
-  const handleBatchUpdate = async (nextStatus) => {
-    if (selectedOrderIds.length === 0) {
-      showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
-      return;
-    }
-    if (!confirm(`Bạn có chắc muốn chuyển ${selectedOrderIds.length} đơn hàng sang trạng thái mới?`)) return;
 
   if (
     !confirm(
       `Bạn có chắc muốn cập nhật ${selectedOrderIds.length} đơn hàng?`
     )
-  )
+  ) {
     return;
+  }
 
   let success = 0;
   let failed = 0;
@@ -336,12 +332,11 @@ const handleBatchUpdate = async (nextStatus) => {
 
     setSelectedOrderIds([]);
     loadOrders();
-  } catch (error) {
-    console.error(error);
+  } catch (err) {
+    console.error(err);
     showMessage("Có lỗi xảy ra!", "danger");
   }
 };
-
   const exportToCSV = () => {
     if (filteredOrders.length === 0) {
       showMessage("Không có dữ liệu để xuất file!", "warning");
@@ -713,5 +708,5 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       </div>
     </div>
-  );
-}
+  )
+};
