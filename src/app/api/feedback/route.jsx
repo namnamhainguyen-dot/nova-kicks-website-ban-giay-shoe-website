@@ -89,7 +89,53 @@ export async function POST(request) {
       reply: "",
       createdAt: new Date(),
     };
+try {
+  await transporter.sendMail({
+    from: `"Nova Kicks" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "💌 Nova Kicks đã nhận được phản hồi của bạn",
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #eee;border-radius:10px;padding:25px">
+        <h2 style="color:#111">Xin chào ${name},</h2>
 
+        <p>
+          Nova Kicks đã nhận được phản hồi của bạn.
+        </p>
+
+        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:20px 0">
+          <p><strong>Chủ đề:</strong> ${subject}</p>
+          <p><strong>Nội dung:</strong></p>
+          <p>${message}</p>
+        </div>
+
+        <p>
+          Đội ngũ hỗ trợ sẽ xem xét và phản hồi bạn trong thời gian sớm nhất.
+        </p>
+
+        <p>
+          Vui lòng theo dõi hộp thư email để nhận phản hồi từ Nova Kicks.
+        </p>
+
+        <br>
+
+        <p>
+          Cảm ơn bạn đã dành thời gian đóng góp ý kiến để giúp Nova Kicks ngày càng hoàn thiện hơn ❤️
+        </p>
+
+        <hr>
+
+        <p style="color:#888;font-size:13px">
+          Trân trọng,<br>
+          <strong>Nova Kicks Support Team</strong>
+        </p>
+      </div>
+    `,
+  });
+
+  console.log("Đã gửi email cảm ơn khách hàng.");
+} catch (err) {
+  console.error("Lỗi gửi email cảm ơn:", err);
+}
     const result = await db.collection("feedback").insertOne(feedback);
 
     // ===============================

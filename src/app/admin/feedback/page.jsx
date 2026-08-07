@@ -398,7 +398,7 @@ export default function AdminFeedbackPage() {
                 <th className="py-3">Nội dung</th>
                 <th className="py-3">Ngày gửi</th>
                 <th className="py-3">Trạng thái</th>
-                <th className="py-3 text-end px-4">Thao tác</th>
+                {/* <th className="py-3 text-end px-4">Thao tác</th> */}
               </tr>
             </thead>
             <tbody>
@@ -457,7 +457,7 @@ export default function AdminFeedbackPage() {
                         )}
                       </td>
 
-                      <td className="text-end px-4 py-3">
+                      {/* <td className="text-end px-4 py-3">
                         <button
                           className="btn btn-success btn-sm me-1 rounded-circle"
                           style={{ width: "32px", height: "32px" }}
@@ -482,7 +482,7 @@ export default function AdminFeedbackPage() {
                         >
                           🗑
                         </button>
-                      </td>
+                      </td> */}
                     </tr>
                   );
                 })
