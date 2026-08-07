@@ -1,7 +1,9 @@
 import clientPromise from "@/libs/mongodb";
 import nodemailer from "nodemailer";
-import { NextResponse } from "next/server";
 
+// ===============================
+// Mail Transport
+// ===============================
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
@@ -10,11 +12,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// 1. Hàm GET: Dành cho trang Admin load danh sách feedback từ database
+// ===============================
+// GET ALL FEEDBACK
+// ===============================
 export async function GET() {
   try {
     const client = await clientPromise;
-    const db = client.db("Nova-kicks"); // Trỏ đúng tên database trên Atlas của bạn
+    const db = client.db("Nova-kicks");
 
     const feedbacks = await db
       .collection("feedback")
@@ -22,84 +26,168 @@ export async function GET() {
       .sort({ createdAt: -1 })
       .toArray();
 
-    return NextResponse.json(feedbacks, { status: 200 });
+    return Response.json(
+      feedbacks.map((item) => ({
+        ...item,
+        _id: item._id.toString(),
+      }))
+    );
   } catch (error) {
     console.error("GET FEEDBACK ERROR:", error);
-    return NextResponse.json(
-      { success: false, message: error.message || "Lỗi máy chủ" },
-      { status: 500 }
+
+    return Response.json(
+      {
+        success: false,
+        message: "Không lấy được feedback",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }
 
-// 2. Hàm POST: Dành cho form phía người dùng gửi liên hệ/feedback mới
+// ===============================
+// CREATE FEEDBACK
+// ===============================
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { name, email, phone, subject, message } = body;
 
-    // Kiểm tra dữ liệu đầu vào
-    if (!name || !email || !phone || !message) {
+    console.log("NEW FEEDBACK:", body);
+
+    const {
+      name,
+      email,
+      phone,
+      subject,
+      message,
+    } = body;
+
+    if (!name || !email || !message) {
       return Response.json(
-        { success: false, message: "Vui lòng điền đầy đủ thông tin bắt buộc!" },
-        { status: 400 }
+        {
+          success: false,
+          message: "Thiếu thông tin bắt buộc",
+        },
+        {
+          status: 400,
+        }
       );
     }
 
     const client = await clientPromise;
-    const db = client.db("Nova-kicks"); // Trỏ đúng tên database trên Atlas của bạn
+    const db = client.db("Nova-kicks");
 
-    // Lưu vào Database collection "feedback"
-    const newFeedback = {
-      name,
-      email,
-      phone,
-      subject: subject || "Không có tiêu đề",
-      message,
-      status: "pending", // Trạng thái chờ xử lý
+    const feedback = {
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone?.trim() || "Chưa cung cấp",
+      subject: subject?.trim() || "Không có tiêu đề",
+      message: message.trim(),
+      status: "pending",
+      reply: "",
       createdAt: new Date(),
     };
+try {
+  await transporter.sendMail({
+    from: `"Nova Kicks" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "💌 Nova Kicks đã nhận được phản hồi của bạn",
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;border:1px solid #eee;border-radius:10px;padding:25px">
+        <h2 style="color:#111">Xin chào ${name},</h2>
 
-    const result = await db.collection("feedback").insertOne(newFeedback);
+        <p>
+          Nova Kicks đã nhận được phản hồi của bạn.
+        </p>
 
-    // Gửi email thông báo về cho cửa hàng/admin
+        <div style="background:#f8f9fa;padding:15px;border-radius:8px;margin:20px 0">
+          <p><strong>Chủ đề:</strong> ${subject}</p>
+          <p><strong>Nội dung:</strong></p>
+          <p>${message}</p>
+        </div>
+
+        <p>
+          Đội ngũ hỗ trợ sẽ xem xét và phản hồi bạn trong thời gian sớm nhất.
+        </p>
+
+        <p>
+          Vui lòng theo dõi hộp thư email để nhận phản hồi từ Nova Kicks.
+        </p>
+
+        <br>
+
+        <p>
+          Cảm ơn bạn đã dành thời gian đóng góp ý kiến để giúp Nova Kicks ngày càng hoàn thiện hơn ❤️
+        </p>
+
+        <hr>
+
+        <p style="color:#888;font-size:13px">
+          Trân trọng,<br>
+          <strong>Nova Kicks Support Team</strong>
+        </p>
+      </div>
+    `,
+  });
+
+  console.log("Đã gửi email cảm ơn khách hàng.");
+} catch (err) {
+  console.error("Lỗi gửi email cảm ơn:", err);
+}
+    const result = await db.collection("feedback").insertOne(feedback);
+
+    // ===============================
+    // Send email to Admin
+    // ===============================
     try {
       await transporter.sendMail({
-        from: `"Nova Kicks System" <${process.env.EMAIL_USER}>`,
+        from: `"Nova Kicks" <${process.env.EMAIL_USER}>`,
         to: process.env.EMAIL_USER,
-        subject: `[Nova Kicks] Liên hệ mới từ: ${name}`,
+        subject: `[Nova Kicks] Feedback mới - ${feedback.subject}`,
         html: `
-          <div style="font-family:Arial, sans-serif; line-height:1.6;">
-            <h3>Bạn nhận được một liên hệ mới từ website Nova Kicks</h3>
-            <p><b>Họ tên:</b> ${name}</p>
-            <p><b>Email:</b> ${email}</p>
-            <p><b>Số điện thoại:</b> ${phone}</p>
-            <p><b>Tiêu đề:</b> ${subject || 'Không có'}</p>
-            <p><b>Nội dung:</b></p>
-            <div style="background:#f5f5f5; padding:15px; border-radius:8px;">
-              ${message}
+          <div style="font-family:Arial,sans-serif;line-height:1.6">
+            <h2>📩 Feedback mới từ website Nova Kicks</h2>
+
+            <p><strong>Họ tên:</strong> ${feedback.name}</p>
+
+            <p><strong>Email:</strong> ${feedback.email}</p>
+
+            <p><strong>Số điện thoại:</strong> ${feedback.phone}</p>
+
+            <p><strong>Tiêu đề:</strong> ${feedback.subject}</p>
+
+            <hr>
+
+            <p><strong>Nội dung:</strong></p>
+
+            <div style="background:#f5f5f5;padding:15px;border-left:4px solid #000">
+              ${feedback.message}
             </div>
           </div>
         `,
       });
-    } catch (mailErr) {
-      console.error("Lỗi gửi mail thông báo:", mailErr);
+    } catch (mailError) {
+      console.error("MAIL ERROR:", mailError);
     }
 
-    return Response.json(
-      { 
-        success: true, 
-        message: "Gửi liên hệ thành công!", 
-        insertedId: result.insertedId 
-      },
-      { status: 201 }
-    );
-
+    return Response.json({
+      success: true,
+      message: "Gửi feedback thành công",
+      id: result.insertedId.toString(),
+    });
   } catch (error) {
     console.error("POST FEEDBACK ERROR:", error);
+
     return Response.json(
-      { success: false, message: error.message || "Lỗi máy chủ" },
-      { status: 500 }
+      {
+        success: false,
+        message: "Lỗi server",
+      },
+      {
+        status: 500,
+      }
     );
   }
 }

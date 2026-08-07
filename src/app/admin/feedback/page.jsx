@@ -388,7 +388,7 @@ export default function AdminFeedbackPage() {
                 <th className="py-3">Nội dung</th>
                 <th className="py-3">Ngày gửi</th>
                 <th className="py-3">Trạng thái</th>
-                <th className="py-3 text-end px-4">Thao tác</th>
+                {/* <th className="py-3 text-end px-4">Thao tác</th> */}
               </tr>
             </thead>
             <tbody>
@@ -438,15 +438,26 @@ export default function AdminFeedbackPage() {
                           </span>
                         )}
                       </td>
+
+                      {/* <td className="text-end px-4 py-3">
                       <td className="text-end px-4 py-3">
                         <button
                           className="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold"
                           style={{ fontSize: "0.8rem" }}
                           onClick={() => handleView(item)}
                         >
+                          ✉
+                        </button>
+                        <button
+                          className="btn btn-danger btn-sm rounded-circle"
+                          style={{ width: "32px", height: "32px" }}
+                          title="Ẩn"
+                          onClick={() => deleteFeedback(item._id)}
+                        >
+                          🗑
                           Xử lý
                         </button>
-                      </td>
+                      </td> */}
                     </tr>
                   );
                 })

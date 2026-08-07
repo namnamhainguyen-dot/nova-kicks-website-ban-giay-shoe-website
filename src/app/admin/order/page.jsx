@@ -285,6 +285,12 @@ export default function AdminOrderPage() {
     }
   };
 
+  // Thao tác hàng loạt: Duyệt nhanh / Chuyển sang đóng gói
+const handleBatchUpdate = async (nextStatus) => {
+  if (selectedOrderIds.length === 0) {
+    showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
+    return;
+  }
   const handleBatchUpdate = async (nextStatus) => {
     if (selectedOrderIds.length === 0) {
       showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
@@ -292,26 +298,49 @@ export default function AdminOrderPage() {
     }
     if (!confirm(`Bạn có chắc muốn chuyển ${selectedOrderIds.length} đơn hàng sang trạng thái mới?`)) return;
 
-    try {
-      let successCount = 0;
-      for (const id of selectedOrderIds) {
-        const res = await fetch(`/api/orders/${id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: nextStatus }),
-        });
-        const data = await res.json();
-        if (data.success) successCount++;
+  if (
+    !confirm(
+      `Bạn có chắc muốn cập nhật ${selectedOrderIds.length} đơn hàng?`
+    )
+  )
+    return;
+
+  let success = 0;
+  let failed = 0;
+
+  try {
+    for (const id of selectedOrderIds) {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          status: nextStatus,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        success++;
+      } else {
+        failed++;
       }
-      showMessage(`Đã cập nhật thành công ${successCount}/${selectedOrderIds.length} đơn hàng!`, "success");
-      setSelectedOrderIds([]);
-      loadOrders();
-    } catch (error) {
-      console.error(error);
-      showMessage("Có lỗi xảy ra khi thao tác hàng loạt!");
-      loadOrders();
     }
-  };
+
+    showMessage(
+      `Thành công ${success} đơn, thất bại ${failed} đơn`,
+      failed === 0 ? "success" : "warning"
+    );
+
+    setSelectedOrderIds([]);
+    loadOrders();
+  } catch (error) {
+    console.error(error);
+    showMessage("Có lỗi xảy ra!", "danger");
+  }
+};
 
   const exportToCSV = () => {
     if (filteredOrders.length === 0) {
