@@ -88,10 +88,10 @@ export default function AdminCommentsPage() {
 
   return (
     <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", fontFamily: "inherit" }}>
-      {/* Tiêu đề trang */}
+      {/* Tiêu đề trang đồng bộ */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem", letterSpacing: "-0.5px" }}>
+          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
             Quản lý bình luận
           </h2>
           <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
@@ -100,10 +100,10 @@ export default function AdminCommentsPage() {
         </div>
       </div>
 
-      {/* Thẻ thống kê tổng quan (Đồng bộ kiểu dáng màu trắng, bo tròn 4, shadow-sm) */}
+      {/* Thẻ thống kê tổng quan (Card nền trắng, bo góc, shadow-sm tinh gọn) */}
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card bg-white border-0 p-3 rounded-4 shadow-sm">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
             <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>
               Tổng bình luận
             </div>
@@ -111,7 +111,7 @@ export default function AdminCommentsPage() {
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card bg-white border-0 p-3 rounded-4 shadow-sm">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
             <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>
               Đang hiển thị
             </div>
@@ -119,7 +119,7 @@ export default function AdminCommentsPage() {
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card bg-white border-0 p-3 rounded-4 shadow-sm">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
             <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>
               Đã ẩn
             </div>
@@ -132,10 +132,10 @@ export default function AdminCommentsPage() {
       <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
           <div className="col-md-8">
-            <label className="form-label small text-muted fw-semibold">Tìm theo tên</label>
+            <label className="form-label small text-muted fw-semibold">Tìm kiếm</label>
             <input
               type="text"
-              className="form-control rounded-3 py-2"
+              className="form-control rounded-3 border-light bg-light py-2"
               placeholder="Nhập tên người dùng, nội dung, sản phẩm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -145,7 +145,7 @@ export default function AdminCommentsPage() {
           <div className="col-md-4">
             <label className="form-label small text-muted fw-semibold">Trạng thái</label>
             <select
-              className="form-select rounded-3 py-2"
+              className="form-select rounded-3 border-light bg-light py-2"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               style={{ fontSize: "0.9rem" }}
@@ -162,7 +162,7 @@ export default function AdminCommentsPage() {
       <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
           <table className="table align-middle mb-0">
-            <thead className="table-light text-uppercase text-muted" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
+            <thead className="bg-light text-uppercase text-muted" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
               <tr>
                 <th className="py-3 px-4 fw-semibold text-secondary">Người dùng</th>
                 <th className="py-3 fw-semibold text-secondary">Nội dung đánh giá</th>
@@ -222,7 +222,7 @@ export default function AdminCommentsPage() {
                     </td>
                     <td className="text-end px-4 py-3">
                       <button
-                        className="btn btn-outline-dark btn-sm rounded-pill px-3 fw-semibold shadow-sm"
+                        className="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold"
                         style={{ fontSize: "0.8rem" }}
                         onClick={() => handleToggleHide(item)}
                       >
@@ -234,7 +234,7 @@ export default function AdminCommentsPage() {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-5 text-muted">
-                    Không tìm thấy đánh giá phù hợp.
+                    Không tìm thấy đánh giá.
                   </td>
                 </tr>
               )}

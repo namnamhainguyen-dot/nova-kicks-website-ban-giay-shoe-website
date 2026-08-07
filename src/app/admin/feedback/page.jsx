@@ -256,7 +256,7 @@ export default function AdminFeedbackPage() {
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
-        <div className="spinner-border text-primary" role="status">
+        <div className="spinner-border text-dark" role="status">
           <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
@@ -264,81 +264,78 @@ export default function AdminFeedbackPage() {
   }
 
   return (
-    <div className="container-fluid px-4 py-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
-      {/* Thông báo dạng Toast / Alert */}
+    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", position: "relative" }}>
       {messageBar.visible && (
-        <div className={`alert alert-${messageBar.type} border-0 shadow-sm rounded-4 py-3 px-4 d-flex align-items-center mb-4`} role="alert">
-          <span className="fw-medium">{messageBar.text}</span>
-          <button type="button" className="btn-close ms-auto" onClick={() => setMessageBar({ visible: false, text: "", type: "danger" })}></button>
+        <div className={`alert alert-${messageBar.type} py-2 px-3 rounded-3 shadow-sm d-flex align-items-center mb-4`} role="alert">
+          <span className="fw-medium" style={{ fontSize: "0.9rem" }}>{messageBar.text}</span>
+          <button type="button" className="btn-close ms-auto" style={{ fontSize: "0.75rem" }} onClick={() => setMessageBar({ visible: false, text: "", type: "danger" })}></button>
         </div>
       )}
 
-      {/* Tiêu đề trang & Nút hành động chính */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+      {/* Header trang giống Quản lý sản phẩm */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.5rem" }}>
-            Quản Lý Phản Hồi Khách Hàng
+          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
+            Quản lý Feedback
           </h2>
-          <p className="text-muted mb-0 small">
-            Theo dõi, xử lý và phản hồi ý kiến đóng góp từ người dùng hệ thống.
+          <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
+            Theo dõi ý kiến khách hàng, hiển thị trạng thái và cập nhật phản hồi nhanh.
           </p>
         </div>
         <button
-          className="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm d-inline-flex align-items-center gap-2"
+          className="btn btn-dark rounded-pill px-4 fw-semibold shadow-sm"
           onClick={exportToCSV}
+          style={{ fontSize: "0.9rem", backgroundColor: "#111" }}
         >
-          <i className="bi bi-file-earmark-excel"></i> Xuất Excel / CSV
+          📊 Xuất Excel / CSV
         </button>
       </div>
 
-      {/* Thống kê nhanh (Cards) */}
+      {/* Thống kê (Card nền trắng, bo góc, số liệu nổi bật giống ảnh mẫu) */}
       <div className="row g-3 mb-4">
-        <div className="col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
-            <div className="text-muted small fw-semibold text-uppercase mb-1">Tổng feedback</div>
-            <div className="fs-4 fw-bold text-dark">{totalFeedback}</div>
+        <div className="col-md-3">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Tổng feedback</div>
+            <div className="fs-3 fw-bold text-dark">{totalFeedback}</div>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
-            <div className="text-muted small fw-semibold text-uppercase mb-1">Chưa đọc</div>
-            <div className="fs-4 fw-bold text-warning">{unreadCount}</div>
+        <div className="col-md-3">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Chưa đọc</div>
+            <div className="fs-3 fw-bold text-danger">{unreadCount}</div>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
-            <div className="text-muted small fw-semibold text-uppercase mb-1">Đã đọc</div>
-            <div className="fs-4 fw-bold text-success">{readCount}</div>
+        <div className="col-md-3">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Đã đọc</div>
+            <div className="fs-3 fw-bold text-success">{readCount}</div>
           </div>
         </div>
-        <div className="col-sm-6 col-xl-3">
-          <div className="card border-0 shadow-sm rounded-4 p-3 bg-white">
-            <div className="text-muted small fw-semibold text-uppercase mb-1">Đã trả lời</div>
-            <div className="fs-4 fw-bold text-primary">{doneCount}</div>
+        <div className="col-md-3">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Đã trả lời</div>
+            <div className="fs-3 fw-bold text-primary">{doneCount}</div>
           </div>
         </div>
       </div>
 
-      {/* Thanh tìm kiếm & Bộ lọc trạng thái */}
-      <div className="card border-0 shadow-sm rounded-4 p-4 mb-4 bg-white">
+      {/* Tìm kiếm & Lọc */}
+      <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
-          <div className="col-md-8">
-            <div className="input-group">
-              <span className="input-group-text bg-light border-end-0 rounded-start-pill ps-3 text-muted">
-                <i className="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                className="form-control bg-light border-start-0 rounded-end-pill py-2"
-                placeholder="Tìm kiếm theo tên khách hàng, email, chủ đề hoặc nội dung..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
-            </div>
+          <div className="col-md-7">
+            <label className="form-label small text-muted fw-semibold">Tìm theo tên</label>
+            <input
+              type="text"
+              className="form-control rounded-3 border-light bg-light"
+              placeholder="Nhập tên, email, chủ đề, nội dung..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-5">
+            <label className="form-label small text-muted fw-semibold">Trạng thái</label>
             <select
-              className="form-select bg-light rounded-pill py-2 px-3"
+              className="form-select rounded-3 border-light bg-light"
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value)}
             >
@@ -351,31 +348,31 @@ export default function AdminFeedbackPage() {
         </div>
       </div>
 
-      {/* Thao tác hàng loạt (Batch Actions Bar) */}
+      {/* Thao tác hàng loạt */}
       {selectedFeedbackIds.length > 0 && (
-        <div className="card border-0 shadow-sm rounded-4 px-4 py-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between flex-wrap gap-2">
-          <div className="fw-semibold small">
-            Đã chọn <span className="badge bg-light text-dark px-2 py-1 ms-1">{selectedFeedbackIds.length}</span> feedback
+        <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between">
+          <div className="fw-semibold ms-2">
+            Đã chọn <span className="badge bg-light text-dark px-2 py-1">{selectedFeedbackIds.length}</span> feedback
           </div>
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex gap-2">
             <button className="btn btn-sm btn-success fw-semibold rounded-pill px-3" onClick={() => handleBatchAction("read")}>
               ✓ Đánh dấu đã đọc
             </button>
             <button className="btn btn-sm btn-primary fw-semibold rounded-pill px-3" onClick={() => handleBatchAction("done")}>
-              ✉ Đã trả lời
+              ✉ Đánh dấu đã trả lời
             </button>
             <button className="btn btn-sm btn-danger fw-semibold rounded-pill px-3" onClick={() => handleBatchAction("delete")}>
-              🗑 Xóa đã chọn
+              🗑 Xóa hàng loạt
             </button>
           </div>
         </div>
       )}
 
-      {/* Bảng dữ liệu chính */}
-      <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden mb-4">
+      {/* Bảng dữ liệu đồng bộ phong cách */}
+      <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
-            <thead className="table-light text-uppercase text-secondary fw-bold" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
+          <table className="table align-middle mb-0">
+            <thead className="bg-light text-uppercase text-muted" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
               <tr>
                 <th className="py-3 ps-4" style={{ width: "40px" }}>
                   <input
@@ -410,13 +407,13 @@ export default function AdminFeedbackPage() {
                         />
                       </td>
                       <td className="py-3">
-                        <div className="fw-semibold text-dark">{item.name}</div>
+                        <div className="fw-bold text-dark">{item.name}</div>
                       </td>
-                      <td className="py-3 text-muted small">{item.email}</td>
+                      <td className="py-3 text-muted" style={{ fontSize: "0.9rem" }}>{item.email}</td>
                       <td className="py-3 fw-medium text-dark">{item.subject}</td>
                       <td className="py-3">
                         <button
-                          className="btn btn-sm btn-light border rounded-pill px-3 text-primary fw-semibold"
+                          className="btn btn-sm btn-light border rounded-pill px-3 fw-semibold text-primary shadow-sm"
                           style={{ fontSize: "0.8rem" }}
                           onClick={() => handleView(item)}
                         >
@@ -428,46 +425,27 @@ export default function AdminFeedbackPage() {
                       </td>
                       <td className="py-3">
                         {item.status === "read" ? (
-                          <span className="badge bg-success-subtle text-success px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "0.75rem" }}>
+                          <span className="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "0.75rem" }}>
                             Đã đọc
                           </span>
                         ) : item.status === "done" ? (
-                          <span className="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "0.75rem" }}>
+                          <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "0.75rem" }}>
                             Đã trả lời
                           </span>
                         ) : (
-                          <span className="badge bg-warning-subtle text-warning-emphasis px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "0.75rem" }}>
+                          <span className="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill fw-semibold" style={{ fontSize: "0.75rem" }}>
                             Chưa đọc
                           </span>
                         )}
                       </td>
                       <td className="text-end px-4 py-3">
-                        <div className="d-flex justify-content-end gap-1">
-                          <button
-                            className="btn btn-light btn-sm rounded-circle text-success border"
-                            style={{ width: "32px", height: "32px" }}
-                            title="Đánh dấu đã đọc"
-                            onClick={() => changeStatus(itemId, "read")}
-                          >
-                            ✓
-                          </button>
-                          <button
-                            className="btn btn-light btn-sm rounded-circle text-primary border"
-                            style={{ width: "32px", height: "32px" }}
-                            title="Trả lời"
-                            onClick={() => handleView(item)}
-                          >
-                            ✉
-                          </button>
-                          <button
-                            className="btn btn-light btn-sm rounded-circle text-danger border"
-                            style={{ width: "32px", height: "32px" }}
-                            title="Xóa"
-                            onClick={() => deleteFeedback(itemId)}
-                          >
-                            🗑
-                          </button>
-                        </div>
+                        <button
+                          className="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold"
+                          style={{ fontSize: "0.8rem" }}
+                          onClick={() => handleView(item)}
+                        >
+                          Xử lý
+                        </button>
                       </td>
                     </tr>
                   );
@@ -475,7 +453,7 @@ export default function AdminFeedbackPage() {
               ) : (
                 <tr>
                   <td colSpan="8" className="text-center py-5 text-muted">
-                    Không tìm thấy feedback phù hợp trong hệ thống.
+                    Không tìm thấy feedback phù hợp trong database.
                   </td>
                 </tr>
               )}
@@ -484,53 +462,51 @@ export default function AdminFeedbackPage() {
         </div>
       </div>
 
-      {/* Modal Chi tiết & Phản hồi */}
+      {/* Modal chi tiết */}
       {selectedFeedback && (
-        <div className="modal show d-block" style={{ background: "rgba(0,0,0,0.5)", backdropFilter: "blur(2px)", zIndex: 1050 }}>
+        <div className="modal show d-block" style={{ background: "rgba(0,0,0,.5)", zIndex: 1050 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content border-0 rounded-4 shadow-lg">
-              <div className="modal-header border-0 pb-0 px-4 pt-4">
-                <h5 className="modal-title fw-bold text-dark">Chi Tiết Phản Hồi</h5>
+            <div className="modal-content border-0 rounded-4 shadow">
+              <div className="modal-header border-0 pb-0">
+                <h5 className="modal-title fw-bold">Chi tiết Feedback khách hàng</h5>
                 <button type="button" className="btn-close" onClick={() => setSelectedFeedback(null)} />
               </div>
               <div className="modal-body p-4">
-                <div className="bg-light p-3 rounded-4 mb-3">
-                  <div className="row g-2">
-                    <div className="col-md-6">
-                      <p className="mb-1 small"><b>Người gửi:</b> {selectedFeedback.name}</p>
-                      <p className="mb-1 small"><b>Email:</b> {selectedFeedback.email}</p>
-                    </div>
-                    <div className="col-md-6">
-                      <p className="mb-1 small"><b>Chủ đề:</b> {selectedFeedback.subject}</p>
-                      <p className="mb-1 small"><b>Ngày gửi:</b> {selectedFeedback.createdAt ? new Date(selectedFeedback.createdAt).toLocaleString("vi-VN") : ""}</p>
-                    </div>
+                <div className="row mb-3 bg-light p-3 rounded-3 mx-0">
+                  <div className="col-md-6">
+                    <p className="mb-1"><b>Người gửi:</b> {selectedFeedback.name}</p>
+                    <p className="mb-1"><b>Email:</b> {selectedFeedback.email}</p>
+                  </div>
+                  <div className="col-md-6">
+                    <p className="mb-1"><b>Chủ đề:</b> {selectedFeedback.subject}</p>
+                    <p className="mb-1"><b>Ngày gửi:</b> {selectedFeedback.createdAt ? new Date(selectedFeedback.createdAt).toLocaleString("vi-VN") : ""}</p>
                   </div>
                 </div>
 
                 <div className="mb-3">
-                  <label className="form-label text-muted small fw-semibold">Nội dung khách hàng:</label>
-                  <div className="p-3 border rounded-4 bg-light text-dark" style={{ whiteSpace: "pre-line", minHeight: "80px", fontSize: "0.95rem" }}>
+                  <label className="form-label text-muted small fw-semibold">Nội dung khách gửi:</label>
+                  <div className="p-3 border rounded-3 bg-white" style={{ whiteSpace: "pre-line", minHeight: "80px" }}>
                     {selectedFeedback.message}
                   </div>
                 </div>
 
                 <div className="mb-0">
-                  <label className="form-label small fw-semibold text-dark">Nội dung phản hồi (Gửi qua hệ thống):</label>
+                  <label className="form-label small fw-semibold text-dark">Nội dung phản hồi (Gửi tới khách hàng):</label>
                   <textarea
-                    className="form-control rounded-4 bg-light p-3"
+                    className="form-control rounded-3 border-light bg-light"
                     rows="4"
-                    placeholder="Nhập nội dung trả lời khách hàng..."
+                    placeholder="Nhập nội dung trả lời..."
                     value={reply}
                     onChange={e => setReply(e.target.value)}
                   />
                 </div>
               </div>
-              <div className="modal-footer border-0 px-4 pb-4 pt-0">
-                <button type="button" className="btn btn-light rounded-pill px-4 fw-semibold border" onClick={() => setSelectedFeedback(null)}>
+              <div className="modal-footer border-0 pt-0">
+                <button type="button" className="btn btn-light border rounded-3 px-4" onClick={() => setSelectedFeedback(null)}>
                   Đóng
                 </button>
-                <button type="button" className="btn btn-primary rounded-pill px-4 fw-semibold" onClick={sendReply}>
-                  Gửi Phản Hồi
+                <button type="button" className="btn btn-dark rounded-3 px-4" style={{ backgroundColor: "#111" }} onClick={sendReply}>
+                  Gửi phản hồi
                 </button>
               </div>
             </div>

@@ -209,17 +209,16 @@ export default function AdminOrderPage() {
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => !o.status || o.status === "pending").length;
   const shippingOrders = orders.filter((o) => o.status === "shipping" || o.status === "preparing").length;
-  const completedOrders = orders.filter((o) => o.status === "completed").length;
   const totalRevenue = orders.filter((o) => o.status === "completed").reduce((sum, o) => sum + Number(o.final_total || o.total || 0), 0);
 
   const statusBadges = {
-    pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis border border-warning-subtle" },
-    preparing: { text: "Đang đóng gói", class: "bg-info-subtle text-info-emphasis border border-info-subtle" },
-    shipping: { text: "Đang giao", class: "bg-primary-subtle text-primary-emphasis border border-primary-subtle" },
-    completed: { text: "Hoàn thành", class: "bg-success-subtle text-success-emphasis border border-success-subtle" },
-    cancelled: { text: "Đã hủy", class: "bg-danger-subtle text-danger-emphasis border border-danger-subtle" },
-    boomed: { text: "Boom hàng", class: "bg-danger-subtle text-danger-emphasis border border-danger-subtle" },
-    returned: { text: "Trả hàng", class: "bg-warning-subtle text-warning-emphasis border border-warning-subtle" },
+    pending: { text: "Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning" },
+    preparing: { text: "Đang đóng gói", class: "bg-info bg-opacity-10 text-info" },
+    shipping: { text: "Đang giao", class: "bg-primary bg-opacity-10 text-primary" },
+    completed: { text: "Hoàn thành", class: "bg-success bg-opacity-10 text-success" },
+    cancelled: { text: "Đã hủy", class: "bg-danger bg-opacity-10 text-danger" },
+    boomed: { text: "Boom hàng", class: "bg-danger bg-opacity-10 text-danger" },
+    returned: { text: "Trả hàng", class: "bg-warning bg-opacity-10 text-warning" },
   };
 
   const getAllowedOptions = (currentStatus) => {
@@ -356,7 +355,7 @@ export default function AdminOrderPage() {
   if (loading) {
     return (
       <div className="d-flex justify-content-center align-items-center vh-100 bg-light">
-        <div className="spinner-border text-primary" role="status">
+        <div className="spinner-border text-dark" role="status">
           <span className="visually-hidden">Đang tải...</span>
         </div>
       </div>
@@ -364,7 +363,7 @@ export default function AdminOrderPage() {
   }
 
   return (
-    <div className="container-fluid px-4 py-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
+    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", fontFamily: "inherit" }}>
       
       {/* ================= INLINE MESSAGE NOTIFICATION ================= */}
       {messageBar.visible && (
@@ -399,7 +398,7 @@ export default function AdminOrderPage() {
                 </p>
                 <label className="form-label text-muted small fw-semibold">Lý do chi tiết:</label>
                 <textarea
-                  className="form-control rounded-3"
+                  className="form-control rounded-3 bg-light border-0"
                   rows="3"
                   placeholder="Ví dụ: Khách đổi ý, Sai địa chỉ, Không liên lạc được..."
                   value={actionModal.reason}
@@ -408,7 +407,7 @@ export default function AdminOrderPage() {
               </div>
               <div className="modal-footer border-0 pt-0">
                 <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setActionModal({ ...actionModal, isOpen: false })}>Đóng</button>
-                <button type="button" className="btn btn-primary rounded-pill px-4" onClick={handleConfirmAction}>Xác nhận</button>
+                <button type="button" className="btn btn-dark rounded-pill px-4" onClick={handleConfirmAction}>Xác nhận</button>
               </div>
             </div>
           </div>
@@ -418,15 +417,15 @@ export default function AdminOrderPage() {
       {/* Tiêu đề trang & Nút xuất Excel */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.5rem" }}>
+          <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
             Quản lý đơn hàng
           </h2>
-          <p className="text-muted small mb-0">
+          <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
             Theo dõi, xử lý đơn hàng và báo cáo doanh thu trực tuyến.
           </p>
         </div>
         <button
-          className="btn btn-outline-primary rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2"
+          className="btn btn-outline-dark rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2"
           onClick={exportToCSV}
           style={{ fontSize: "0.85rem" }}
         >
@@ -437,27 +436,27 @@ export default function AdminOrderPage() {
       {/* Thẻ thống kê tổng quan (Dashboard Widgets) */}
       <div className="row g-3 mb-4">
         <div className="col-xl-3 col-md-6">
-          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100 border-start border-primary border-4">
-            <div className="text-uppercase text-muted small fw-semibold mb-1">Tổng đơn hàng</div>
-            <div className="fs-4 fw-bold text-dark">{totalOrders.toLocaleString()}</div>
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Tổng đơn hàng</div>
+            <div className="fs-3 fw-bold text-dark">{totalOrders.toLocaleString()}</div>
           </div>
         </div>
         <div className="col-xl-3 col-md-6">
-          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100 border-start border-warning border-4">
-            <div className="text-uppercase text-muted small fw-semibold mb-1">Chờ xác nhận</div>
-            <div className="fs-4 fw-bold text-warning">{pendingOrders}</div>
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Chờ xác nhận</div>
+            <div className="fs-3 fw-bold text-warning">{pendingOrders}</div>
           </div>
         </div>
         <div className="col-xl-3 col-md-6">
-          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100 border-start border-info border-4">
-            <div className="text-uppercase text-muted small fw-semibold mb-1">Đang xử lý/giao</div>
-            <div className="fs-4 fw-bold text-info">{shippingOrders}</div>
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Đang xử lý/giao</div>
+            <div className="fs-3 fw-bold text-info">{shippingOrders}</div>
           </div>
         </div>
         <div className="col-xl-3 col-md-6">
-          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100 border-start border-success border-4">
-            <div className="text-uppercase text-muted small fw-semibold mb-1">Tổng doanh thu</div>
-            <div className="fs-4 fw-bold text-success">{totalRevenue.toLocaleString("vi-VN")}đ</div>
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Tổng doanh thu</div>
+            <div className="fs-3 fw-bold text-success">{totalRevenue.toLocaleString("vi-VN")}đ</div>
           </div>
         </div>
       </div>
@@ -466,23 +465,20 @@ export default function AdminOrderPage() {
       <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
           <div className="col-md-5">
-            <div className="input-group">
-              <span className="input-group-text bg-light border-end-0 rounded-start-pill ps-3 text-muted">
-                <i className="bi bi-search"></i>
-              </span>
-              <input
-                type="text"
-                className="form-control border-start-0 rounded-end-pill bg-light"
-                placeholder="Tìm theo mã đơn, tên khách, SĐT, email..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ fontSize: "0.9rem" }}
-              />
-            </div>
+            <label className="form-label small text-muted fw-semibold">Tìm kiếm</label>
+            <input
+              type="text"
+              className="form-control rounded-3 bg-light border-0 py-2"
+              placeholder="Tìm theo mã đơn, tên khách, SĐT, email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ fontSize: "0.9rem" }}
+            />
           </div>
           <div className="col-md-3">
+            <label className="form-label small text-muted fw-semibold">Cổng thanh toán</label>
             <select
-              className="form-select rounded-pill bg-light border-0 px-3"
+              className="form-select rounded-3 bg-light border-0 py-2"
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
               style={{ fontSize: "0.9rem" }}
@@ -492,11 +488,11 @@ export default function AdminOrderPage() {
               <option value="vnpay">Thanh toán VNPay</option>
             </select>
           </div>
-          <div className="col-md-4 d-flex justify-content-md-end">
+          <div className="col-md-4 d-flex align-items-end justify-content-md-end">
             <button
               className={`btn btn-sm rounded-pill px-3 fw-medium ${showDeadline ? "btn-outline-secondary" : "btn-secondary text-white"}`}
               onClick={() => setShowDeadline(!showDeadline)}
-              style={{ fontSize: "0.85rem" }}
+              style={{ fontSize: "0.85rem", height: "38px" }}
             >
               {showDeadline ? "Ẩn hạn xử lý" : "Hiện hạn xử lý"}
             </button>
@@ -517,7 +513,7 @@ export default function AdminOrderPage() {
           ].map((tab) => (
             <button
               key={tab}
-              className={`btn btn-sm rounded-pill px-3 text-nowrap fw-medium ${activeTab === tab ? "btn-primary text-white shadow-sm" : "btn-light text-secondary border-0"}`}
+              className={`btn btn-sm rounded-pill px-3 text-nowrap fw-semibold ${activeTab === tab ? "btn-dark text-white shadow-sm" : "btn-light text-secondary border-0"}`}
               onClick={() => setActiveTab(tab)}
               style={{ fontSize: "0.85rem" }}
             >
@@ -529,9 +525,9 @@ export default function AdminOrderPage() {
 
       {/* Thanh thao tác hàng loạt (Batch Actions Bar) */}
       {selectedOrderIds.length > 0 && (
-        <div className="card border-0 shadow-sm rounded-4 px-4 py-3 mb-4 bg-primary text-white d-flex flex-row align-items-center justify-content-between">
+        <div className="card border-0 shadow-sm rounded-4 px-4 py-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between">
           <div className="fw-semibold small">
-            Đã chọn <span className="badge bg-white text-primary px-2 py-1 ms-1">{selectedOrderIds.length}</span> đơn hàng
+            Đã chọn <span className="badge bg-white text-dark px-2 py-1 ms-1">{selectedOrderIds.length}</span> đơn hàng
           </div>
           <div className="d-flex gap-2">
             <button
@@ -559,10 +555,10 @@ export default function AdminOrderPage() {
       {/* Bảng danh sách đơn hàng */}
       <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
-          <table className="table align-middle mb-0 table-hover">
-            <thead className="table-light text-uppercase text-secondary fw-semibold" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
+          <table className="table align-middle mb-0">
+            <thead className="bg-light text-uppercase text-muted" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
               <tr>
-                <th className="py-3 ps-4" style={{ width: "40px" }}>
+                <th className="py-3 px-4" style={{ width: "40px" }}>
                   <input
                     type="checkbox"
                     className="form-check-input"
@@ -570,13 +566,13 @@ export default function AdminOrderPage() {
                     checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
                   />
                 </th>
-                <th className="py-3">Mã đơn</th>
-                <th className="py-3">Khách hàng</th>
-                <th className="py-3">Sản phẩm</th>
-                <th className="py-3">Tổng tiền</th>
-                {showDeadline && <th className="py-3">Hạn xử lý</th>}
-                <th className="py-3">Trạng thái</th>
-                <th className="py-3 text-end px-4">Hành động</th>
+                <th className="py-3 fw-semibold text-secondary">Mã đơn</th>
+                <th className="py-3 fw-semibold text-secondary">Khách hàng</th>
+                <th className="py-3 fw-semibold text-secondary">Sản phẩm</th>
+                <th className="py-3 fw-semibold text-secondary">Tổng tiền</th>
+                {showDeadline && <th className="py-3 fw-semibold text-secondary">Hạn xử lý</th>}
+                <th className="py-3 fw-semibold text-secondary">Trạng thái</th>
+                <th className="py-3 text-end px-4 fw-semibold text-secondary">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -587,7 +583,7 @@ export default function AdminOrderPage() {
 
                   return (
                     <tr key={order._id} className={isSelected ? "table-active" : ""}>
-                      <td className="ps-4 py-3">
+                      <td className="px-4 py-3">
                         <input
                           type="checkbox"
                           className="form-check-input"
@@ -607,7 +603,7 @@ export default function AdminOrderPage() {
 
                       <td className="py-3">
                         <div className="d-flex align-items-center gap-2">
-                          <div className="customer-avatar bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: "32px", height: "32px", fontSize: "0.8rem" }}>
+                          <div className="customer-avatar bg-light text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: "32px", height: "32px", fontSize: "0.8rem" }}>
                             {order.name?.charAt(0).toUpperCase() || "K"}
                           </div>
                           <div style={{ lineHeight: "1.2" }}>
@@ -625,7 +621,7 @@ export default function AdminOrderPage() {
                             </div>
                           ))}
                           {order.order_items?.length > 2 && (
-                            <small className="text-primary fw-medium" style={{ fontSize: "0.75rem" }}>
+                            <small className="text-muted fw-medium" style={{ fontSize: "0.75rem" }}>
                               +{order.order_items.length - 2} sản phẩm khác
                             </small>
                           )}
@@ -633,17 +629,17 @@ export default function AdminOrderPage() {
                       </td>
 
                       <td className="py-3">
-                        <div className="fw-bold text-danger" style={{ fontSize: "0.9rem" }}>
+                        <div className="fw-bold text-dark" style={{ fontSize: "0.9rem" }}>
                           {(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ
                         </div>
-                        <span className={`badge mt-1 ${order.paymentMethod === "vnpay" ? "bg-primary-subtle text-primary" : "bg-secondary-subtle text-secondary"}`} style={{ fontSize: "0.68rem" }}>
+                        <span className={`badge mt-1 ${order.paymentMethod === "vnpay" ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.68rem" }}>
                           {order.paymentMethod === "cod" ? "COD" : "VNPay"}
                         </span>
                       </td>
 
                       {showDeadline && (
                         <td className="py-3">
-                          <span className="text-secondary" style={{ fontSize: "0.82rem" }}>
+                          <span className="text-muted small" style={{ fontSize: "0.82rem" }}>
                             {renderDeadline(order)}
                           </span>
                         </td>
@@ -651,7 +647,7 @@ export default function AdminOrderPage() {
 
                       <td className="py-3">
                         <select
-                          className={`form-select form-select-sm fw-semibold shadow-none ${statusBadges[order.status]?.class || "bg-light text-dark"}`}
+                          className={`form-select form-select-sm fw-semibold shadow-none border-0 ${statusBadges[order.status]?.class || "bg-light text-dark"}`}
                           style={{ width: "135px", fontSize: "0.78rem" }}
                           value={order.status || "pending"}
                           onChange={(e) => handleStatusChangeClick(order._id, order.status, e.target.value)}
@@ -667,8 +663,8 @@ export default function AdminOrderPage() {
                       <td className="text-end px-4 py-3">
                         <Link
                           href={`/admin/order/${order._id}`}
-                          className="btn btn-light btn-sm px-3 rounded-pill fw-medium text-dark border shadow-sm hover-shadow"
-                          style={{ fontSize: "0.78rem" }}
+                          className="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold"
+                          style={{ fontSize: "0.8rem" }}
                         >
                           Chi tiết
                         </Link>
