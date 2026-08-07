@@ -45,6 +45,22 @@ export default function Checkout() {
   
   const [availableVouchers, setAvailableVouchers] = useState([]);
   const [showVoucherDropdown, setShowVoucherDropdown] = useState(false);
+  
+  // Thêm ref để quản lý click outside
+  const dropdownRef = useRef(null);
+
+  // Xử lý ẩn dropdown khi click ra ngoài component
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowVoucherDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // ── FETCH TỈNH / THÀNH PHỐ (Dùng chung API esgoo.net với Profile) ──
   useEffect(() => {
@@ -597,17 +613,14 @@ export default function Checkout() {
                   })}
                 </div>
 
-                {/* Nhập Voucher */}
+                {/* PHẦN VOUCHER ĐÃ FIX - SỬ DỤNG onCLick VÀ useRef */}
                 <div className="mb-4 bg-light p-3 rounded-3 position-relative">
                   <div className="mb-2">
                     <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
                   </div>
 
-                  <div 
-                    className="position-relative"
-                    onMouseEnter={() => setShowVoucherDropdown(true)}
-                    onMouseLeave={() => setShowVoucherDropdown(false)}
-                  >
+                  {/* Thêm ref để quản lý click outside */}
+                  <div className="position-relative" ref={dropdownRef}>
                     <div className="input-group">
                       <input
                         type="text"
@@ -615,7 +628,8 @@ export default function Checkout() {
                         placeholder="NHẬP HOẶC CHỌN MÃ"
                         value={voucherCode}
                         onChange={(e) => setVoucherCode(e.target.value)}
-                        onFocus={() => setShowVoucherDropdown(true)}
+                        // Đổi thành click để bật dropdown thay vì onFocus hoặc hover
+                        onClick={() => !appliedVoucher && setShowVoucherDropdown(!showVoucherDropdown)}
                         disabled={!!appliedVoucher}
                       />
                       {appliedVoucher ? (
@@ -623,14 +637,23 @@ export default function Checkout() {
                           Hủy bỏ
                         </button>
                       ) : (
-                        <button
-                          className="btn btn-dark btn-sm fw-semibold"
-                          type="button"
-                          onClick={handleApplyVoucher}
-                          disabled={isValidatingVoucher}
-                        >
-                          {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
-                        </button>
+                        <div className="d-flex gap-1">
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            onClick={() => setShowVoucherDropdown(!showVoucherDropdown)}
+                          >
+                            {showVoucherDropdown ? "▲" : "▼"}
+                          </button>
+                          <button
+                            className="btn btn-dark btn-sm fw-semibold"
+                            type="button"
+                            onClick={handleApplyVoucher}
+                            disabled={isValidatingVoucher}
+                          >
+                            {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                          </button>
+                        </div>
                       )}
                     </div>
 
@@ -657,7 +680,12 @@ export default function Checkout() {
                                   isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
                                 }`}
                                 style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
-                                onClick={() => isEligible && handleSelectSuggestedVoucher(v.code)}
+                                onClick={() => {
+                                  if (isEligible) {
+                                    handleSelectSuggestedVoucher(v.code);
+                                    setShowVoucherDropdown(false); // Đóng dropdown sau khi chọn
+                                  }
+                                }}
                               >
                                 <div>
                                   <div className="fw-bold text-primary small d-flex align-items-center gap-1">
