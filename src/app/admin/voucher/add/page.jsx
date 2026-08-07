@@ -15,7 +15,7 @@ export default function AddVoucher() {
     min_order_value: "",
     max_discount_amount: "",
     usage_limit: 100,
-    start_date: "", // 🌟 Bổ sung ngày bắt đầu
+    start_date: "",
     expiry_date: "",
     is_active: true,
     description: "",
@@ -32,46 +32,71 @@ export default function AddVoucher() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // ==========================================
-    // 🛡️ KIỂM TRA RÀNG BUỘC DỮ LIỆU (VALIDATION)
-    // ==========================================
     const discountVal = Number(formData.discount_value);
     const minOrderVal = formData.min_order_value ? Number(formData.min_order_value) : 0;
     const maxDiscountAmt = formData.max_discount_amount ? Number(formData.max_discount_amount) : 0;
 
-    // 1. Kiểm tra giới hạn phần trăm không quá 50%
-    if (formData.discount_type === "percentage" && discountVal > 50) {
-      alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%!");
+    // 1. Kiểm tra mức giảm phải lớn hơn 0
+    if (discountVal <= 0) {
+      alert("⚠️ Mức giảm giá phải lớn hơn 0!");
       return;
     }
 
-    // 2. Kiểm tra logic ngày bắt đầu và ngày hết hạn
-    const startTimestamp = new Date(formData.start_date).getTime();
-    const expiryTimestamp = new Date(formData.expiry_date).getTime();
-    if (startTimestamp >= expiryTimestamp) {
-      alert("⚠️ Ngày hết hạn phải xảy ra sau ngày bắt đầu!");
-      return;
-    }
+    // ==========================================
+    // 🛡️ LOGIC KIỂM TRA SỐ TIỀN CỐ ĐỊNH (FIXED)
+    // ==========================================
+    if (formData.discount_type === "fixed") {
+      if (minOrderVal <= 0) {
+        alert("⚠️ Khi giảm tiền cố định, bạn BẮT BUỘC phải nhập giá trị đơn hàng tối thiểu!");
+        return;
+      }
 
-    // 3. Kiểm tra logic mức giảm tối đa với đơn hàng tối thiểu (nếu có nhập)
-    if (formData.discount_type === "percentage" && maxDiscountAmt > 0 && minOrderVal > 0) {
-      if (maxDiscountAmt >= minOrderVal) {
-        alert("⚠️ Mức giảm tối đa không nên lớn hơn hoặc bằng giá trị đơn hàng tối thiểu!");
+      // Không cho phép mức giảm lớn hơn hoặc bằng giá trị đơn tối thiểu
+      if (discountVal >= minOrderVal) {
+        alert(`⚠️ Lỗ to! Mức giảm cố định (${discountVal.toLocaleString("vi-VN")}đ) không được lớn hơn hoặc bằng giá trị đơn tối thiểu (${minOrderVal.toLocaleString("vi-VN")}đ)!`);
+        return;
+      }
+
+      // Khống chế mức giảm cố định tối đa không vượt quá 50% giá trị đơn tối thiểu (đảm bảo an toàn kinh doanh)
+      const maxAllowedFixed = minOrderVal * 0.5;
+      if (discountVal > maxAllowedFixed) {
+        alert(`⚠️ Mức giảm cố định quá cao! Đơn tối thiểu ${minOrderVal.toLocaleString("vi-VN")}đ chỉ được phép giảm tối đa 50% (${maxAllowedFixed.toLocaleString("vi-VN")}đ).`);
         return;
       }
     }
 
-    // 4. Kiểm tra chống lỗ: Nếu là giảm giá cố định (fixed), số tiền giảm không được lớn hơn giá trị đơn hàng tối thiểu
-    if (formData.discount_type === "fixed" && minOrderVal > 0) {
-      if (discountVal > minOrderVal) {
-        alert(`⚠️ Mức giảm cố định (${discountVal.toLocaleString("vi-VN")}đ) không được lớn hơn giá trị đơn hàng tối thiểu (${minOrderVal.toLocaleString("vi-VN")}đ)!`);
+    // ==========================================
+    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%)
+    // ==========================================
+    if (formData.discount_type === "percentage") {
+      if (discountVal > 50) {
+        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%!");
+        return;
+      }
+
+      if (maxDiscountAmt > 0 && minOrderVal > 0) {
+        const maxAllowedDiscount = minOrderVal * 0.5;
+        if (maxDiscountAmt > maxAllowedDiscount) {
+          alert(`⚠️ Mức giảm tối đa (${maxDiscountAmt.toLocaleString("vi-VN")}đ) không được vượt quá 50% giá trị đơn hàng tối thiểu (${maxAllowedDiscount.toLocaleString("vi-VN")}đ)!`);
+          return;
+        }
+      }
+    }
+
+    // ==========================================
+    // 🛡️ KIỂM TRA NGÀY THÁNG
+    // ==========================================
+    if (formData.start_date && formData.expiry_date) {
+      const startTimestamp = new Date(formData.start_date).getTime();
+      const expiryTimestamp = new Date(formData.expiry_date).getTime();
+      if (startTimestamp >= expiryTimestamp) {
+        alert("⚠️ Ngày hết hạn phải xảy ra sau ngày bắt đầu!");
         return;
       }
     }
 
     setLoading(true);
 
-    // Chuẩn hóa và làm sạch dữ liệu trước khi gửi lên API
     const payload = {
       ...formData,
       code: formData.code.trim().toUpperCase(),
@@ -79,8 +104,8 @@ export default function AddVoucher() {
       min_order_value: minOrderVal,
       max_discount_amount: formData.discount_type === "percentage" && maxDiscountAmt > 0 ? maxDiscountAmt : null,
       usage_limit: Number(formData.usage_limit),
-      start_date: new Date(formData.start_date).toISOString(), // Chuẩn hóa ISO String
-      expiry_date: new Date(formData.expiry_date).toISOString(),
+      start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
+      expiry_date: formData.expiry_date ? new Date(formData.expiry_date).toISOString() : null,
     };
 
     try {
@@ -113,7 +138,6 @@ export default function AddVoucher() {
 
   return (
     <div className="container py-4" style={{ maxWidth: "800px" }}>
-      {/* Header điều hướng */}
       <div className="mb-4 d-flex align-items-center justify-content-between">
         <div>
           <h3 className="fw-bold mb-1">Thêm Voucher Mới</h3>
@@ -124,7 +148,6 @@ export default function AddVoucher() {
         </Link>
       </div>
 
-      {/* Form nhập liệu */}
       <div className="card shadow-sm border-0">
         <div className="card-body p-4">
           <form onSubmit={handleSubmit}>
@@ -169,7 +192,7 @@ export default function AddVoucher() {
                     placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Tối đa 50"}
                     required
                     min="1"
-                    max={formData.discount_type === "percentage" ? "50" : undefined} // Khống chế thuộc tính HTML khi chọn %
+                    max={formData.discount_type === "percentage" ? "50" : undefined}
                     value={formData.discount_value}
                     onChange={handleChange}
                   />
@@ -231,7 +254,7 @@ export default function AddVoucher() {
                 />
               </div>
 
-              {/* 🌟 Ngày bắt đầu */}
+              {/* Ngày bắt đầu áp dụng */}
               <div className="col-md-6">
                 <label className="form-label fw-bold small">Ngày bắt đầu áp dụng</label>
                 <input
@@ -282,7 +305,7 @@ export default function AddVoucher() {
                   name="description"
                   className="form-control"
                   rows="3"
-                  placeholder="Giảm ngay 10% cho đơn hàng mua giày từ 400k trở lên..."
+                  placeholder="Giảm ngay 50k cho đơn hàng mua giày từ 400k trở lên..."
                   value={formData.description}
                   onChange={handleChange}
                 ></textarea>
