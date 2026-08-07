@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { WishlistContext } from "@/components/WishlistContext";
 
 // 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
-// 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
 function FilterPanel({
   priceRange,
   setPriceParam,
@@ -40,13 +39,12 @@ function FilterPanel({
     }
   }, []);
 
-  // 🛠️ SỬA LẠI HÀM NÀY: Đảm bảo chuyển đổi đúng định dạng và đẩy thẳng lên URL
+  // 🛠️ SỬA LẠI: Gửi đồng thời cả min và max lên hàm xử lý ở component cha để tránh bị ghi đè
   const handleApplyPrice = useCallback(() => {
     const minVal = localMin !== '' ? String(Number(localMin)) : '';
     const maxVal = localMax !== '' ? String(Number(localMax)) : '';
     
-    setPriceParam('min', minVal);
-    setPriceParam('max', maxVal);
+    setPriceParam(minVal, maxVal);
   }, [localMin, localMax, setPriceParam]);
 
   // Xử lý khi người dùng bấm Enter
@@ -57,7 +55,7 @@ function FilterPanel({
     }
   }, [handleApplyPrice]);
 
-  // Hàm xử lý preset giá
+  // Hàm xử lý preset giá (Gửi đồng thời cả min/max hoặc xóa trắng cả 2)
   const handlePresetPrice = useCallback((preset) => {
     const presetMinStr = preset.min !== '' && preset.min !== undefined ? String(preset.min) : '';
     const presetMaxStr = preset.max !== '' && preset.max !== undefined ? String(preset.max) : '';
@@ -69,13 +67,11 @@ function FilterPanel({
     if (isActive) {
       setLocalMin('');
       setLocalMax('');
-      setPriceParam('min', '');
-      setPriceParam('max', '');
+      setPriceParam('', '');
     } else {
       setLocalMin(presetMinStr);
       setLocalMax(presetMaxStr);
-      setPriceParam('min', presetMinStr);
-      setPriceParam('max', presetMaxStr);
+      setPriceParam(presetMinStr, presetMaxStr);
     }
   }, [localMin, localMax, setPriceParam]);
 
@@ -102,9 +98,6 @@ function FilterPanel({
     { label: "1tr–3tr", min: 1000000, max: 3000000 },
     { label: "Trên 3tr", min: 3000000, max: "" },
   ], []);
-
-  
-  // ... (phần render giao diện giữ nguyên như cũ)
 
   return (
     <div
@@ -418,15 +411,22 @@ export default function ProductFilter({ products }) {
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
-  // Cập nhật riêng cho min/max giá
-  const setPriceParam = useCallback((type, value) => {
+  // 🛠️ SỬA LẠI: Hàm cập nhật đồng thời cả minPrice và maxPrice trong cùng 1 lần gọi router
+  const setPriceParam = useCallback((minVal, maxVal) => {
     const params = new URLSearchParams(searchParams.toString());
-    const key = type === "min" ? "minPrice" : "maxPrice";
-    if (value !== "" && value !== null && value !== undefined) {
-      params.set(key, value);
+    
+    if (minVal !== "" && minVal !== null && minVal !== undefined) {
+      params.set("minPrice", minVal);
     } else {
-      params.delete(key);
+      params.delete("minPrice");
     }
+
+    if (maxVal !== "" && maxVal !== null && maxVal !== undefined) {
+      params.set("maxPrice", maxVal);
+    } else {
+      params.delete("maxPrice");
+    }
+
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
