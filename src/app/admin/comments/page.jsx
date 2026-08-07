@@ -61,7 +61,7 @@ export default function AdminCommentsPage() {
   const visibleCommentsCount = comments.filter((c) => !c.isHidden).length;
   const hiddenCommentsCount = comments.filter((c) => c.isHidden).length;
 
-  // Lọc dữ liệu theo từ khóa tìm kiếm và trạng thái (Đã cập nhật ưu tiên lấy userName)
+  // Lọc dữ liệu theo từ khóa tìm kiếm và trạng thái
   const filteredComments = comments.filter((item) => {
     const content = (item.content || item.comment || "").toLowerCase();
     const userName = (item.userName || item.userId?.fullname || item.name || "").toLowerCase();
@@ -87,40 +87,40 @@ export default function AdminCommentsPage() {
   }
 
   return (
-    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh" }}>
-      {/* Tiêu đề trang */}
+    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", fontFamily: "inherit" }}>
+      {/* Tiêu đề trang đồng bộ */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
             Quản lý bình luận
           </h2>
           <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-            Kiểm duyệt nội dung, theo dõi tương tác và ẩn các bình luận không cần thiết.
+            Theo dõi nội dung, kiểm duyệt tương tác và ẩn các bình luận không phù hợp.
           </p>
         </div>
       </div>
 
-      {/* Thẻ thống kê tổng quan */}
+      {/* Thẻ thống kê tổng quan (Card nền trắng, bo góc, shadow-sm tinh gọn) */}
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>
               Tổng bình luận
             </div>
-            <div className="fs-3 fw-bold">{totalComments}</div>
+            <div className="fs-3 fw-bold text-dark">{totalComments}</div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>
               Đang hiển thị
             </div>
             <div className="fs-3 fw-bold text-success">{visibleCommentsCount}</div>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>
               Đã ẩn
             </div>
             <div className="fs-3 fw-bold text-danger">{hiddenCommentsCount}</div>
@@ -131,22 +131,24 @@ export default function AdminCommentsPage() {
       {/* Thanh công cụ lọc & tìm kiếm */}
       <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
-          <div className="col-md-6">
+          <div className="col-md-8">
             <label className="form-label small text-muted fw-semibold">Tìm kiếm</label>
             <input
               type="text"
-              className="form-control rounded-3"
-              placeholder="Tìm theo nội dung, tên người dùng, sản phẩm..."
+              className="form-control rounded-3 border-light bg-light py-2"
+              placeholder="Nhập tên người dùng, nội dung, sản phẩm..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ fontSize: "0.9rem" }}
             />
           </div>
           <div className="col-md-4">
             <label className="form-label small text-muted fw-semibold">Trạng thái</label>
             <select
-              className="form-select rounded-3"
+              className="form-select rounded-3 border-light bg-light py-2"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ fontSize: "0.9rem" }}
             >
               <option value="all">Tất cả trạng thái</option>
               <option value="visible">Đang hiển thị</option>
@@ -160,14 +162,14 @@ export default function AdminCommentsPage() {
       <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
           <table className="table align-middle mb-0">
-            <thead className="table-dark text-uppercase small" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
+            <thead className="bg-light text-uppercase text-muted" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
               <tr>
-                <th className="py-3 px-4">Người dùng</th>
-                <th className="py-3">Nội dung bình luận</th>
-                <th className="py-3">Sản phẩm</th>
-                <th className="py-3">Ngày đăng</th>
-                <th className="py-3">Trạng thái</th>
-                <th className="py-3 text-end px-4">Hành động</th>
+                <th className="py-3 px-4 fw-semibold text-secondary">Người dùng</th>
+                <th className="py-3 fw-semibold text-secondary">Nội dung đánh giá</th>
+                <th className="py-3 fw-semibold text-secondary">Sản phẩm</th>
+                <th className="py-3 fw-semibold text-secondary">Ngày đăng</th>
+                <th className="py-3 fw-semibold text-secondary">Trạng thái</th>
+                <th className="py-3 text-end px-4 fw-semibold text-secondary">Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -175,11 +177,10 @@ export default function AdminCommentsPage() {
                 filteredComments.map((item) => (
                   <tr
                     key={item._id || item.id}
-                    className={item.isHidden ? "table-secondary text-muted opacity-75" : ""}
+                    className={item.isHidden ? "table-light text-muted opacity-75" : ""}
                   >
                     <td className="px-4 py-3">
-                      <div className="fw-bold text-dark">
-                        {/* Ưu tiên lấy trực tiếp userName từ database */}
+                      <div className="fw-bold text-dark" style={{ fontSize: "0.9rem" }}>
                         {item.userName || item.userId?.fullname || item.name || "Khách vãng lai"}
                       </div>
                       <small className="text-muted" style={{ fontSize: "0.8rem" }}>
@@ -187,7 +188,7 @@ export default function AdminCommentsPage() {
                       </small>
                     </td>
                     <td className="py-3" style={{ maxWidth: "320px" }}>
-                      <p className="mb-0 text-break" style={{ fontSize: "0.9rem" }}>
+                      <p className="mb-0 text-break text-dark" style={{ fontSize: "0.9rem" }}>
                         {item.content || item.comment}
                       </p>
                     </td>
@@ -197,10 +198,10 @@ export default function AdminCommentsPage() {
                           <img
                             src={item.productId.image}
                             alt=""
-                            style={{ width: "32px", height: "32px", objectFit: "cover", borderRadius: "6px" }}
+                            style={{ width: "36px", height: "36px", objectFit: "cover", borderRadius: "6px" }}
                           />
                         )}
-                        <span className="small fw-semibold text-dark text-truncate" style={{ maxWidth: "150px" }}>
+                        <span className="small fw-semibold text-dark text-truncate" style={{ maxWidth: "160px" }}>
                           {item.productId?.name || "Sản phẩm đã xóa"}
                         </span>
                       </div>
@@ -221,9 +222,7 @@ export default function AdminCommentsPage() {
                     </td>
                     <td className="text-end px-4 py-3">
                       <button
-                        className={`btn btn-sm rounded-pill px-3 fw-semibold shadow-sm ${
-                          item.isHidden ? "btn-outline-success" : "btn-outline-danger"
-                        }`}
+                        className="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold"
                         style={{ fontSize: "0.8rem" }}
                         onClick={() => handleToggleHide(item)}
                       >
@@ -235,7 +234,7 @@ export default function AdminCommentsPage() {
               ) : (
                 <tr>
                   <td colSpan="6" className="text-center py-5 text-muted">
-                    Không tìm thấy bình luận phù hợp.
+                    Không tìm thấy đánh giá.
                   </td>
                 </tr>
               )}

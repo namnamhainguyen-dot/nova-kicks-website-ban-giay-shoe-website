@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import CountdownTimer from "@/components/CountdownTimer";
-import { headers } from "next/headers"; // Import headers từ next/headers
+import { headers } from "next/headers";
 
 const formatDate = (value) => {
   if (!value) return '';
@@ -12,7 +12,6 @@ const formatDate = (value) => {
 };
 
 export default async function Menu() {
-  // 🟢 TỰ ĐỘNG LẤY DOMAIN HIỆN TẠI (Hoạt động 100% trên cả Local & Vercel)
   const headersList = await headers();
   const host = headersList.get("host");
   const protocol = process.env.NODE_ENV === "development" ? "http" : "https";
@@ -43,49 +42,68 @@ export default async function Menu() {
   const isArray = Array.isArray(productList);
   const displayProducts = isArray ? productList : [];
 
-  // Ảnh đại diện cho 2 ô banner phụ dựa trên dữ liệu thật
   const firstNewProductImage = displayProducts[0]?.image;
   const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
 
-  // PHÂN CHIA DỮ LIỆU ĐỘNG CHUẨN XÁC
   const flashSaleData = displayProducts.filter(p => p.isFlashSale === true);
   const regularProducts = displayProducts.filter(p => !p.isFlashSale);
   const newArrivalsData = regularProducts.slice(0, 4); 
   const hotProductsData = regularProducts.slice(4, 12); 
 
   return (
-    <main className="min-vh-100" style={{ paddingTop: "70px", backgroundColor: "var(--background)" }}>
+    <main className="min-vh-100" style={{ backgroundColor: "var(--background)" }}>
       
       {/* ================= HERO BANNER SECTION ================= */}
       <section 
-        className="position-relative text-white d-flex align-items-center" 
+        className="position-relative text-white d-flex align-items-center justify-content-center text-center" 
         style={{ 
-          height: "80vh", 
-          backgroundImage: "url('/img/Gemini_Generated_Image_jqml2cjqml2cjqml.png')", 
+          height: "85vh", 
+          backgroundImage: "linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url('/img/Gemini_Generated_Image_jqml2cjqml2cjqml.png')", 
           backgroundSize: "cover", 
-          backgroundPosition: "center" 
+          backgroundPosition: "center",
+          marginTop: "-70px",
+          paddingTop: "70px"
         }}
       >
+        <div className="container px-3 z-1">
+          <span className="badge px-3 py-2 mb-3 text-uppercase tracking-widest fw-semibold" style={{ backgroundColor: "#ea580c", color: "#fff", fontSize: "0.75rem" }}>
+            Bộ Sưu Tập Mới 2026
+          </span>
+          <h1 className="display-4 fw-black text-uppercase tracking-wider mb-3 text-white" style={{ letterSpacing: "-1px" }}>
+            Bước Đệm Cho Tương Lai
+          </h1>
+          <p className="lead mx-auto mb-4 text-light opacity-85" style={{ maxWidth: "600px", fontSize: "1rem" }}>
+            Khám phá những thiết kế giày thể thao độc quyền, kết hợp hoàn hảo giữa phong cách đường phố và hiệu năng đỉnh cao.
+          </p>
+          <div className="d-flex justify-content-center gap-3">
+            <Link href="/products" className="btn btn-light rounded-pill px-4 py-3 fw-bold text-uppercase text-dark shadow-sm" style={{ fontSize: "0.85rem" }}>
+              Khám Phá Ngay
+            </Link>
+          </div>
+        </div>
       </section>
 
       {/* ================= CATEGORIES MINI BANNERS ================= */}
-      <section className="container my-5">
+      <section className="container my-5 py-2">
         <div className="row g-4">
           
           {/* Ô NEW ARRIVALS */}
           <div className="col-md-6">
-            <Link href="/products" className="text-decoration-none text-dark">
-              <div className="glass-card p-4 d-flex align-items-center justify-content-between position-relative overflow-hidden" style={{ height: "180px", backgroundColor: "var(--surface-card)" }}>
-                <div className="z-1">
-                  <h4 className="fw-black m-0 text-uppercase tracking-wide" style={{ color: "var(--text-primary)" }}>NEW ARRIVALS</h4>
-                  <small className="text-uppercase tracking-widest fs-7 d-block mt-2" style={{ color: "var(--text-secondary)" }}>Xem ngay &rarr;</small>
+            <Link href="/products" className="text-decoration-none">
+              <div className="p-4 rounded-4 d-flex align-items-center justify-content-between position-relative overflow-hidden border shadow-sm transition-all hover-shadow" style={{ height: "190px", backgroundColor: "var(--surface-card)" }}>
+                <div className="z-1 pe-2">
+                  <span className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.7rem", letterSpacing: "1px" }}>Xu Hướng</span>
+                  <h3 className="fw-black m-0 text-uppercase tracking-wide text-dark mt-1" style={{ fontSize: "1.5rem" }}>Hàng Mới Về</h3>
+                  <span className="d-inline-flex align-items-center gap-1 text-uppercase fw-bold fs-7 mt-3 text-dark">
+                    Xem ngay <i className="bi bi-arrow-right"></i>
+                  </span>
                 </div>
-                <div className="position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center me-3" style={{ width: "45%", height: "100%" }}>
+                <div className="position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center me-3" style={{ width: "50%", height: "100%" }}>
                   <img 
                     src={firstNewProductImage || "https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-01.jpg"} 
                     className="img-fluid h-100 object-fit-contain img-hover-scale" 
                     alt="New Arrival Showcase" 
-                    style={{ maxHeight: "140px" }}
+                    style={{ maxHeight: "150px" }}
                   />
                 </div>
               </div>
@@ -94,18 +112,21 @@ export default async function Menu() {
 
           {/* Ô BEST SELLERS */}
           <div className="col-md-6">
-            <Link href="/products" className="text-decoration-none text-dark">
-              <div className="glass-card p-4 d-flex align-items-center justify-content-between position-relative overflow-hidden" style={{ height: "180px", backgroundColor: "var(--surface-card)" }}>
-                <div className="z-1">
-                  <h4 className="fw-black m-0 text-uppercase tracking-wide" style={{ color: "var(--text-primary)" }}>BEST SELLERS</h4>
-                  <small className="text-uppercase tracking-widest fs-7 d-block mt-2" style={{ color: "var(--text-secondary)" }}>Xem ngay &rarr;</small>
+            <Link href="/products" className="text-decoration-none">
+              <div className="p-4 rounded-4 d-flex align-items-center justify-content-between position-relative overflow-hidden border shadow-sm transition-all hover-shadow" style={{ height: "190px", backgroundColor: "var(--surface-card)" }}>
+                <div className="z-1 pe-2">
+                  <span className="text-muted fw-bold text-uppercase" style={{ fontSize: "0.7rem", letterSpacing: "1px" }}>Được Săn Lùng</span>
+                  <h3 className="fw-black m-0 text-uppercase tracking-wide text-dark mt-1" style={{ fontSize: "1.5rem" }}>Bán Chạy Nhất</h3>
+                  <span className="d-inline-flex align-items-center gap-1 text-uppercase fw-bold fs-7 mt-3 text-dark">
+                    Khám phá <i className="bi bi-arrow-right"></i>
+                  </span>
                 </div>
-                <div className="position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center me-3" style={{ width: "45%", height: "100%" }}>
+                <div className="position-absolute end-0 top-0 bottom-0 d-flex align-items-center justify-content-center me-3" style={{ width: "50%", height: "100%" }}>
                   <img 
                     src={firstBestProductImage || "https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg"} 
                     className="img-fluid h-100 object-fit-contain img-hover-scale" 
                     alt="Best Seller Showcase" 
-                    style={{ maxHeight: "140px" }}
+                    style={{ maxHeight: "150px" }}
                   />
                 </div>
               </div>
@@ -116,58 +137,61 @@ export default async function Menu() {
       </section>
 
       {/* ================= DYNAMIC PRODUCT LIST: HÀNG MỚI VỀ ================= */}
-      <section className="container my-5">
-        <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4" style={{ borderColor: "var(--border-light)" }}>
-          <h3 className="text-uppercase fw-black tracking-wide m-0 fs-4">HÀNG MỚI VỀ</h3>
-          <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider" style={{ color: "var(--text-secondary)" }}>Xem tất cả</Link>
+      <section className="container my-5 pt-3">
+        <div className="d-flex justify-content-between align-items-end mb-4">
+          <div>
+            <span className="text-uppercase fw-bold text-muted" style={{ fontSize: "0.7rem", letterSpacing: "1.5px" }}>Sản Phẩm Tuyển Chọn</span>
+            <h3 className="text-uppercase fw-black tracking-wide m-0 fs-3 text-dark">HÀNG MỚI VỀ</h3>
+          </div>
+          <Link href="/products" className="text-decoration-none fw-bold small text-uppercase tracking-wider text-dark border-bottom border-dark pb-1">Xem tất cả &rarr;</Link>
         </div>
 
         <div className="row g-4">
           {newArrivalsData.length > 0 ? (
             newArrivalsData.map((p) => (
               <div key={p._id} className="col-sm-6 col-md-4 col-lg-3">
-                <div className="card h-100 card-product nk-card border-0 rounded-0" style={{ backgroundColor: "var(--surface-card)" }}>
-                  <Link href={`/products/${p._id}`} className="text-decoration-none text-start d-block flex-grow-1">
-                    <div className="overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "240px", backgroundColor: "#f9f9f9" }}>
+                <div className="card h-100 border-0 rounded-4 shadow-sm overflow-hidden bg-white transition-all">
+                  <Link href={`/products/${p._id}`} className="text-decoration-none d-block position-relative">
+                    <div className="p-4 overflow-hidden d-flex align-items-center justify-content-center bg-light" style={{ height: "220px" }}>
                       <img 
                         src={p.image || "/img/hero-banner.jpg"} 
-                        className="card-img-top rounded-0 img-fluid img-hover-scale" 
+                        className="img-fluid h-100 object-fit-contain img-hover-scale" 
                         alt={p.name} 
-                        style={{ objectFit: "contain", maxHeight: "100%" }}
                       />
                     </div>
-                    <div className="p-3 pb-3"> 
-                      <h6 className="card-title fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
-                      <p className="small text-truncate mb-2" style={{ color: "var(--text-secondary)" }}>{p.description}</p>
-                      <p className="fw-black text-danger m-0 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
-                    </div>
                   </Link>
-                  
-                  <div className="card-body p-3 pt-0 text-start">
-                    <Link href={`/products/${p._id}`} className="text-decoration-none">
-                      <span className="btn btn-dark w-100 rounded-0 fw-bold btn-sm text-uppercase py-2">XEM CHI TIẾT</span>
-                    </Link>
+                  <div className="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                      <h6 className="card-title fw-bold text-uppercase text-truncate mb-2 text-dark" style={{ fontSize: "0.9rem" }}>{p.name}</h6>
+                      <p className="small text-truncate text-muted mb-3" style={{ fontSize: "0.78rem" }}>{p.description || "Thiết kế trẻ trung, ôm chân tuyệt đối."}</p>
+                    </div>
+                    <div className="d-flex align-items-center justify-content-between mt-2 pt-3 border-top">
+                      <span className="fw-black text-danger fs-6 m-0">{Number(p.price)?.toLocaleString('vi-VN')} đ</span>
+                      <Link href={`/products/${p._id}`} className="btn btn-outline-dark rounded-pill btn-sm px-3 fw-bold text-uppercase" style={{ fontSize: "0.7rem" }}>
+                        Chi Tiết
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
             ))
           ) : (
-            <div className="col-12 text-center my-5 py-4 border rounded-0" style={{ backgroundColor: "var(--surface)", borderColor: "var(--border-light)" }}>
-              <p className="text-danger fw-bold m-0">Không có sản phẩm để hiển thị.</p>
+            <div className="col-12 text-center my-5 py-4 border rounded-4 bg-white">
+              <p className="text-muted fw-bold m-0">Không có sản phẩm để hiển thị.</p>
             </div>
           )}
         </div>
       </section>
 
       {/* ================= FLASH SALE SECTION ================= */}
-      <section className="py-5 my-5" style={{ backgroundColor: "var(--surface)" }}>
-        <div className="container">
-          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
-            <div className="d-flex align-items-center gap-3">
-              <h3 className="text-uppercase fw-black tracking-wide m-0 fs-4">FLASH SALE</h3>
+      <section className="py-5 my-5 bg-dark text-white">
+        <div className="container py-3">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom border-secondary border-opacity-25">
+            <div className="d-flex align-items-center gap-3 flex-wrap">
+              <h3 className="text-uppercase fw-black tracking-wide m-0 fs-3 text-warning">⚡ FLASH SALE</h3>
               <CountdownTimer /> 
             </div>
-            <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider mt-2 mt-md-0" style={{ color: "var(--text-secondary)" }}>Xem thêm</Link>
+            <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider mt-2 mt-md-0 text-light opacity-75">Xem tất cả &rarr;</Link>
           </div>
 
           <div className="row g-4">
@@ -176,15 +200,17 @@ export default async function Menu() {
                 const oldPrice = p.originalPrice ? Number(p.originalPrice) : Number(p.price) * 1.35; 
                 return (
                   <div key={p._id} className="col-sm-6 col-md-3">
-                    <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
-                      <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1 pb-3">
-                        <div className="p-3 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                    <div className="card h-100 border-0 rounded-4 text-center d-flex flex-column bg-white overflow-hidden shadow-sm">
+                      <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1">
+                        <div className="p-4 overflow-hidden d-flex align-items-center justify-content-center bg-light" style={{ height: "200px" }}>
                           <img src={p.image || "/img/hero-banner.jpg"} className="img-fluid h-100 object-fit-contain img-hover-scale" alt={p.name} />
                         </div>
-                        <div className="card-body p-3 pb-0 text-start">
-                          <h6 className="fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
-                          <p className="text-danger fw-black m-0 fs-5">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
-                          <del className="small" style={{ color: "var(--text-muted)" }}>{Math.round(oldPrice).toLocaleString('vi-VN')} VND</del>
+                        <div className="card-body p-3 text-start">
+                          <h6 className="fw-bold text-uppercase text-truncate mb-2 text-dark" style={{ fontSize: "0.85rem" }}>{p.name}</h6>
+                          <div className="d-flex align-items-center gap-2">
+                            <span className="text-danger fw-black fs-6">{Number(p.price)?.toLocaleString('vi-VN')} đ</span>
+                            <del className="small text-muted" style={{ fontSize: "0.75rem" }}>{Math.round(oldPrice).toLocaleString('vi-VN')} đ</del>
+                          </div>
                         </div>
                       </Link>
                     </div>
@@ -195,13 +221,13 @@ export default async function Menu() {
               [1, 2, 3, 4].map((item, index) => (
                 <div key={index} className="col-sm-6 col-md-3">
                   <Link href={`/products`} className="text-decoration-none d-block h-100">
-                    <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
-                      <div className="p-3" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                    <div className="card h-100 border-0 rounded-4 text-center bg-white overflow-hidden shadow-sm">
+                      <div className="p-4 bg-light" style={{ height: "200px" }}>
                         <img src={`https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-downshifter-14-nam-trang-xanh-0${item}.jpg`} className="img-fluid h-100 object-fit-contain img-hover-scale" alt="Flash Sale Fake" />
                       </div>
                       <div className="card-body p-3 text-start">
-                        <h6 className="fw-bold text-uppercase m-0 text-truncate" style={{ color: "var(--text-primary)" }}>NOVA RUNNER V{item}</h6>
-                        <p className="text-danger fw-bold m-0">2.450.000 VND</p>
+                        <h6 className="fw-bold text-uppercase m-0 text-truncate text-dark" style={{ fontSize: "0.85rem" }}>NOVA RUNNER V{item}</h6>
+                        <p className="text-danger fw-bold m-0 mt-1">2.450.000 đ</p>
                       </div>
                     </div>
                   </Link>
@@ -214,21 +240,26 @@ export default async function Menu() {
 
       {/* ================= ĐANG HOT HIỆN TẠI ================= */}
       <section className="container my-5">
-        <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-4" style={{ borderColor: "var(--border-light)" }}>
-          <h3 className="text-uppercase fw-black tracking-wide m-0 fs-4">ĐANG HOT HIỆN TẠI</h3>
+        <div className="d-flex justify-content-between align-items-end mb-4">
+          <div>
+            <span className="text-uppercase fw-bold text-muted" style={{ fontSize: "0.7rem", letterSpacing: "1.5px" }}>Xu Hướng Thị Trường</span>
+            <h3 className="text-uppercase fw-black tracking-wide m-0 fs-3 text-dark">ĐANG HOT HIỆN TẠI</h3>
+          </div>
+          <Link href="/products" className="text-decoration-none fw-bold small text-uppercase tracking-wider text-dark border-bottom border-dark pb-1">Xem tất cả &rarr;</Link>
         </div>
+        
         <div className="row g-4">
           {hotProductsData.length > 0 ? (
             hotProductsData.map((p) => (
               <div key={p._id} className="col-sm-6 col-md-4 col-lg-3">
-                <div className="card h-100 nk-card border-0 rounded-0 text-center d-flex flex-column" style={{ backgroundColor: "var(--surface-card)" }}>
-                  <Link href={`/products/${p._id}`} className="text-decoration-none d-block flex-grow-1 pb-3">
-                    <div className="p-4 overflow-hidden d-flex align-items-center justify-content-center" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                <div className="card h-100 border-0 rounded-4 shadow-sm overflow-hidden bg-white">
+                  <Link href={`/products/${p._id}`} className="text-decoration-none d-block">
+                    <div className="p-4 overflow-hidden d-flex align-items-center justify-content-center bg-light" style={{ height: "200px" }}>
                       <img src={p.image || "/img/hero-banner.jpg"} className="img-fluid h-100 object-fit-contain img-hover-scale" alt={p.name} />
                     </div>
-                    <div className="card-body p-3 pb-0 text-start">
-                      <h6 className="fw-bold text-uppercase text-truncate mb-1" style={{ color: "var(--text-primary)" }}>{p.name}</h6>
-                      <p className="text-danger fw-black small m-0">{Number(p.price)?.toLocaleString('vi-VN')} VND</p>
+                    <div className="card-body p-3">
+                      <h6 className="fw-bold text-uppercase text-truncate mb-2 text-dark" style={{ fontSize: "0.85rem" }}>{p.name}</h6>
+                      <p className="text-danger fw-black m-0" style={{ fontSize: "0.95rem" }}>{Number(p.price)?.toLocaleString('vi-VN')} đ</p>
                     </div>
                   </Link>
                 </div>
@@ -243,13 +274,13 @@ export default async function Menu() {
             ].map((item) => (
               <div key={item.id} className="col-sm-6 col-md-4 col-lg-3">
                 <Link href={`/products`} className="text-decoration-none d-block h-100">
-                  <div className="card h-100 nk-card border-0 rounded-0 text-center" style={{ backgroundColor: "var(--surface-card)" }}>
-                    <div className="p-4" style={{ height: "200px", backgroundColor: "#f9f9f9" }}>
+                  <div className="card h-100 border-0 rounded-4 shadow-sm overflow-hidden bg-white text-center">
+                    <div className="p-4 bg-light" style={{ height: "200px" }}>
                       <img src="https://myshoes.vn/image/catalog/2026/nike/526/giay-nike-pegasus-42-nam-trang-xanh-cam-01.jpg" className="img-fluid h-100 object-fit-contain img-hover-scale" alt={item.name} />
                     </div>
                     <div className="card-body p-3 text-start">
-                      <h6 className="fw-bold text-uppercase mb-1 text-truncate" style={{ color: "var(--text-primary)" }}>{item.name}</h6>
-                      <p className="text-danger fw-bold small m-0">{item.price.toLocaleString('vi-VN')} VND</p>
+                      <h6 className="fw-bold text-uppercase mb-1 text-truncate text-dark" style={{ fontSize: "0.85rem" }}>{item.name}</h6>
+                      <p className="text-danger fw-bold m-0">{item.price.toLocaleString('vi-VN')} đ</p>
                     </div>
                   </div>
                 </Link>
@@ -260,18 +291,21 @@ export default async function Menu() {
       </section>
 
       {/* ================= TIN TỨC & BIÊN TẬP ================= */}
-      <section className="container my-5 pt-4 border-top" style={{ borderColor: "var(--border-light)" }}>
-        <h4 className="text-uppercase text-center fw-black tracking-widest mb-5 fs-4">TIN TỨC & BIÊN TẬP</h4>
+      <section className="container my-5 pt-4 border-top">
+        <div className="text-center mb-5">
+          <span className="text-uppercase fw-bold text-muted" style={{ fontSize: "0.7rem", letterSpacing: "1.5px" }}>Góc Phong Cách</span>
+          <h4 className="text-uppercase fw-black tracking-widest mt-1 fs-3 text-dark">TIN TỨC & BIÊN TẬP</h4>
+        </div>
         <div className="row g-4">
           {newsArticles.length > 0 ? newsArticles.map((article) => (
             <div className="col-md-4" key={article._id}>
               <Link href={`/news/${article._id}`} className="text-decoration-none text-dark">
-                <div className="mb-3 overflow-hidden glass-card" style={{ height: "180px" }}>
-                  <img src={article.image || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800&auto=format&fit=crop'} className="w-100 h-100 object-fit-cover" alt={article.title} />
+                <div className="mb-3 overflow-hidden rounded-4 shadow-sm" style={{ height: "200px" }}>
+                  <img src={article.image || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?q=80&w=800&auto=format&fit=crop'} className="w-100 h-100 object-fit-cover img-hover-scale" alt={article.title} />
                 </div>
-                <h6 className="fw-bold text-uppercase">{article.title}</h6>
-                <p className="small" style={{ color: "var(--text-secondary)" }}>{article.summary}</p>
-                <small className="text-muted">{formatDate(article.createdAt)}</small>
+                <small className="text-muted fw-bold" style={{ fontSize: "0.75rem" }}>{formatDate(article.createdAt)}</small>
+                <h6 className="fw-bold text-uppercase mt-1 text-dark" style={{ fontSize: "0.95rem" }}>{article.title}</h6>
+                <p className="small text-muted text-truncate-2 mt-1" style={{ fontSize: "0.8rem" }}>{article.summary}</p>
               </Link>
             </div>
           )) : (
@@ -281,23 +315,20 @@ export default async function Menu() {
       </section>
 
       {/* ================= TRẢI NGHIỆM TRỰC TIẾP ================= */}
-      <section className="py-5 my-5" style={{ backgroundColor: "var(--surface)" }}>
+      <section className="py-5 my-5 bg-white border-top border-bottom">
         <div className="container">
           <div className="row align-items-center g-4">
             <div className="col-md-5">
-              <h4 className="fw-black text-uppercase tracking-wider">TRẢI NGHIỆM TRỰC TIẾP</h4>
-              <p className="small mt-3" style={{ color: "var(--text-secondary)" }}>Cửa hàng flagship trưng bày đầy đủ các phiên bản giới hạn độc quyền.</p>
-              <p className="m-0 fw-bold" style={{ color: "var(--text-primary)" }}>123 CVPM Quang Trung, Quận 12, TP.HCM</p>
-              <p className="small" style={{ color: "var(--text-secondary)" }}>Mở cửa: 09:00 AM - 10:00 PM</p>
+              <span className="text-uppercase fw-bold text-muted" style={{ fontSize: "0.7rem", letterSpacing: "1.5px" }}>Flagship Store</span>
+              <h4 className="fw-black text-uppercase tracking-wider mt-1 mb-3">TRẢI NGHIỆM TRỰC TIẾP</h4>
+              <p className="small text-muted mb-3" style={{ fontSize: "0.85rem" }}>Cửa hàng trưng bày đầy đủ các bộ sưu tập giày độc quyền và hỗ trợ đo size chân chuẩn xác nhất.</p>
+              <p className="m-0 fw-bold text-dark"><i className="bi bi-geo-alt-fill text-danger me-2"></i>123 CVPM Quang Trung, Quận 12, TP.HCM</p>
+              <p className="small text-muted mt-2"><i className="bi bi-clock-fill text-secondary me-2"></i>Mở cửa: 09:00 AM - 10:00 PM</p>
             </div>
             <div className="col-md-7">
               <div 
-                className="overflow-hidden shadow-sm border" 
-                style={{ 
-                  height: "300px", 
-                  backgroundColor: "var(--surface-card)", 
-                  borderColor: "var(--border-light)" 
-                }}
+                className="overflow-hidden shadow-sm rounded-4 border" 
+                style={{ height: "300px" }}
               >
                 <iframe
                   src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.4436614833214!2d106.62524727573752!3d10.854920057758362!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752bee0b0cd9e5%3A0xa1dcd919199401f4!2zQ8O0bmcgdmnDqm4gcGjhuqduIG3hu4FtIFF1YW5nIFRydW5n!5e0!3m2!1svi!2s!4v1715000000000!5m2!1svi!2s"
@@ -316,24 +347,12 @@ export default async function Menu() {
 
       {/* ================= BRAND LOGOS ================= */}
       <section className="container my-5 py-4 text-center">
-        <div className="row align-items-center justify-content-center g-5 opacity-75 gray-scale-logos">
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5" style={{ color: "var(--text-primary)" }}>NIKE</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5" style={{ color: "var(--text-primary)" }}>ADIDAS</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5" style={{ color: "var(--text-primary)" }}>PUMA</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5" style={{ color: "var(--text-primary)" }}>NEW BALANCE</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5" style={{ color: "var(--text-primary)" }}>REEBOK</div>
-        </div>
-      </section>
-
-      {/* ================= ĐÓNG GÓP Ý KIẾN ================= */}
-      <section className="container my-5 py-5 text-center border-top" style={{ borderColor: "var(--border-light)" }}>
-        <h5 className="text-uppercase fw-bold tracking-widest mb-3">ĐÓNG GÓP Ý KIẾN</h5>
-        <p className="small mb-4" style={{ color: "var(--text-secondary)" }}>Mọi phản hồi của bạn giúp chúng tôi hoàn thiện chất lượng dịch vụ tốt hơn.</p>
-        <div className="d-flex justify-content-center">
-          <div className="input-group w-50 min-w-300">
-            <input type="email" className="form-control bg-white border rounded-0" placeholder="Nhập email của bạn..." style={{ color: "var(--text-primary)", borderColor: "var(--border-medium)" }} />
-            <button className="btn btn-dark rounded-0 text-uppercase fw-bold px-4" type="button">Gửi</button>
-          </div>
+        <div className="row align-items-center justify-content-center g-5 opacity-50">
+          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">NIKE</div>
+          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">ADIDAS</div>
+          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">PUMA</div>
+          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">NEW BALANCE</div>
+          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">REEBOK</div>
         </div>
       </section>
 

@@ -45,12 +45,32 @@ export default function Checkout() {
   
   const [availableVouchers, setAvailableVouchers] = useState([]);
   const [showVoucherDropdown, setShowVoucherDropdown] = useState(false);
+  
+  // Thêm ref để quản lý click outside
+  const dropdownRef = useRef(null);
 
-  // ── FETCH TỈNH / THÀNH PHỐ ──
+  // Xử lý ẩn dropdown khi click ra ngoài component
   useEffect(() => {
-    fetch("https://provinces.open-api.vn/api/p/")
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowVoucherDropdown(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // ── FETCH TỈNH / THÀNH PHỐ (Dùng chung API esgoo.net với Profile) ──
+  useEffect(() => {
+    fetch("https://esgoo.net/api-tinhthanh/1/0.htm")
       .then((res) => res.json())
-      .then((data) => setProvinces(data || []))
+      .then((data) => {
+        if (data.error === 0) {
+          setProvinces(data.data || []);
+        }
+      })
       .catch((err) => console.error("Lỗi lấy danh sách tỉnh thành:", err));
   }, []);
 
@@ -69,40 +89,46 @@ export default function Checkout() {
   }, []);
 
   // ── FETCH QUẬN / HUYỆN ──
-  useEffect(() => {
-    if (!selectedProvince) {
-      setDistricts([]);
-      setWards([]);
-      setSelectedDistrict("");
-      setSelectedWard("");
-      return;
+  const handleProvinceChange = async (e) => {
+    const provinceId = e.target.value;
+    setSelectedProvince(provinceId);
+    setSelectedDistrict("");
+    setSelectedWard("");
+    setDistricts([]);
+    setWards([]);
+
+    if (provinceId) {
+      try {
+        const res = await fetch(`https://esgoo.net/api-tinhthanh/2/${provinceId}.htm`);
+        const data = await res.json();
+        if (data.error === 0) {
+          setDistricts(data.data || []);
+        }
+      } catch (err) {
+        console.error("Lỗi lấy danh sách quận huyện:", err);
+      }
     }
-    fetch(`https://provinces.open-api.vn/api/p/${selectedProvince}?depth=2`)
-      .then((res) => res.json())
-      .then((data) => {
-        setDistricts(data.districts || []);
-        setWards([]);
-        setSelectedDistrict("");
-        setSelectedWard("");
-      })
-      .catch((err) => console.error("Lỗi lấy danh sách quận huyện:", err));
-  }, [selectedProvince]);
+  };
 
   // ── FETCH PHƯỜNG / XÃ ──
-  useEffect(() => {
-    if (!selectedDistrict) {
-      setWards([]);
-      setSelectedWard("");
-      return;
+  const handleDistrictChange = async (e) => {
+    const districtId = e.target.value;
+    setSelectedDistrict(districtId);
+    setSelectedWard("");
+    setWards([]);
+
+    if (districtId) {
+      try {
+        const res = await fetch(`https://esgoo.net/api-tinhthanh/3/${districtId}.htm`);
+        const data = await res.json();
+        if (data.error === 0) {
+          setWards(data.data || []);
+        }
+      } catch (err) {
+        console.error("Lỗi lấy danh sách phường xã:", err);
+      }
     }
-    fetch(`https://provinces.open-api.vn/api/d/${selectedDistrict}?depth=2`)
-      .then((res) => res.json())
-      .then((data) => {
-        setWards(data.wards || []);
-        setSelectedWard("");
-      })
-      .catch((err) => console.error("Lỗi lấy danh sách phường xã:", err));
-  }, [selectedDistrict]);
+  };
 
   // ── KHỞI TẠO DỮ LIỆU USER & CHECKOUT ITEMS ──
   useEffect(() => {
@@ -164,7 +190,7 @@ export default function Checkout() {
           userAddrs = [
             {
               _id: "default_single",
-              label: "Địa chỉ mặc định",
+              label: "Nhà riêng",
               receiverName: parsedUser.fullname || "",
               receiverPhone: parsedUser.phone || "",
               fullAddress: parsedUser.address,
@@ -324,11 +350,11 @@ export default function Checkout() {
       }
     } else {
       if (!detailAddress.trim()) {
-        alert("Vui lòng nhập địa chỉ nhà chi tiết!");
+        alert("Vui lòng nhập số nhà, tên đường chi tiết!");
         return false;
       }
       if (!selectedProvince || !selectedDistrict || !selectedWard) {
-        alert("Vui lòng chọn đầy đủ Phường/Xã, Quận/Huyện và Tỉnh/Thành!");
+        alert("Vui lòng chọn đầy đủ Tỉnh/Thành, Quận/Huyện và Phường/Xã!");
         return false;
       }
     }
@@ -342,10 +368,18 @@ export default function Checkout() {
       return matchedAddr ? matchedAddr.fullAddress : "";
     }
 
-    const provName = provinces.find((p) => p.code == selectedProvince)?.name || "";
-    const distName = districts.find((d) => d.code == selectedDistrict)?.name || "";
-    const wardName = wards.find((w) => w.code == selectedWard)?.name || "";
-    return `${detailAddress.trim()}, ${wardName}, ${distName}, ${provName}`;
+    const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
+    const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
+    const wardObj = wards.find((w) => String(w.id) === String(selectedWard));
+
+    return [
+      detailAddress.trim(),
+      wardObj ? wardObj.full_name : "",
+      districtObj ? districtObj.full_name : "",
+      provinceObj ? provinceObj.full_name : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
   };
 
   const handleOrder = async (e) => {
@@ -359,9 +393,13 @@ export default function Checkout() {
     let updatedUserPhone = currentUser?.phone || customerPhone;
 
     if (currentUser && selectedAddressId === "new") {
+      const provinceObj = provinces.find((p) => String(p.id) === String(selectedProvince));
+      const districtObj = districts.find((d) => String(d.id) === String(selectedDistrict));
+      const wardObj = wards.find((w) => String(w.id) === String(selectedWard));
+
       const newAddrObj = {
         _id: "addr_" + Date.now(),
-        label: "Địa chỉ mới",
+        label: "Nhà riêng",
         receiverName: customerName,
         receiverPhone: customerPhone,
         detailAddress: detailAddress.trim(),
@@ -377,28 +415,36 @@ export default function Checkout() {
         updatedUserPhone = customerPhone;
       }
 
-      try {
-        await fetch("/api/users/update", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            _id: currentUser._id || currentUser.id,
-            email: currentUser.email,
+      // Chuẩn hóa User ID giống bên Profile để gọi đúng endpoint PUT /api/users/[id]
+      let rawId = currentUser._id || currentUser.id;
+      if (typeof rawId === "object" && rawId !== null) {
+        rawId = rawId.$oid || rawId.toString();
+      }
+      const currentUserId = String(rawId || "").trim();
+
+      if (currentUserId && currentUserId !== "undefined") {
+        try {
+          await fetch(`/api/users/${currentUserId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              fullname: currentUser.fullname?.trim() || customerName,
+              phone: updatedUserPhone,
+              addresses: updatedAddressesList,
+            }),
+          });
+
+          const updatedUserPayload = {
+            ...currentUser,
             phone: updatedUserPhone,
             addresses: updatedAddressesList,
-          }),
-        });
-
-        const updatedUserPayload = {
-          ...currentUser,
-          phone: updatedUserPhone,
-          addresses: updatedAddressesList,
-        };
-        localStorage.setItem("user", JSON.stringify(updatedUserPayload));
-        setCurrentUser(updatedUserPayload);
-        setSavedAddresses(updatedAddressesList);
-      } catch (err) {
-        console.error("Lỗi tự động lưu địa chỉ mới vào profile:", err);
+          };
+          localStorage.setItem("user", JSON.stringify(updatedUserPayload));
+          setCurrentUser(updatedUserPayload);
+          setSavedAddresses(updatedAddressesList);
+        } catch (err) {
+          console.error("Lỗi tự động lưu địa chỉ mới vào profile:", err);
+        }
       }
     }
 
@@ -523,7 +569,7 @@ export default function Checkout() {
       <form onSubmit={handleOrder}>
         <div className="row g-4">
           
-          {/* TÓM TẮT ĐƠN HÀNG & VOUCHER (Hiện TRÊN CÙNG ở Mobile nhờ order-1, bên phải ở PC nhờ order-lg-2) */}
+          {/* TÓM TẮT ĐƠN HÀNG & VOUCHER */}
           <div className="col-lg-5 col-md-12 order-1 order-lg-2">
             <div className="card shadow-sm border-0 sticky-top rounded-3" style={{ top: "100px", zIndex: 10 }}>
               <div className="card-body p-4">
@@ -567,17 +613,14 @@ export default function Checkout() {
                   })}
                 </div>
 
-                {/* Nhập Voucher */}
+                {/* PHẦN VOUCHER ĐÃ FIX - SỬ DỤNG onCLick VÀ useRef */}
                 <div className="mb-4 bg-light p-3 rounded-3 position-relative">
                   <div className="mb-2">
                     <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
                   </div>
 
-                  <div 
-                    className="position-relative"
-                    onMouseEnter={() => setShowVoucherDropdown(true)}
-                    onMouseLeave={() => setShowVoucherDropdown(false)}
-                  >
+                  {/* Thêm ref để quản lý click outside */}
+                  <div className="position-relative" ref={dropdownRef}>
                     <div className="input-group">
                       <input
                         type="text"
@@ -585,7 +628,8 @@ export default function Checkout() {
                         placeholder="NHẬP HOẶC CHỌN MÃ"
                         value={voucherCode}
                         onChange={(e) => setVoucherCode(e.target.value)}
-                        onFocus={() => setShowVoucherDropdown(true)}
+                        // Đổi thành click để bật dropdown thay vì onFocus hoặc hover
+                        onClick={() => !appliedVoucher && setShowVoucherDropdown(!showVoucherDropdown)}
                         disabled={!!appliedVoucher}
                       />
                       {appliedVoucher ? (
@@ -593,18 +637,27 @@ export default function Checkout() {
                           Hủy bỏ
                         </button>
                       ) : (
-                        <button
-                          className="btn btn-dark btn-sm fw-semibold"
-                          type="button"
-                          onClick={handleApplyVoucher}
-                          disabled={isValidatingVoucher}
-                        >
-                          {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
-                        </button>
+                        <div className="d-flex gap-1">
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            onClick={() => setShowVoucherDropdown(!showVoucherDropdown)}
+                          >
+                            {showVoucherDropdown ? "▲" : "▼"}
+                          </button>
+                          <button
+                            className="btn btn-dark btn-sm fw-semibold"
+                            type="button"
+                            onClick={handleApplyVoucher}
+                            disabled={isValidatingVoucher}
+                          >
+                            {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                          </button>
+                        </div>
                       )}
                     </div>
 
-                    {/* DROPDOWN POPUP HIỆN DANH SÁCH VOUCHER KHẢ DỤNG */}
+                    {/* DROPDOWN POPUP VOUCHER */}
                     {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
                       <div 
                         className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
@@ -627,7 +680,12 @@ export default function Checkout() {
                                   isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
                                 }`}
                                 style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
-                                onClick={() => isEligible && handleSelectSuggestedVoucher(v.code)}
+                                onClick={() => {
+                                  if (isEligible) {
+                                    handleSelectSuggestedVoucher(v.code);
+                                    setShowVoucherDropdown(false); // Đóng dropdown sau khi chọn
+                                  }
+                                }}
                               >
                                 <div>
                                   <div className="fw-bold text-primary small d-flex align-items-center gap-1">
@@ -683,7 +741,7 @@ export default function Checkout() {
             </div>
           </div>
 
-          {/* THÔNG TIN KHÁCH HÀNG & NÚT ĐẶT HÀNG (Hiện Ở DƯỚI ở Mobile nhờ order-2, bên trái ở PC nhờ order-lg-1) */}
+          {/* THÔNG TIN KHÁCH HÀNG & ĐỊA CHỈ */}
           <div className="col-lg-7 col-md-12 order-2 order-lg-1">
             <div className="card shadow-sm border-0 rounded-3">
               <div className="card-body p-4">
@@ -776,19 +834,9 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  {/* Form chọn Phường/Xã -> Quận/Huyện -> Tỉnh/Thành */}
+                  {/* Form chọn Địa chính: Phường/Xã -> Quận/Huyện -> Tỉnh/Thành (Chuẩn trật tự như Profile) */}
                   {(selectedAddressId === "new" || savedAddresses.length === 0) && (
                     <div className="border p-3 rounded bg-light">
-                      <div className="mb-3">
-                        <input
-                          type="text"
-                          className="form-control form-control-lg fs-6"
-                          placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
-                          value={detailAddress}
-                          onChange={(e) => setDetailAddress(e.target.value)}
-                        />
-                      </div>
-
                       <div className="row g-2">
                         {/* 1. Phường/Xã */}
                         <div className="col-md-4">
@@ -803,8 +851,8 @@ export default function Checkout() {
                               {!selectedDistrict ? "-- Chọn Quận/Huyện trước --" : "-- Chọn Phường/Xã --"}
                             </option>
                             {wards.map((w) => (
-                              <option key={w.code} value={w.code}>
-                                {w.name}
+                              <option key={w.id} value={w.id}>
+                                {w.full_name}
                               </option>
                             ))}
                           </select>
@@ -816,15 +864,15 @@ export default function Checkout() {
                           <select
                             className="form-select form-select-lg fs-6"
                             value={selectedDistrict}
-                            onChange={(e) => setSelectedDistrict(e.target.value)}
+                            onChange={handleDistrictChange}
                             disabled={!selectedProvince}
                           >
                             <option value="">
                               {!selectedProvince ? "-- Chọn Tỉnh/Thành trước --" : "-- Chọn Quận/Huyện --"}
                             </option>
                             {districts.map((d) => (
-                              <option key={d.code} value={d.code}>
-                                {d.name}
+                              <option key={d.id} value={d.id}>
+                                {d.full_name}
                               </option>
                             ))}
                           </select>
@@ -836,17 +884,27 @@ export default function Checkout() {
                           <select
                             className="form-select form-select-lg fs-6"
                             value={selectedProvince}
-                            onChange={(e) => setSelectedProvince(e.target.value)}
+                            onChange={handleProvinceChange}
                           >
                             <option value="">-- Chọn Tỉnh/Thành --</option>
                             {provinces.map((p) => (
-                              <option key={p.code} value={p.code}>
-                                {p.name}
+                              <option key={p.id} value={p.id}>
+                                {p.full_name}
                               </option>
                             ))}
                           </select>
                         </div>
+                      </div>
 
+                      <div className="mt-3">
+                        <label className="form-label small fw-semibold text-muted mb-1">Số nhà, tên đường *</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-lg fs-6"
+                          placeholder="Ví dụ: Số 123, đường Nguyễn Trãi..."
+                          value={detailAddress}
+                          onChange={(e) => setDetailAddress(e.target.value)}
+                        />
                       </div>
                     </div>
                   )}
@@ -906,7 +964,7 @@ export default function Checkout() {
                   ></textarea>
                 </div>
 
-                {/* Nút Xác Nhận Đặt Hàng duy nhất ở dưới cùng (dùng cho cả Mobile & PC) */}
+                {/* Nút Đặt Hàng */}
                 <div className="d-grid gap-2 pt-2">
                   <button
                     type="submit"

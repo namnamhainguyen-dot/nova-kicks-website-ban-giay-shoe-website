@@ -66,8 +66,10 @@ export default function UserActions() {
     return <ul className="nk-actions d-none d-lg-flex"></ul>;
   }
 
+  // Lấy link avatar từ user (hỗ trợ nhiều tên trường phổ biến: avatar, image, photo, picture)
+  const userAvatar = user?.avatar || user?.image || user?.photo || user?.picture;
+
   return (
-    /* Thêm d-none d-lg-flex: Ẩn hoàn toàn trên Mobile/Tablet (< 992px) và chỉ hiện ở Desktop (>= 992px) */
     <ul className="nk-actions d-none d-lg-flex align-items-center mb-0 list-unstyled gap-3">
       {/* 1. ICON GIỎ HÀNG */}
       {(!user || user.role !== "admin") && (
@@ -79,7 +81,6 @@ export default function UserActions() {
           >
             <i className="fas fa-shopping-bag" style={{ fontSize: "1rem" }}></i>
 
-            {/* Badge hiển thị số lượng */}
             {totalItems > 0 && (
               <span
                 className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
@@ -96,45 +97,82 @@ export default function UserActions() {
       {user ? (
         <li className="nav-item dropdown">
           <Link
-            className="nav-link dropdown-toggle fw-bold text-dark p-0"
+            className="nav-link dropdown-toggle fw-bold text-dark p-0 d-flex align-items-center gap-2"
             href="#"
             id="userDropdown"
             role="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-            style={{ fontSize: "0.72rem", textTransform: "uppercase" }}
+            style={{ fontSize: "0.75rem", textTransform: "uppercase" }}
           >
-            👋 CHÀO, {user.fullname || user.name || "KHÁCH"}
+            {/* AVATAR */}
+            <img
+              src={userAvatar || "https://via.placeholder.com/30"}
+              alt="Avatar"
+              className="rounded-circle object-fit-cover shadow-sm"
+              style={{
+                width: "28px",
+                height: "28px",
+                border: "2px solid #fff",
+                boxShadow: "0 0 0 1px #e5e7eb",
+              }}
+            />
+            <span>CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
           </Link>
 
+          {/* ✨ DROPDOWN MENU ĐÃ ĐƯỢC THIẾT KẾ LẠI */}
           <ul
-            className="dropdown-menu dropdown-menu-end rounded-0 shadow-sm"
+            className="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 mt-2"
             aria-labelledby="userDropdown"
+            style={{
+              borderRadius: "14px",
+              minWidth: "210px",
+              animation: "fadeIn 0.2s ease-in-out",
+            }}
           >
-            {user.role === "admin" && (
+            {/* Header nhỏ hiển thị nhanh thông tin tài khoản */}
+            <li className="px-3 py-2 mb-1 border-bottom">
+              <span className="d-block text-muted" style={{ fontSize: "0.7rem" }}>Tài khoản đang đăng nhập</span>
+              <span className="d-block text-dark fw-bold text-truncate" style={{ fontSize: "0.8rem" }}>
+                {user.email || user.username || user.fullname || user.name}
+              </span>
+            </li>
+
+            {user.role?.toLowerCase() === "admin" && (
               <li>
                 <Link
-                  className="dropdown-item small text-primary fw-bold"
+                  className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 fw-semibold text-primary"
                   href="/admin"
+                  style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
                 >
+                  <i className="fas fa-shield-alt" style={{ width: "16px" }}></i>
                   Quản trị hệ thống
                 </Link>
               </li>
             )}
 
             <li>
-              <Link className="dropdown-item small" href="/profile">
+              <Link
+                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 text-dark"
+                href="/profile"
+                style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
+              >
+                <i className="fas fa-user-circle text-secondary" style={{ width: "16px" }}></i>
                 Hồ sơ của tôi
               </Link>
             </li>
+
             <li>
-              <hr className="dropdown-divider" />
+              <hr className="dropdown-divider my-1 bg-light" />
             </li>
+
             <li>
               <button
-                className="dropdown-item small text-danger bg-transparent border-0 w-100 text-start"
+                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 text-danger bg-transparent border-0 w-100 text-start fw-medium"
                 onClick={handleLogout}
+                style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
               >
+                <i className="fas fa-sign-out-alt" style={{ width: "16px" }}></i>
                 Đăng xuất
               </button>
             </li>

@@ -18,6 +18,8 @@ const transporter = nodemailer.createTransport({
 // GET - Lấy chi tiết feedback
 // =======================================================
 
+// GET - Lấy chi tiết feedback theo ID
+// =======================================================
 export async function GET(request, { params }) {
   try {
     const { id } = await params;
@@ -74,6 +76,7 @@ export async function GET(request, { params }) {
 
 // =======================================================
 // PATCH - Cập nhật trạng thái / Trả lời feedback
+// PATCH - Đổi trạng thái hoặc trả lời feedback
 // =======================================================
 
 export async function PATCH(request, { params }) {
@@ -120,6 +123,7 @@ export async function PATCH(request, { params }) {
     // ===============================
     // Gửi phản hồi cho khách hàng
     // ===============================
+    // 1. Nếu có gửi reply -> Gửi email cho khách hàng và cập nhật trạng thái done
     if (reply) {
       const html = `
         <div style="font-family:Arial,sans-serif;line-height:1.7">
@@ -158,17 +162,22 @@ export async function PATCH(request, { params }) {
         await transporter.sendMail({
           from: `"Nova Kicks" <${process.env.EMAIL_USER}>`,
           to: feedback.email,
-          subject: `Phản hồi: ${feedback.subject}`,
+          subject: `Phản hồi: ${feedback.subject || 'Liên hệ từ khách hàng'}`,
           html,
         });
       } catch (mailError) {
         console.error("SEND MAIL ERROR:", mailError);
+      } catch (mailErr) {
+        console.error("SEND REPLY MAIL ERROR:", mailErr);
       }
 
       updateFields.reply = reply;
       updateFields.status = "done";
       updateFields.repliedAt = new Date();
     } else if (status) {
+    } 
+    // 2. Nếu chỉ cập nhật status thông thường (ví dụ: read, pending...)
+    else if (status) {
       updateFields.status = status;
     }
 
@@ -217,6 +226,9 @@ export async function PATCH(request, { params }) {
 // DELETE - Xóa feedback
 // =======================================================
 
+// =======================================================
+// DELETE - Xóa feedback theo ID
+// =======================================================
 export async function DELETE(request, { params }) {
   try {
     const { id } = await params;

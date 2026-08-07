@@ -18,7 +18,7 @@ export default function ForgotPassword() {
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 🌟 BƯỚC 1: GỌI API ĐỂ GỬI MÃ OTP VỀ MAIL THẬT
+  // 🌟 BƯỚC 1: GỌI API ĐỂ GỬI MÃ OTP VỀ MAIL
   const handleRequestOtp = async (e) => {
     e.preventDefault();
     setError("");
@@ -50,8 +50,7 @@ export default function ForgotPassword() {
     }
   };
 
-  // 🌟 BƯỚC 2: CHUYỂN TIẾP SANG BƯỚC THIẾT LẬP MẬT KHẨU
-  // Không gọi API verify trung gian nữa nhằm giữ mã OTP lại cho Backend xử lý 1 lần ở Bước 3
+  // 🌟 BƯỚC 2: GỌI API XÁC THỰC MÃ OTP NGAY TẠI CHỖ (CHẶN MÃ CŨ / MÃ SAI NGAY LẬP TỨC)
   const handleVerifyOtp = async (e) => {
     e.preventDefault();
     setError("");
@@ -62,14 +61,34 @@ export default function ForgotPassword() {
       return;
     }
 
-    setSuccess("Mã số xác nhận hợp lệ! Hãy thiết lập lại mật khẩu.");
-    setTimeout(() => {
-      setStep("RESET"); // Chuyển thẳng sang bước đổi mật khẩu mới
-      setSuccess("");
-    }, 1200);
+    setLoading(true);
+    try {
+      // Gọi API kiểm tra tính hợp lệ của OTP trước khi cho phép sang bước đổi mật khẩu
+      const res = await fetch("/api/verify-otp", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.message || "Mã OTP không chính xác hoặc đã hết hạn!");
+      }
+
+      setSuccess("Mã số hợp lệ! Hãy thiết lập lại mật khẩu.");
+      setTimeout(() => {
+        setStep("RESET"); // Chuyển sang bước nhập mật khẩu mới
+        setSuccess("");
+      }, 1000);
+    } catch (err) {
+      setError(err.message || "Xác thực mã OTP thất bại!");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 🌟 BƯỚC 3: CẬP NHẬT MẬT KHẨU MỚI VÀO CƠ SỞ DỮ LIỆU
+  // 🌟 BƯỚC 3: GỬI EMAIL, OTP VÀ MẬT KHẨU MỚI LÊN BACKEND ĐỂ CẬP NHẬT
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setError("");
@@ -92,7 +111,7 @@ export default function ForgotPassword() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
           email: email.trim(), 
-          otp: otp.trim(), // Truyền kèm OTP để backend đối chiếu và kiểm tra quyền cập nhật
+          otp: otp.trim(), 
           password: newPassword 
         }),
       });
@@ -187,7 +206,6 @@ export default function ForgotPassword() {
                   placeholder="000000"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} // Chỉ cho phép nhập số
-                  disabled={loading}
                   required
                 />
               </div>
@@ -195,7 +213,7 @@ export default function ForgotPassword() {
                 {loading ? "Đang kiểm tra..." : "Xác nhận mã số"}
               </button>
               <div className="text-center mt-3">
-                <button type="button" className="btn btn-link btn-sm text-secondary text-decoration-none small" onClick={() => setStep("EMAIL")} disabled={loading}>
+                <button type="button" className="btn btn-link btn-sm text-secondary text-decoration-none small" onClick={() => setStep("EMAIL")}>
                   &larr; Thay đổi email khác
                 </button>
               </div>

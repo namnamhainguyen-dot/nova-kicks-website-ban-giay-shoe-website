@@ -71,7 +71,6 @@ export default function AdminOrderPage() {
       return;
     }
 
-    // Hủy đơn
     if (nextStatus === "cancelled") {
       if (currentStatus === "pending" || currentStatus === "preparing") {
         setActionModal({
@@ -92,7 +91,6 @@ export default function AdminOrderPage() {
       }
     }
 
-    // Boom hàng
     if (nextStatus === "boomed") {
       setActionModal({
         isOpen: true,
@@ -107,7 +105,6 @@ export default function AdminOrderPage() {
       return;
     }
 
-    // Trả hàng
     if (nextStatus === "returned") {
       setActionModal({
         isOpen: true,
@@ -122,7 +119,6 @@ export default function AdminOrderPage() {
       return;
     }
 
-    // Quy trình dịch chuyển trạng thái bình thường
     if (currentStatus === "shipping" && nextStatus === "completed") {
       executeStatusUpdate(id, nextStatus);
       return;
@@ -210,32 +206,30 @@ export default function AdminOrderPage() {
     });
   };
 
-  // Thống kê số liệu
   const totalOrders = orders.length;
   const pendingOrders = orders.filter((o) => !o.status || o.status === "pending").length;
   const shippingOrders = orders.filter((o) => o.status === "shipping" || o.status === "preparing").length;
-  const completedOrders = orders.filter((o) => o.status === "completed").length;
   const totalRevenue = orders.filter((o) => o.status === "completed").reduce((sum, o) => sum + Number(o.final_total || o.total || 0), 0);
 
   const statusBadges = {
-    pending: { text: "⏳ Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning text-dark" },
-    preparing: { text: "📦 Đang đóng gói", class: "bg-info bg-opacity-10 text-info" },
-    shipping: { text: "🚚 Đang giao", class: "bg-primary bg-opacity-10 text-primary" },
-    completed: { text: "✅ Hoàn thành", class: "bg-success bg-opacity-10 text-success" },
-    cancelled: { text: "❌ Đã hủy", class: "bg-danger bg-opacity-10 text-danger" },
-    boomed: { text: "💥 Boom hàng", class: "bg-danger bg-opacity-10 text-danger" },
-    returned: { text: "↩️ Trả hàng", class: "bg-warning bg-opacity-10 text-warning text-dark" },
+    pending: { text: "Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning" },
+    preparing: { text: "Đang đóng gói", class: "bg-info bg-opacity-10 text-info" },
+    shipping: { text: "Đang giao", class: "bg-primary bg-opacity-10 text-primary" },
+    completed: { text: "Hoàn thành", class: "bg-success bg-opacity-10 text-success" },
+    cancelled: { text: "Đã hủy", class: "bg-danger bg-opacity-10 text-danger" },
+    boomed: { text: "Boom hàng", class: "bg-danger bg-opacity-10 text-danger" },
+    returned: { text: "Trả hàng", class: "bg-warning bg-opacity-10 text-warning" },
   };
 
   const getAllowedOptions = (currentStatus) => {
     const allOpts = [
-      { value: "pending", label: "⏳ Chờ xác nhận" },
-      { value: "preparing", label: "📦 Đóng gói" },
-      { value: "shipping", label: "🚚 Đang giao" },
-      { value: "completed", label: "✅ Hoàn thành" },
-      { value: "cancelled", label: "❌ Hủy" },
-      { value: "returned", label: "↩️ Trả hàng" },
-      { value: "boomed", label: "💥 Boom" },
+      { value: "pending", label: "Chờ xác nhận" },
+      { value: "preparing", label: "Đóng gói" },
+      { value: "shipping", label: "Đang giao" },
+      { value: "completed", label: "Hoàn thành" },
+      { value: "cancelled", label: "Hủy" },
+      { value: "returned", label: "Trả hàng" },
+      { value: "boomed", label: "Boom" },
     ];
 
     if (["completed", "cancelled", "returned", "boomed"].includes(currentStatus)) {
@@ -262,7 +256,6 @@ export default function AdminOrderPage() {
     });
   };
 
-  // Lọc dữ liệu theo tab, phương thức thanh toán và từ khóa tìm kiếm
   const filteredOrders = orders.filter((o) => {
     const matchesTab = activeTab === "all" ? true : o.status === activeTab;
     const matchesPayment = paymentFilter === "all" ? true : o.paymentMethod === paymentFilter;
@@ -276,7 +269,6 @@ export default function AdminOrderPage() {
     return matchesTab && matchesPayment && matchesSearch;
   });
 
-  // Chọn tất cả / Bỏ chọn tất cả hàng loạt
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedOrderIds(filteredOrders.map(o => o._id));
@@ -299,6 +291,12 @@ const handleBatchUpdate = async (nextStatus) => {
     showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
     return;
   }
+  const handleBatchUpdate = async (nextStatus) => {
+    if (selectedOrderIds.length === 0) {
+      showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
+      return;
+    }
+    if (!confirm(`Bạn có chắc muốn chuyển ${selectedOrderIds.length} đơn hàng sang trạng thái mới?`)) return;
 
   if (
     !confirm(
@@ -344,7 +342,6 @@ const handleBatchUpdate = async (nextStatus) => {
   }
 };
 
-  // Xuất file CSV danh sách đơn hàng đang hiển thị
   const exportToCSV = () => {
     if (filteredOrders.length === 0) {
       showMessage("Không có dữ liệu để xuất file!", "warning");
@@ -395,12 +392,12 @@ const handleBatchUpdate = async (nextStatus) => {
   }
 
   return (
-    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", position: "relative" }}>
+    <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", fontFamily: "inherit" }}>
       
       {/* ================= INLINE MESSAGE NOTIFICATION ================= */}
       {messageBar.visible && (
         <div className={`alert alert-${messageBar.type} py-2 px-3 rounded-3 shadow-sm d-flex align-items-center mb-4`} role="alert">
-          <span className="fw-medium" style={{ fontSize: "0.9rem" }}>{messageBar.text}</span>
+          <span className="fw-medium small">{messageBar.text}</span>
           <button type="button" className="btn-close ms-auto" style={{ fontSize: "0.75rem" }} onClick={() => setMessageBar({ visible: false, text: "", type: "danger" })}></button>
         </div>
       )}
@@ -409,14 +406,14 @@ const handleBatchUpdate = async (nextStatus) => {
       {actionModal.isOpen && (
         <div className="modal show d-block" style={{ background: "rgba(0,0,0,.5)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content border-0 rounded-4 shadow">
+            <div className="modal-content border-0 rounded-4 shadow-lg">
               <div className="modal-header border-0 pb-0">
                 <h5 className="modal-title fw-bold">
                   {actionModal.type === "cancelled"
-                    ? "❌ Lý do hủy đơn"
+                    ? "Lý do hủy đơn"
                     : actionModal.type === "boomed"
-                    ? "💥 Thông tin boom hàng"
-                    : "↩️ Thông tin trả hàng"}
+                    ? "Thông tin boom hàng"
+                    : "Thông tin trả hàng"}
                 </h5>
                 <button type="button" className="btn-close" onClick={() => setActionModal({ ...actionModal, isOpen: false })}></button>
               </div>
@@ -430,7 +427,7 @@ const handleBatchUpdate = async (nextStatus) => {
                 </p>
                 <label className="form-label text-muted small fw-semibold">Lý do chi tiết:</label>
                 <textarea
-                  className="form-control rounded-3"
+                  className="form-control rounded-3 bg-light border-0"
                   rows="3"
                   placeholder="Ví dụ: Khách đổi ý, Sai địa chỉ, Không liên lạc được..."
                   value={actionModal.reason}
@@ -438,8 +435,8 @@ const handleBatchUpdate = async (nextStatus) => {
                 ></textarea>
               </div>
               <div className="modal-footer border-0 pt-0">
-                <button type="button" className="btn btn-secondary rounded-3 px-4" onClick={() => setActionModal({ ...actionModal, isOpen: false })}>Đóng</button>
-                <button type="button" className="btn btn-primary rounded-3 px-4" onClick={handleConfirmAction}>Xác nhận</button>
+                <button type="button" className="btn btn-light rounded-pill px-4" onClick={() => setActionModal({ ...actionModal, isOpen: false })}>Đóng</button>
+                <button type="button" className="btn btn-dark rounded-pill px-4" onClick={handleConfirmAction}>Xác nhận</button>
               </div>
             </div>
           </div>
@@ -450,85 +447,77 @@ const handleBatchUpdate = async (nextStatus) => {
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
-            📦 Quản lý đơn hàng nâng cao
+            Quản lý đơn hàng
           </h2>
           <p className="text-muted mb-0" style={{ fontSize: "0.9rem" }}>
-            Theo dõi, xử lý hàng loạt và xuất báo cáo doanh thu trực tuyến.
+            Theo dõi, xử lý đơn hàng và báo cáo doanh thu trực tuyến.
           </p>
         </div>
         <button
-          className="btn btn-dark rounded-pill px-4 fw-semibold shadow-sm"
+          className="btn btn-outline-dark rounded-pill px-4 fw-semibold shadow-sm d-flex align-items-center gap-2"
           onClick={exportToCSV}
-          style={{ fontSize: "0.9rem" }}
+          style={{ fontSize: "0.85rem" }}
         >
-          📊 Xuất Excel / CSV
+          <i className="bi bi-file-earmark-excel"></i> Xuất Excel / CSV
         </button>
       </div>
 
-      {/* Thẻ thống kê tổng quan */}
+      {/* Thẻ thống kê tổng quan (Dashboard Widgets) */}
       <div className="row g-3 mb-4">
-        <div className="col-md-3">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
-              Tổng đơn hàng
-            </div>
-            <div className="fs-3 fw-bold">{totalOrders.toLocaleString()}</div>
+        <div className="col-xl-3 col-md-6">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Tổng đơn hàng</div>
+            <div className="fs-3 fw-bold text-dark">{totalOrders.toLocaleString()}</div>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
-              Chờ xác nhận
-            </div>
+        <div className="col-xl-3 col-md-6">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Chờ xác nhận</div>
             <div className="fs-3 fw-bold text-warning">{pendingOrders}</div>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
-              Đang xử lý/giao
-            </div>
+        <div className="col-xl-3 col-md-6">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Đang xử lý/giao</div>
             <div className="fs-3 fw-bold text-info">{shippingOrders}</div>
           </div>
         </div>
-        <div className="col-md-3">
-          <div className="card text-white bg-dark border-0 p-3 rounded-4 shadow-sm">
-            <div className="text-uppercase text-secondary small fw-semibold mb-1">
-              Tổng doanh thu
-            </div>
-            <div className="fs-3 fw-bold text-success" style={{ fontSize: "1.25rem", marginTop: "4px" }}>
-              {totalRevenue.toLocaleString("vi-VN")}đ
-            </div>
+        <div className="col-xl-3 col-md-6">
+          <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Tổng doanh thu</div>
+            <div className="fs-3 fw-bold text-success">{totalRevenue.toLocaleString("vi-VN")}đ</div>
           </div>
         </div>
       </div>
 
-      {/* Thanh công cụ tìm kiếm, lọc phương thức thanh toán & tùy chỉnh hạn xử lý */}
+      {/* Thanh công cụ tìm kiếm, lọc & Tab trạng thái */}
       <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
-          <div className="col-md-4">
+          <div className="col-md-5">
             <label className="form-label small text-muted fw-semibold">Tìm kiếm</label>
             <input
               type="text"
-              className="form-control rounded-3"
-              placeholder="Tìm theo mã đơn, tên, SĐT, email..."
+              className="form-control rounded-3 bg-light border-0 py-2"
+              placeholder="Tìm theo mã đơn, tên khách, SĐT, email..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              style={{ fontSize: "0.9rem" }}
             />
           </div>
           <div className="col-md-3">
-            <label className="form-label small text-muted fw-semibold">Thanh toán</label>
+            <label className="form-label small text-muted fw-semibold">Cổng thanh toán</label>
             <select
-              className="form-select rounded-3"
+              className="form-select rounded-3 bg-light border-0 py-2"
               value={paymentFilter}
               onChange={(e) => setPaymentFilter(e.target.value)}
+              style={{ fontSize: "0.9rem" }}
             >
               <option value="all">Tất cả cổng thanh toán</option>
               <option value="cod">Thanh toán COD</option>
               <option value="vnpay">Thanh toán VNPay</option>
             </select>
           </div>
-          <div className="col-md-5 d-flex justify-content-md-end align-items-end pt-3 pt-md-0">
+          <div className="col-md-4 d-flex align-items-end justify-content-md-end">
             <button
               className={`btn btn-sm rounded-pill px-3 fw-medium ${showDeadline ? "btn-outline-secondary" : "btn-secondary text-white"}`}
               onClick={() => setShowDeadline(!showDeadline)}
@@ -553,8 +542,9 @@ const handleBatchUpdate = async (nextStatus) => {
           ].map((tab) => (
             <button
               key={tab}
-              className={`btn btn-sm rounded-pill px-3 text-nowrap fw-medium ${activeTab === tab ? "btn-dark text-white" : "btn-light text-secondary border"}`}
+              className={`btn btn-sm rounded-pill px-3 text-nowrap fw-semibold ${activeTab === tab ? "btn-dark text-white shadow-sm" : "btn-light text-secondary border-0"}`}
               onClick={() => setActiveTab(tab)}
+              style={{ fontSize: "0.85rem" }}
             >
               {tab === "all" ? "Tất cả" : statusBadges[tab]?.text}
             </button>
@@ -562,30 +552,30 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       </div>
 
-      {/* Thanh thao tác hàng loạt (Batch Actions Bar) nếu có chọn đơn */}
+      {/* Thanh thao tác hàng loạt (Batch Actions Bar) */}
       {selectedOrderIds.length > 0 && (
-        <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between animate__fadeIn">
-          <div className="fw-semibold ms-2">
-            Đã chọn <span className="badge bg-light text-dark px-2 py-1">{selectedOrderIds.length}</span> đơn hàng
+        <div className="card border-0 shadow-sm rounded-4 px-4 py-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between">
+          <div className="fw-semibold small">
+            Đã chọn <span className="badge bg-white text-dark px-2 py-1 ms-1">{selectedOrderIds.length}</span> đơn hàng
           </div>
           <div className="d-flex gap-2">
             <button
-              className="btn btn-sm btn-info text-white fw-semibold rounded-pill px-3"
+              className="btn btn-sm btn-light text-info fw-semibold rounded-pill px-3 shadow-sm"
               onClick={() => handleBatchUpdate("preparing")}
             >
-              📦 Chuyển sang Đóng gói
+              Chuyển Đóng gói
             </button>
             <button
-              className="btn btn-sm btn-primary fw-semibold rounded-pill px-3"
+              className="btn btn-sm btn-light text-primary fw-semibold rounded-pill px-3 shadow-sm"
               onClick={() => handleBatchUpdate("shipping")}
             >
-              🚚 Chuyển sang Đang giao
+              Chuyển Đang giao
             </button>
             <button
-              className="btn btn-sm btn-success fw-semibold rounded-pill px-3"
+              className="btn btn-sm btn-light text-success fw-semibold rounded-pill px-3 shadow-sm"
               onClick={() => handleBatchUpdate("completed")}
             >
-              ✅ Hoàn thành hàng loạt
+              Hoàn thành hàng loạt
             </button>
           </div>
         </div>
@@ -595,9 +585,9 @@ const handleBatchUpdate = async (nextStatus) => {
       <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
           <table className="table align-middle mb-0">
-            <thead className="table-dark text-uppercase small" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
+            <thead className="bg-light text-uppercase text-muted" style={{ fontSize: "0.75rem", letterSpacing: "0.5px" }}>
               <tr>
-                <th className="py-3 ps-4" style={{ width: "40px" }}>
+                <th className="py-3 px-4" style={{ width: "40px" }}>
                   <input
                     type="checkbox"
                     className="form-check-input"
@@ -605,13 +595,13 @@ const handleBatchUpdate = async (nextStatus) => {
                     checked={filteredOrders.length > 0 && selectedOrderIds.length === filteredOrders.length}
                   />
                 </th>
-                <th className="py-3">Mã đơn</th>
-                <th className="py-3">Khách hàng</th>
-                <th className="py-3">Sản phẩm</th>
-                <th className="py-3">Tổng tiền</th>
-                {showDeadline && <th className="py-3">Hạn xử lý</th>}
-                <th className="py-3">Trạng thái</th>
-                <th className="py-3 text-end px-4">Hành động</th>
+                <th className="py-3 fw-semibold text-secondary">Mã đơn</th>
+                <th className="py-3 fw-semibold text-secondary">Khách hàng</th>
+                <th className="py-3 fw-semibold text-secondary">Sản phẩm</th>
+                <th className="py-3 fw-semibold text-secondary">Tổng tiền</th>
+                {showDeadline && <th className="py-3 fw-semibold text-secondary">Hạn xử lý</th>}
+                <th className="py-3 fw-semibold text-secondary">Trạng thái</th>
+                <th className="py-3 text-end px-4 fw-semibold text-secondary">Hành động</th>
               </tr>
             </thead>
             <tbody>
@@ -622,7 +612,7 @@ const handleBatchUpdate = async (nextStatus) => {
 
                   return (
                     <tr key={order._id} className={isSelected ? "table-active" : ""}>
-                      <td className="ps-4 py-3">
+                      <td className="px-4 py-3">
                         <input
                           type="checkbox"
                           className="form-check-input"
@@ -632,37 +622,35 @@ const handleBatchUpdate = async (nextStatus) => {
                       </td>
 
                       <td className="py-3">
-                        <div className="fw-bold text-dark text-uppercase">
+                        <div className="fw-bold text-dark text-uppercase" style={{ fontSize: "0.9rem" }}>
                           #{order._id?.slice(-6)}
                         </div>
-                        <small className="text-muted">
+                        <small className="text-muted" style={{ fontSize: "0.75rem" }}>
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN") : "---"}
                         </small>
                       </td>
 
                       <td className="py-3">
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="customer-avatar bg-light border rounded-circle d-flex align-items-center justify-content-center text-secondary fw-bold" style={{ width: "35px", height: "35px", fontSize: "0.9rem" }}>
+                        <div className="d-flex align-items-center gap-2">
+                          <div className="customer-avatar bg-light text-dark rounded-circle d-flex align-items-center justify-content-center fw-bold flex-shrink-0" style={{ width: "32px", height: "32px", fontSize: "0.8rem" }}>
                             {order.name?.charAt(0).toUpperCase() || "K"}
                           </div>
-                          <div>
-                            <div className="fw-bold text-dark">{order.name}</div>
-                            <small className="text-muted d-block">{order.phone}</small>
-                            {order.email && <small className="text-muted">{order.email}</small>}
+                          <div style={{ lineHeight: "1.2" }}>
+                            <div className="fw-semibold text-dark" style={{ fontSize: "0.88rem" }}>{order.name}</div>
+                            <small className="text-muted" style={{ fontSize: "0.75rem" }}>{order.phone}</small>
                           </div>
                         </div>
                       </td>
 
-                      <td className="py-3" style={{ maxWidth: "220px" }}>
-                        <div className="product-list" style={{ maxHeight: "75px", overflowY: "auto" }}>
+                      <td className="py-3" style={{ maxWidth: "200px" }}>
+                        <div className="product-list">
                           {order.order_items?.slice(0, 2).map((item, index) => (
-                            <div key={index} className="text-truncate" style={{ fontSize: "0.85rem" }}>
-                              {item.name}
-                              <span className="fw-bold ms-1">×{item.quantity}</span>
+                            <div key={index} className="text-truncate text-secondary" style={{ fontSize: "0.8rem" }}>
+                              {item.name} <span className="fw-bold text-dark">×{item.quantity}</span>
                             </div>
                           ))}
                           {order.order_items?.length > 2 && (
-                            <small className="text-primary fw-medium">
+                            <small className="text-muted fw-medium" style={{ fontSize: "0.75rem" }}>
                               +{order.order_items.length - 2} sản phẩm khác
                             </small>
                           )}
@@ -670,17 +658,17 @@ const handleBatchUpdate = async (nextStatus) => {
                       </td>
 
                       <td className="py-3">
-                        <div className="fw-bold text-danger" style={{ fontSize: "0.95rem" }}>
+                        <div className="fw-bold text-dark" style={{ fontSize: "0.9rem" }}>
                           {(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ
                         </div>
-                        <span className={`badge mt-1 ${order.paymentMethod === "vnpay" ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.7rem" }}>
+                        <span className={`badge mt-1 ${order.paymentMethod === "vnpay" ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.68rem" }}>
                           {order.paymentMethod === "cod" ? "COD" : "VNPay"}
                         </span>
                       </td>
 
                       {showDeadline && (
                         <td className="py-3">
-                          <span className="text-secondary fw-medium" style={{ fontSize: "0.85rem" }}>
+                          <span className="text-muted small" style={{ fontSize: "0.82rem" }}>
                             {renderDeadline(order)}
                           </span>
                         </td>
@@ -688,8 +676,8 @@ const handleBatchUpdate = async (nextStatus) => {
 
                       <td className="py-3">
                         <select
-                          className={`form-select form-select-sm fw-semibold shadow-sm border ${statusBadges[order.status]?.class || ""}`}
-                          style={{ width: "140px", fontSize: "0.82rem" }}
+                          className={`form-select form-select-sm fw-semibold shadow-none border-0 ${statusBadges[order.status]?.class || "bg-light text-dark"}`}
+                          style={{ width: "135px", fontSize: "0.78rem" }}
                           value={order.status || "pending"}
                           onChange={(e) => handleStatusChangeClick(order._id, order.status, e.target.value)}
                         >
@@ -704,7 +692,7 @@ const handleBatchUpdate = async (nextStatus) => {
                       <td className="text-end px-4 py-3">
                         <Link
                           href={`/admin/order/${order._id}`}
-                          className="btn btn-outline-dark btn-sm px-3 rounded-pill fw-semibold shadow-sm"
+                          className="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-semibold"
                           style={{ fontSize: "0.8rem" }}
                         >
                           Chi tiết
