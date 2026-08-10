@@ -13,7 +13,7 @@ export default function AddVoucher() {
     discount_type: "fixed", 
     discount_value: "",
     min_order_value: "",
-    max_discount_amount: "", // Giữ lại key để không lỗi API nếu backend yêu cầu, nhưng sẽ để trống/null
+    max_discount_amount: "", 
     usage_limit: 100,
     start_date: "",
     expiry_date: "",
@@ -23,6 +23,15 @@ export default function AddVoucher() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    
+    // Nếu là loại phần trăm thì chặn không cho nhập quá 50 trực tiếp khi gõ
+    if (name === "discount_value" && formData.discount_type === "percentage" && value !== "") {
+      const numVal = Number(value);
+      if (numVal > 50) {
+        return; // Không cho cập nhật giá trị nếu vượt quá 50
+      }
+    }
+
     setFormData({
       ...formData,
       [name]: type === "checkbox" ? checked : value,
@@ -63,11 +72,11 @@ export default function AddVoucher() {
     }
 
     // ==========================================
-    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%) - GIỚI HẠN TỐI ĐA 50%
+    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%) - TỐI ĐA 50%
     // ==========================================
     if (formData.discount_type === "percentage") {
       if (discountVal > 50) {
-        alert(`⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%! (Hiện tại: ${discountVal}%)`);
+        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%!");
         return;
       }
     }
@@ -91,7 +100,7 @@ export default function AddVoucher() {
       code: formData.code.trim().toUpperCase(),
       discount_value: discountVal,
       min_order_value: minOrderVal,
-      max_discount_amount: null, // Đã bỏ ô này nên gửi lên là null
+      max_discount_amount: null,
       usage_limit: Number(formData.usage_limit),
       start_date: formData.start_date ? new Date(formData.start_date).toISOString() : null,
       expiry_date: formData.expiry_date ? new Date(formData.expiry_date).toISOString() : null,
@@ -163,7 +172,15 @@ export default function AddVoucher() {
                   name="discount_type"
                   className="form-select"
                   value={formData.discount_type}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    // Khi đổi loại giảm giá, nếu đang chọn phần trăm mà giá trị > 50 thì reset về rỗng
+                    const newType = e.target.value;
+                    if (newType === "percentage" && Number(formData.discount_value) > 50) {
+                      setFormData({ ...formData, discount_type: newType, discount_value: "" });
+                    } else {
+                      handleChange(e);
+                    }
+                  }}
                 >
                   <option value="fixed">Số tiền cố định (đ)</option>
                   <option value="percentage">Phần trăm (%)</option>
@@ -178,9 +195,10 @@ export default function AddVoucher() {
                     type="number"
                     name="discount_value"
                     className="form-control"
-                    placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Ví dụ: 40"}
+                    placeholder={formData.discount_type === "fixed" ? "Ví dụ: 50000" : "Ví dụ: 20"}
                     required
                     min="1"
+                    max={formData.discount_type === "percentage" ? "50" : undefined}
                     value={formData.discount_value}
                     onChange={handleChange}
                   />
