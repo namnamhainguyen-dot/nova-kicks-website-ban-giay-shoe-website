@@ -666,8 +666,6 @@ export default function Checkout() {
                         <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
                         
                         {[...availableVouchers]
-                          // Lọc bỏ các voucher đã bị ẩn
-                          .filter((v) => v.isActive !== false && !v.isHidden)
                           .sort((a, b) => {
                             const aEligible = total >= (a.min_order_value || 0);
                             const bEligible = total >= (b.min_order_value || 0);
