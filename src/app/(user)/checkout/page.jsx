@@ -613,110 +613,63 @@ export default function Checkout() {
                   })}
                 </div>
 
-                {/* PHẦN VOUCHER ĐÃ FIX - SỬ DỤNG onCLick VÀ useRef */}
-                <div className="mb-4 bg-light p-3 rounded-3 position-relative">
-                  <div className="mb-2">
-                    <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
-                  </div>
-
-                  {/* Thêm ref để quản lý click outside */}
-                  <div className="position-relative" ref={dropdownRef}>
-                    <div className="input-group">
-                      <input
-                        type="text"
-                        className="form-control form-control-sm text-uppercase fw-bold"
-                        placeholder="NHẬP HOẶC CHỌN MÃ"
-                        value={voucherCode}
-                        onChange={(e) => setVoucherCode(e.target.value)}
-                        // Đổi thành click để bật dropdown thay vì onFocus hoặc hover
-                        onClick={() => !appliedVoucher && setShowVoucherDropdown(!showVoucherDropdown)}
-                        disabled={!!appliedVoucher}
-                      />
-                      {appliedVoucher ? (
-                        <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
-                          Hủy bỏ
-                        </button>
-                      ) : (
-                        <div className="d-flex gap-1">
-                          <button
-                            className="btn btn-outline-secondary btn-sm"
-                            type="button"
-                            onClick={() => setShowVoucherDropdown(!showVoucherDropdown)}
+                {/* DROPDOWN POPUP VOUCHER */}
+                  {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
+                    <div 
+                      className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
+                      style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
+                    >
+                      <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
+                      
+                      {[...availableVouchers]
+                        // Lọc bỏ các voucher đã ẩn (điều kiện có thể thay đổi tùy thuộc vào tên trường trong DB của bạn)
+                        .filter((v) => v.isActive !== false && !v.isHidden)
+                        .sort((a, b) => {
+                          const aEligible = total >= (a.min_order_value || 0);
+                          const bEligible = total >= (b.min_order_value || 0);
+                          return bEligible - aEligible;
+                        })
+                        .map((v) => {
+                          const isEligible = total >= (v.min_order_value || 0);
+                          return (
+                            <div
+                              key={v._id || v.code}
+                              className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
+                                isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
+                            }`}
+                            style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
+                            onClick={() => {
+                              if (isEligible) {
+                                handleSelectSuggestedVoucher(v.code);
+                                setShowVoucherDropdown(false);
+                              }
+                            }}
                           >
-                            {showVoucherDropdown ? "▲" : "▼"}
-                          </button>
+                            <div>
+                              <div className="fw-bold text-primary small d-flex align-items-center gap-1">
+                                🏷️ {v.code}
+                                {isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>}
+                              </div>
+                              <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                {v.discount_type === "percentage" 
+                                  ? `Giảm ${v.discount_value}%` 
+                                  : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
+                                {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
+                              </div>
+                            </div>
                           <button
-                            className="btn btn-dark btn-sm fw-semibold"
                             type="button"
-                            onClick={handleApplyVoucher}
-                            disabled={isValidatingVoucher}
+                            className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
+                            style={{ fontSize: "0.7rem", padding: "2px 8px" }}
+                            disabled={!isEligible}
                           >
-                            {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                            {isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
                           </button>
                         </div>
-                      )}
-                    </div>
-
-                    {/* DROPDOWN POPUP VOUCHER */}
-                    {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
-                      <div 
-                        className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
-                        style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
-                      >
-                        <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
-                        
-                        {[...availableVouchers]
-                          .sort((a, b) => {
-                            const aEligible = total >= (a.min_order_value || 0);
-                            const bEligible = total >= (b.min_order_value || 0);
-                            return bEligible - aEligible;
-                          })
-                          .map((v) => {
-                            const isEligible = total >= (v.min_order_value || 0);
-                            return (
-                              <div
-                                key={v._id || v.code}
-                                className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
-                                  isEligible ? "bg-light border-success" : "opacity-50 border-secondary"
-                                }`}
-                                style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
-                                onClick={() => {
-                                  if (isEligible) {
-                                    handleSelectSuggestedVoucher(v.code);
-                                    setShowVoucherDropdown(false); // Đóng dropdown sau khi chọn
-                                  }
-                                }}
-                              >
-                                <div>
-                                  <div className="fw-bold text-primary small d-flex align-items-center gap-1">
-                                    🏷️ {v.code}
-                                    {isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>}
-                                  </div>
-                                  <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                                    {v.discount_type === "percentage" 
-                                      ? `Giảm ${v.discount_value}%` 
-                                      : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
-                                    {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
-                                  </div>
-                                </div>
-                                <button
-                                  type="button"
-                                  className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
-                                  style={{ fontSize: "0.7rem", padding: "2px 8px" }}
-                                  disabled={!isEligible}
-                                >
-                                  {isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
-                                </button>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-
-                  {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
-                  {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
-                </div>
+                )}
 
                 {/* TỔNG TIỀN */}
                 <div className="pt-2">
@@ -947,7 +900,7 @@ export default function Checkout() {
                         checked={paymentMethod === "vnpay"}
                         onChange={() => setPaymentMethod("vnpay")}
                       />
-                      <span className="ms-2">Thanh toán qua VNPay (Thẻ/QR Code)</span>
+                      <span className="ms-2">Thanh toán qua Thẻ/QR Code</span>
                     </div>
                   </div>
                 </div>
