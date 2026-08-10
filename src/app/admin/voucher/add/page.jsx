@@ -63,11 +63,11 @@ export default function AddVoucher() {
     }
 
     // ==========================================
-    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%)
+    // 🛡️ LOGIC KIỂM TRA PHẦN TRĂM (%) - GIỚI HẠN TỐI ĐA 50%
     // ==========================================
     if (formData.discount_type === "percentage") {
-      if (discountVal > 100) {
-        alert("⚠️ Mức giảm giá theo phần trăm không được vượt quá 100%!");
+      if (discountVal > 50) {
+        alert(`⚠️ Mức giảm giá theo phần trăm không được vượt quá 50%! (Hiện tại: ${discountVal}%)`);
         return;
       }
     }
@@ -142,8 +142,8 @@ export default function AddVoucher() {
           <form onSubmit={handleSubmit}>
             <div className="row g-3">
               
-              {/* Mã Voucher */}
-              <div className="col-md-6">
+              {/* Mã Voucher (chiếm full hàng) */}
+              <div className="col-12">
                 <label className="form-label fw-bold small">Mã giảm giá (Code)</label>
                 <input
                   type="text"
