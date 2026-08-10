@@ -1,5 +1,6 @@
 import clientPromise from "../../../../libs/mongodb";
 import { ObjectId } from "mongodb";
+import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
 /// CẤU HÌNH TRÌNH GỬI EMAIL (TRANSPORTER)
@@ -7,14 +8,14 @@ const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: (process.env.EMAIL_USER || "luckhanh6677@gmail.com").trim(),
-    pass: (process.env.EMAIL_PASS || "kemtlqntuxiiqfai").replace(/\s+/g, ""), // Tự động xóa sạch khoảng trắng
+    pass: (process.env.EMAIL_PASS || "kemtlqntuxiiqfai").replace(/\s+/g, ""), 
   },
 });
+
 // ==========================================
 // 📧 CÁC MẪU TEMPLATE EMAIL
 // ==========================================
 
-// 1. Mẫu HTML Mail 1: Báo đơn mới / Xác nhận thanh toán
 function generateOrderEmailHTML(order) {
   const itemsHTML = order.order_items?.map(item => `
     <tr>
@@ -64,7 +65,6 @@ function generateOrderEmailHTML(order) {
   `;
 }
 
-// 2. Mẫu HTML Mail 2: Cảm ơn sau khi giao hàng thành công (completed)
 function generateThankYouEmailHTML(order) {
   const itemsHTML = order.order_items?.map(item => `
     <tr>
@@ -123,32 +123,37 @@ function generateThankYouEmailHTML(order) {
 }
 
 // ==========================================
-// 1. HÀM GET (Chi tiết đơn hàng)
+// 1. HÀM GET (Hợp nhất hỗ trợ cả id & isPaid check)
 // ==========================================
 export async function GET(request, { params }) {
   try {
+    const { id } = await params;
+
+    if (!id || !ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, error: "Định dạng mã đơn hàng không chính xác" }, { status: 400 });
+    }
+
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    const { id } = await params;
-
-    if (!id || id.length !== 24) {
-      return Response.json({ success: false, error: "Định dạng mã đơn hàng không chính xác" }, { status: 400 });
-    }
-
-    const order = await db.collection("orders").findOne({ _id: new ObjectId(String(id)) });
+    const order = await db.collection("orders").findOne({ _id: new ObjectId(id) });
 
     if (!order) {
-      return Response.json({ success: false, error: "Đơn hàng không tồn tại trong hệ thống" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Đơn hàng không tồn tại trong hệ thống" }, { status: 404 });
     }
 
-    return Response.json({
+    // Trả về đầy đủ dữ liệu gom từ cả hai bên
+    return NextResponse.json({
       ...order,
       _id: String(order._id),
-    });
+      total: order.final_total || order.total,
+      isPaid: order.isPaid || false,
+      status: order.status,
+    }, { status: 200 });
+
   } catch (error) {
     console.error("Lỗi API GET:", error);
-    return Response.json({ success: false, error: "Lỗi xử lý hệ thống phía Backend" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Lỗi xử lý hệ thống phía Backend" }, { status: 500 });
   }
 }
 
@@ -158,13 +163,24 @@ export async function GET(request, { params }) {
 export async function PATCH(request, { params }) {
   try {
     const { id } = await params;
-    if (!id || id.length !== 24) {
-      return Response.json({ success: false, error: "ID đơn hàng không hợp lệ" }, { status: 400 });
+    if (!id || !ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, error: "ID đơn hàng không hợp lệ" }, { status: 400 });
     }
 
     const body = await request.json();
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
+
+    const fullOrderDetails = await db
+      .collection("orders")
+      .findOne({ _id: new ObjectId(id) });
+
+    if (!fullOrderDetails) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy đơn hàng" },
+        { status: 404 }
+      );
+    }
 
     const updateFields = {};
     
@@ -180,68 +196,44 @@ export async function PATCH(request, { params }) {
       updateFields.cancelReason = body.cancelReason;
     }
 
-    // // Cập nhật dữ liệu vào MongoDB
-    // const result = await db.collection("orders").updateOne(
-    //   { _id: new ObjectId(id) },
-    //   { $set: updateFields }
-    // );
+    // ===== Kiểm tra chuyển trạng thái =====
+    if (body.status) {
+      const currentStatus = fullOrderDetails.status || "pending";
+      const nextStatus = body.status;
 
-    // if (result.matchedCount === 0) {
-    //   return Response.json({ success: false, error: "Không tìm thấy đơn hàng" }, { status: 404 });
-    // }
+      const allowed = {
+        pending: ["preparing", "cancelled"],
+        preparing: ["shipping", "cancelled"],
+        shipping: ["completed", "returned", "boomed"],
+        completed: [],
+        cancelled: [],
+        returned: [],
+        boomed: [],
+      };
 
-    // // Lấy thông tin đơn hàng đầy đủ sau khi cập nhật
-    // const fullOrderDetails = await db.collection("orders").findOne({ _id: new ObjectId(id) });
-    // Lấy đơn hàng trước khi cập nhật
-const fullOrderDetails = await db
-  .collection("orders")
-  .findOne({ _id: new ObjectId(id) });
+      if (
+        currentStatus !== nextStatus &&
+        !allowed[currentStatus]?.includes(nextStatus)
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: `Không thể chuyển từ ${currentStatus} sang ${nextStatus}`,
+          },
+          { status: 400 }
+        );
+      }
+    }
 
-if (!fullOrderDetails) {
-  return Response.json(
-    { success: false, error: "Không tìm thấy đơn hàng" },
-    { status: 404 }
-  );
-}
-
-// ===== Kiểm tra chuyển trạng thái =====
-if (body.status) {
-  const currentStatus = fullOrderDetails.status || "pending";
-  const nextStatus = body.status;
-
-  const allowed = {
-    pending: ["preparing", "cancelled"],
-    preparing: ["shipping", "cancelled"],
-    shipping: ["completed", "returned", "boomed"],
-    completed: [],
-    cancelled: [],
-    returned: [],
-    boomed: [],
-  };
-
-  if (
-    currentStatus !== nextStatus &&
-    !allowed[currentStatus]?.includes(nextStatus)
-  ) {
-    return Response.json(
-      {
-        success: false,
-        message: `Không thể chuyển từ ${currentStatus} sang ${nextStatus}`,
-      },
-      { status: 400 }
+    // Sau khi kiểm tra mới update
+    await db.collection("orders").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateFields }
     );
-  }
-}
 
-// Sau khi kiểm tra mới update
-const result = await db.collection("orders").updateOne(
-  { _id: new ObjectId(id) },
-  { $set: updateFields }
-);
-
+    // Gửi email thông báo nếu có thay đổi tương ứng
     if (fullOrderDetails && fullOrderDetails.email && fullOrderDetails.email !== "guest") {
       
-      // 🌟 KỊCH BẢN 1: GỬI MAIL 1 (Khi xác nhận thanh toán thành công isPaid = true)
       if (body.isPaid === true) {
         const mailOptions = {
           from: '"Nova Kicks" <luckhanh6677@gmail.com>',
@@ -256,7 +248,6 @@ const result = await db.collection("orders").updateOne(
         }).catch(mailErr => console.error("Lỗi gửi Mail 1:", mailErr));
       }
 
-      // 🌟 KỊCH BẢN 2: GỬI MAIL 2 (Khi Admin đổi trạng thái thành "completed")
       if (body.status === "completed") {
         const thankYouMailOptions = {
           from: '"Nova Kicks" <luckhanh6677@gmail.com>',
@@ -272,13 +263,13 @@ const result = await db.collection("orders").updateOne(
       }
     }
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
       message: "Cập nhật đơn hàng và xử lý thông báo thành công",
     });
   } catch (error) {
     console.error("Cập nhật thất bại:", error);
-    return Response.json({ success: false, error: "Cập nhật thất bại" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Cập nhật thất bại" }, { status: 500 });
   }
 }
 
@@ -291,19 +282,19 @@ export async function DELETE(request, { params }) {
     const db = client.db("Nova-kicks");
     const { id } = await params;
 
-    if (!id || id.length !== 24) {
-      return Response.json({ success: false, error: "ID đơn hàng không hợp lệ" }, { status: 400 });
+    if (!id || !ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, error: "ID đơn hàng không hợp lệ" }, { status: 400 });
     }
 
-    const result = await db.collection("orders").deleteOne({ _id: new ObjectId(String(id)) });
+    const result = await db.collection("orders").deleteOne({ _id: new ObjectId(id) });
 
     if (result.deletedCount === 0) {
-      return Response.json({ success: false, error: "Không tìm thấy đơn hàng cần xóa" }, { status: 404 });
+      return NextResponse.json({ success: false, error: "Không tìm thấy đơn hàng cần xóa" }, { status: 404 });
     }
 
-    return Response.json({ success: true, message: "Xóa đơn hàng thành công" });
+    return NextResponse.json({ success: true, message: "Xóa đơn hàng thành công" });
   } catch (error) {
     console.error("Lỗi API DELETE:", error);
-    return Response.json({ success: false, error: "Lỗi hệ thống khi xóa đơn hàng" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "Lỗi hệ thống khi xóa đơn hàng" }, { status: 500 });
   }
 }
