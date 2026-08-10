@@ -613,7 +613,51 @@ export default function Checkout() {
                   })}
                 </div>
 
-                {/* DROPDOWN POPUP VOUCHER */}
+                {/* PHẦN VOUCHER ĐÃ FIX - SỬ DỤNG onCLick VÀ useRef */}
+                <div className="mb-4 bg-light p-3 rounded-3 position-relative">
+                  <div className="mb-2">
+                    <label className="form-label fw-bold text-secondary small mb-0">🎟️ Mã giảm giá (Voucher)</label>
+                  </div>
+
+                  {/* Thêm ref để quản lý click outside */}
+                  <div className="position-relative" ref={dropdownRef}>
+                    <div className="input-group">
+                      <input
+                        type="text"
+                        className="form-control form-control-sm text-uppercase fw-bold"
+                        placeholder="NHẬP HOẶC CHỌN MÃ"
+                        value={voucherCode}
+                        onChange={(e) => setVoucherCode(e.target.value)}
+                        // Đổi thành click để bật dropdown thay vì onFocus hoặc hover
+                        onClick={() => !appliedVoucher && setShowVoucherDropdown(!showVoucherDropdown)}
+                        disabled={!!appliedVoucher}
+                      />
+                      {appliedVoucher ? (
+                        <button className="btn btn-danger btn-sm" type="button" onClick={handleRemoveVoucher}>
+                          Hủy bỏ
+                        </button>
+                      ) : (
+                        <div className="d-flex gap-1">
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            type="button"
+                            onClick={() => setShowVoucherDropdown(!showVoucherDropdown)}
+                          >
+                            {showVoucherDropdown ? "▲" : "▼"}
+                          </button>
+                          <button
+                            className="btn btn-dark btn-sm fw-semibold"
+                            type="button"
+                            onClick={handleApplyVoucher}
+                            disabled={isValidatingVoucher}
+                          >
+                            {isValidatingVoucher ? "Đang check..." : "Áp dụng"}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* DROPDOWN POPUP VOUCHER */}
                   {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
                     <div 
                       className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
@@ -670,6 +714,10 @@ export default function Checkout() {
                     })}
                   </div>
                 )}
+
+                  {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
+                  {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}
+                </div>
 
                 {/* TỔNG TIỀN */}
                 <div className="pt-2">
