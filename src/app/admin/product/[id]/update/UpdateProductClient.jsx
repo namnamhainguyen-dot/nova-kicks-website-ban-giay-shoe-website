@@ -266,6 +266,7 @@ export default function UpdateProductClient({ id }) {
     setSaving(true);
     setError("");
 
+    // Xử lý chuẩn xác cấu trúc sizes thành Array of Objects giống hệt trang Sửa
     const finalVariants = colors.map((color) => {
       const colorData = variantDetails[color] || {};
       const sizesArray = Object.entries(colorData.sizes || {})
@@ -284,8 +285,9 @@ export default function UpdateProductClient({ id }) {
     });
 
     try {
+      // ĐÃ SỬA: Chuyển từ POST sang PUT và thêm /${id} để cập nhật đúng sản phẩm hiện tại
       const response = await fetch(`/api/products/${id}`, {
-        method: "PUT",
+        method: "PUT", 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,

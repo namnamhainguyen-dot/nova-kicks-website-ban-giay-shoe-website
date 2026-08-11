@@ -84,7 +84,13 @@ export async function POST(request) {
           color: v.color ? String(v.color).trim() : "",
           image: v.image ? String(v.image).trim() : "",
           quantity: Math.max(0, parseInt(v.quantity) || 0),
-          sizes: Array.isArray(v.sizes) ? v.sizes.map(Number) : []
+          // Sửa lại đoạn map sizes này:
+          sizes: Array.isArray(v.sizes)
+            ? v.sizes.map((s) => ({
+                size: Number(s.size) || 0,
+                quantity: Number(s.quantity) || 0,
+              })).filter((s) => s.size > 0) // Lọc bỏ các size không hợp lệ nếu có
+            : [],
         }))
       : [];
 

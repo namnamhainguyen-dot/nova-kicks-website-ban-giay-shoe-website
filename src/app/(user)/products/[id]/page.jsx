@@ -293,17 +293,28 @@ export default function ProductDetailPage() {
         return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
     }, [product, selectedColor]);
 
-    // Lấy giá hiển thị (ưu tiên giá flash sale / giá giảm nếu có)
+    // Lấy giá hiển thị (Chỉ ưu tiên giá giảm/flash sale nếu thực sự bật cờ isFlashSale hoặc giá giảm lớn hơn 0)
     const displayPrice = useMemo(() => {
         if (!product) return 0;
-        return product.flashSalePrice ?? product.salePrice ?? product.discountPrice ?? product.price ?? 0;
+        
+        // Nếu sản phẩm bật Flash sale và có flashSalePrice hợp lệ (> 0)
+        if (product.isFlashSale && Number(product.flashSalePrice) > 0) {
+            return Number(product.flashSalePrice);
+        }
+        
+        // Hoặc kiểm tra các giá sale khác nếu có (> 0)
+        const sale = Number(product.salePrice ?? product.discountPrice ?? 0);
+        if (sale > 0 && sale < Number(product.price)) {
+            return sale;
+        }
+        
+        return Number(product.price ?? 0);
     }, [product]);
 
     const hasDiscount = useMemo(() => {
         if (!product) return false;
-        const salePrice = product.flashSalePrice ?? product.salePrice ?? product.discountPrice;
-        return salePrice !== undefined && salePrice !== null && Number(salePrice) < Number(product.price);
-    }, [product]);
+        return Number(displayPrice) < Number(product.price);
+    }, [product, displayPrice]);
 
     // Quantity handlers
     const handleIncreaseQuantity = () => {
