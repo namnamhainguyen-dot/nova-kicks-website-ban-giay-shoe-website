@@ -23,7 +23,10 @@ export default function ProductCreate() {
   const [colorInput, setColorInput] = useState("");
 
   const [imagesByColor, setImagesByColor] = useState({});
-  const [quantitiesByColor, setQuantitiesByColor] = useState({});
+  
+  // 🌟 CẤU TRÚC MỚI: Quản lý số lượng chi tiết theo từng size của từng màu
+  // Định dạng: { [color]: { [size]: quantity } }
+  const [variantDetails, setVariantDetails] = useState({});
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -80,11 +83,26 @@ export default function ProductCreate() {
   };
 
   const toggleSize = (size) => {
-    setSizes((prev) =>
-      prev.includes(size)
+    setSizes((prev) => {
+      const newSizes = prev.includes(size)
         ? prev.filter((s) => s !== size)
-        : [...prev, size].sort((a, b) => a - b)
-    );
+        : [...prev, size].sort((a, b) => a - b);
+
+      // Cập nhật lại cấu trúc variantDetails khi thêm/bớt size để loại bỏ size không còn chọn
+      setVariantDetails((vdPrev) => {
+        const updatedVD = { ...vdPrev };
+        Object.keys(updatedVD).forEach((color) => {
+          const colorSizes = { ...updatedVD[color] };
+          if (!newSizes.includes(size)) {
+            delete colorSizes[size];
+          }
+          updatedVD[color] = colorSizes;
+        });
+        return updatedVD;
+      });
+
+      return newSizes;
+    });
   };
 
   const addColor = () => {
@@ -95,7 +113,16 @@ export default function ProductCreate() {
       return;
     }
     setColors((prev) => [...prev, value]);
-    setQuantitiesByColor((prev) => ({ ...prev, [value]: 0 }));
+    
+    // Khởi tạo mặc định số lượng bằng 0 cho tất cả các size hiện tại của màu mới
+    setVariantDetails((prev) => {
+      const initialSizesObj = {};
+      sizes.forEach((s) => {
+        initialSizesObj[s] = 0;
+      });
+      return { ...prev, [value]: initialSizesObj };
+    });
+
     setColorInput("");
   };
 
@@ -113,7 +140,7 @@ export default function ProductCreate() {
       delete updated[color];
       return updated;
     });
-    setQuantitiesByColor((prev) => {
+    setVariantDetails((prev) => {
       const updated = { ...prev };
       delete updated[color];
       return updated;
@@ -124,12 +151,25 @@ export default function ProductCreate() {
     setImagesByColor((prev) => ({ ...prev, [color]: url }));
   };
 
-  const handleColorQuantityChange = (color, val) => {
+  // Thay đổi số lượng của một màu theo một size cụ thể
+  const handleVariantSizeQuantityChange = (color, size, val) => {
     const numValue = Math.max(0, parseInt(val) || 0);
-    setQuantitiesByColor((prev) => ({ ...prev, [color]: numValue }));
+    setVariantDetails((prev) => ({
+      ...prev,
+      [color]: {
+        ...(prev[color] || {}),
+        [size]: numValue,
+      },
+    }));
   };
 
-  const totalVariantsQuantity = colors.reduce((sum, color) => sum + (quantitiesByColor[color] || 0), 0);
+  // Tính tổng số lượng phân bổ của tất cả các màu và các size
+  const totalVariantsQuantity = Object.keys(variantDetails).reduce((sum, color) => {
+    const colorSizes = variantDetails[color] || {};
+    const colorTotal = Object.values(colorSizes).reduce((subSum, q) => subSum + (Number(q) || 0), 0);
+    return sum + colorTotal;
+  }, 0);
+
   const remainingQuantity = (Number(quantity) || 0) - totalVariantsQuantity;
 
   const handleSubmit = async (event) => {
@@ -151,9 +191,9 @@ export default function ProductCreate() {
     const targetQty = Number(quantity) || 0;
     if (totalVariantsQuantity !== targetQty) {
       if (totalVariantsQuantity > targetQty) {
-        setError(`Tổng số lượng các màu (${totalVariantsQuantity}) vượt quá kho tổng (${targetQty}).`);
+        setError(`Tổng số lượng phân bổ (${totalVariantsQuantity}) vượt quá kho tổng (${targetQty}).`);
       } else {
-        setError(`Chưa phân bổ hết! Vui lòng thêm ${remainingQuantity} sản phẩm cho các màu để khớp với kho tổng.`);
+        setError(`Chưa phân bổ hết! Vui lòng thêm ${remainingQuantity} sản phẩm cho các biến thể để khớp với kho tổng.`);
       }
       return;
     }
@@ -161,13 +201,21 @@ export default function ProductCreate() {
     setSaving(true);
     setError("");
 
-    // Cấu trúc mảng variants
-    const finalVariants = colors.map((color) => ({
-      color: color,
-      image: imagesByColor[color] || image,
-      quantity: quantitiesByColor[color] || 0,
-      sizes: sizes.map(Number) 
-    }));
+    // Cấu trúc mảng variants gửi lên API khớp với backend/trang sửa
+    const finalVariants = colors.map((color) => {
+      const colorSizesObj = variantDetails[color] || {};
+      // Tính tổng số lượng riêng của màu này dựa trên các size
+      const colorTotalQty = Object.values(colorSizesObj).reduce((acc, q) => acc + (Number(q) || 0), 0);
+
+      return {
+        color: color,
+        image: imagesByColor[color] || image,
+        quantity: colorTotalQty,
+        sizes: sizes.map(Number),
+        // Lưu kèm cấu trúc chi tiết số lượng theo từng size nếu backend hỗ trợ
+        sizeQuantities: colorSizesObj 
+      };
+    });
 
     try {
       const response = await fetch("/api/products", {
@@ -372,55 +420,77 @@ export default function ProductCreate() {
               )}
             </div>
 
-            {/* Cấu hình chi tiết từng màu */}
-            {colors.length > 0 && (
+            {/* Cấu hình chi tiết số lượng theo từng màu và từng size */}
+            {colors.length > 0 && sizes.length > 0 && (
               <div className="mb-4 p-3 border rounded bg-light">
-                <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">📷 Cấu hình chi tiết theo màu</h6>
+                <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">
+                  📷 Cấu hình chi tiết số lượng theo Màu & Size
+                </h6>
                 <div className="d-flex flex-column gap-3">
                   {colors.map((color) => (
-                    <div className="row g-2 align-items-center p-2 bg-white rounded border" key={color}>
-                      <div className="col-md-2 col-12">
-                        <span className="badge bg-dark px-3 py-2 w-100 text-center">{color}</span>
-                      </div>
-                      
-                      {/* Cụm nhập Link URL và chọn file cho mỗi màu */}
-                      <div className="col-md-7 col-12">
-                        <div className="row g-1">
-                          <div className="col-7">
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              placeholder="Link URL ảnh"
-                              value={imagesByColor[color] || ""}
-                              onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
-                            />
-                          </div>
-                          <div className="col-5">
-                            <input
-                              type="file"
-                              className="form-control form-control-sm"
-                              accept="image/*"
-                              onChange={(e) => handleColorFileChange(color, e)}
-                            />
-                          </div>
+                    <div className="p-3 bg-white rounded border" key={color}>
+                      <div className="row g-2 align-items-center mb-3">
+                        <div className="col-md-3">
+                          <span className="badge bg-dark px-3 py-2 w-100 text-center" style={{ fontSize: 14 }}>{color}</span>
                         </div>
-                      </div>
-
-                      <div className="col-md-2 col-9">
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">SL</span>
+                        <div className="col-md-5">
                           <input
-                            type="number"
-                            className="form-control"
-                            min="0"
-                            value={quantitiesByColor[color] || 0}
-                            onChange={(e) => handleColorQuantityChange(color, e.target.value)}
+                            type="text"
+                            className="form-control form-control-sm"
+                            placeholder="Link URL ảnh riêng cho màu này"
+                            value={imagesByColor[color] || ""}
+                            onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
                           />
                         </div>
+                        <div className="col-md-3">
+                          <input
+                            type="file"
+                            className="form-control form-control-sm"
+                            accept="image/*"
+                            onChange={(e) => handleColorFileChange(color, e)}
+                          />
+                        </div>
+                        <div className="col-md-1 text-end">
+                          <button type="button" onClick={() => removeColor(color)} className="btn-close" />
+                        </div>
                       </div>
 
-                      <div className="col-md-1 col-3 text-end">
-                        <button type="button" onClick={() => removeColor(color)} className="btn-close" />
+                      {/* Bảng nhập số lượng riêng cho từng size của màu này */}
+                      <div className="table-responsive">
+                        <table className="table table-bordered table-sm mb-0 text-center align-middle bg-white">
+                          <thead className="table-secondary">
+                            <tr>
+                              <th style={{ fontSize: 12 }}>Size áp dụng</th>
+                              {sizes.map((s) => (
+                                <th key={s} style={{ fontSize: 12 }}>{s}</th>
+                              ))}
+                              <th style={{ fontSize: 12, width: "120px" }}>Tổng màu</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className="fw-bold text-muted" style={{ fontSize: 12 }}>Số lượng</td>
+                              {sizes.map((size) => {
+                                const currentVal = variantDetails[color]?.[size] || 0;
+                                return (
+                                  <td key={size}>
+                                    <input
+                                      type="number"
+                                      className="form-control form-control-sm text-center mx-auto"
+                                      style={{ width: "65px" }}
+                                      min="0"
+                                      value={currentVal}
+                                      onChange={(e) => handleVariantSizeQuantityChange(color, size, e.target.value)}
+                                    />
+                                  </td>
+                                );
+                              })}
+                              <td className="fw-bold text-primary">
+                                {Object.values(variantDetails[color] || {}).reduce((a, b) => a + (Number(b) || 0), 0)}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   ))}

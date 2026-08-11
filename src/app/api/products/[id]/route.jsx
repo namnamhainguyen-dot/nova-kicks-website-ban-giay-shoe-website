@@ -44,8 +44,9 @@ export async function PUT(request, { params }) {
       categoryID, 
       variants, 
       isFlashSale, 
-      originalPrice, 
-      flashSaleBatch // Đã bổ sung nhận dữ liệu đợt Flash Sale từ client
+      originalPrice,
+      flashSalePrice, // 1. Bổ sung nhận flashSalePrice từ client gửi lên
+      flashSaleBatch 
     } = body;
 
     const updateData = {};
@@ -60,6 +61,7 @@ export async function PUT(request, { params }) {
     if (isFlashSale !== undefined) {
       updateData.isFlashSale = Boolean(isFlashSale);
       updateData.originalPrice = isFlashSale ? Number(originalPrice || 0) : 0;
+      updateData.flashSalePrice = isFlashSale ? Number(flashSalePrice || 0) : 0; // 2. Lưu flashSalePrice xuống database
     }
 
     // Xử lý cập nhật đợt Flash Sale vào database

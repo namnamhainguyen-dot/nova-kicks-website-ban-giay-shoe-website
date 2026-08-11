@@ -2,15 +2,22 @@
 import { NextResponse } from "next/server";
 import clientPromise, { dbName } from "@/libs/mongodb";
 
-export async function GET() {
+export async function GET(request) { // Thêm tham số request để lấy query params nếu cần
   try {
     const client = await clientPromise;
     const database = client.db(dbName);
     const productsCollection = database.collection("products");
 
-    // Lấy 4 sản phẩm Flash Sale
+    // Lấy query param 'batch' từ URL (nếu trang chủ truyền lên, mặc định lấy 'batch-1')
+    const { searchParams } = new URL(request.url);
+    const batch = searchParams.get("batch") || "batch-1";
+
+    // ✅ Thêm điều kiện lọc flashSaleBatch vào câu query
     const flashSaleProducts = await productsCollection
-      .find({ isFlashSale: true })
+      .find({ 
+        isFlashSale: true,
+        flashSaleBatch: batch 
+      })
       .limit(4)
       .toArray();
 
@@ -19,14 +26,12 @@ export async function GET() {
       _id: p._id.toString()
     }));
 
-    // Giả lập hoặc lấy thời gian kết thúc đợt sale (Ví dụ: tính thời gian kết thúc sau 7 ngày tính từ hôm nay)
-    // Bạn có thể lưu mốc thời gian này vào một Collection riêng trong DB để quản lý chung.
     const now = new Date();
     const endTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
     return NextResponse.json({
-      batchId: "week-sale-" + Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000)),
-      endTime: endTime, // Truyền thời gian kết thúc sang cho CountdownTimer ở Frontend
+      batchId: batch,
+      endTime: endTime,
       products: formattedProducts
     }, { status: 200 });
 

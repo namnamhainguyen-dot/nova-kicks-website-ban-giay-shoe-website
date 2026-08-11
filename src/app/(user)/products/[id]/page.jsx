@@ -138,7 +138,6 @@ export default function ProductDetailPage() {
                 setStockAvailable(foundSize.quantity);
                 return;
             } else {
-                // Nếu không tìm thấy size khớp, lấy size đầu tiên an toàn
                 const firstSizeItem = currentVariant.sizes[0];
                 if (firstSizeItem) {
                     setSelectedSize(firstSizeItem);
@@ -148,7 +147,6 @@ export default function ProductDetailPage() {
             }
         }
 
-        // Fallback về tổng quantity của variant màu
         setStockAvailable(currentVariant.quantity ?? 0);
     }, [product]);
 
@@ -184,7 +182,6 @@ export default function ProductDetailPage() {
                             setSelectedSize('');
                         }
 
-                        // Tính trực tiếp tồn kho ban đầu dựa trên productData vừa fetch
                         const currentVariant = productData.variants.find(v => v.color === initialColor);
                         if (currentVariant) {
                             const normalizedTargetSize = getNormalizedSizeValue(initialSize);
@@ -268,7 +265,6 @@ export default function ProductDetailPage() {
             const targetImage = matchedVariant.image || product?.image || '/placeholder.png';
             changeImageSmoothly(targetImage);
             
-            // Cập nhật size phù hợp nếu màu mới không chứa size hiện tại
             let targetSize = selectedSize;
             if (matchedVariant.sizes?.length > 0) {
                 const isSizeExist = matchedVariant.sizes.some(s => 
@@ -283,20 +279,31 @@ export default function ProductDetailPage() {
                 targetSize = '';
             }
 
-            // Đồng bộ lại tồn kho dựa trên màu mới và size hiện tại
             updateStock(color, targetSize);
         }
     };
 
     const handleSizeChange = (sizeItem) => {
         setSelectedSize(sizeItem);
-        setQuantity(1); // Reset lại số lượng mua về 1 khi đổi size
+        setQuantity(1);
         updateStock(selectedColor, sizeItem);
     };
 
     const availableSizes = useMemo(() => {
         return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
     }, [product, selectedColor]);
+
+    // Lấy giá hiển thị (ưu tiên giá flash sale / giá giảm nếu có)
+    const displayPrice = useMemo(() => {
+        if (!product) return 0;
+        return product.flashSalePrice ?? product.salePrice ?? product.discountPrice ?? product.price ?? 0;
+    }, [product]);
+
+    const hasDiscount = useMemo(() => {
+        if (!product) return false;
+        const salePrice = product.flashSalePrice ?? product.salePrice ?? product.discountPrice;
+        return salePrice !== undefined && salePrice !== null && Number(salePrice) < Number(product.price);
+    }, [product]);
 
     // Quantity handlers
     const handleIncreaseQuantity = () => {
@@ -347,7 +354,7 @@ export default function ProductDetailPage() {
             newCart.push({
                 _id: product._id,
                 name: product.name,
-                price: product.price,
+                price: displayPrice, // Lưu giá đã giảm vào giỏ hàng
                 image: currentImage,
                 selectedSize: finalSizeStr,
                 selectedColor,
@@ -373,7 +380,7 @@ export default function ProductDetailPage() {
         const checkoutItem = {
             _id: product._id,
             name: product.name,
-            price: product.price,
+            price: displayPrice, // Lấy giá đã giảm khi mua ngay
             image: currentImage,
             selectedSize: finalSizeStr,
             selectedColor: selectedColor,
@@ -532,11 +539,17 @@ export default function ProductDetailPage() {
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>({reviews.length} đánh giá)</span>
                     </div>
 
-                    <div style={{ marginBottom: '24px' }}>
+                    {/* Hiển thị giá (Giá Flash Sale / Giá giảm + Giá gốc gạch ngang) */}
+                    <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
                         <p style={{ fontSize: '30px', fontWeight: '900', color: '#e11d48', margin: 0 }}>
-                            {formatPrice(product.price)}
+                            {formatPrice(displayPrice)}
                             <span style={{ fontSize: '18px', fontWeight: '700' }}> đ</span>
                         </p>
+                        {hasDiscount && (
+                            <span style={{ fontSize: '18px', color: '#9ca3af', textDecoration: 'line-through', fontWeight: '500' }}>
+                                {formatPrice(product.price)} đ
+                            </span>
+                        )}
                     </div>
 
                     {/* Color Variants */}
@@ -591,7 +604,6 @@ export default function ProductDetailPage() {
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                 {availableSizes.map((item, index) => {
-                                // Ưu tiên quét các trường phổ biến: size, name, value, sizeValue
                                 let rawSize = '';
                                 if (typeof item === 'object' && item !== null) {
                                     rawSize = item.size ?? item.name ?? item.value ?? item.sizeValue ?? '';

@@ -19,13 +19,15 @@ export default function UpdateProductClient({ id }) {
   // Flash Sale
   const [isFlashSale, setIsFlashSale] = useState(false);
   const [originalPrice, setOriginalPrice] = useState(0);
+  const [flashSalePrice, setFlashSalePrice] = useState(0);
   const [flashSaleBatch, setFlashSaleBatch] = useState("batch-1");
 
   // Quản lý danh mục
   const [categoryID, setCategoryID] = useState(""); 
   const [categories, setCategories] = useState([]); 
 
-  // Biến thể màu và size chi tiết
+  // Biến thể màu, size chung và chi tiết
+  const [sizes, setSizes] = useState([36, 37, 38, 39, 40, 41, 42, 43, 44, 45]); // Thêm state quản lý size chung giống trang Thêm
   const [colors, setColors] = useState([]);
   const [colorInput, setColorInput] = useState("");
   const [variantDetails, setVariantDetails] = useState({});
@@ -68,13 +70,16 @@ export default function UpdateProductClient({ id }) {
         setQuantity(product.quantity || 0);
         setStatus(product.status || "active");
         setCategoryID(product.categoryID || product.categoryId || product.category?._id || "");
-        setIsFlashSale(product.isFlashSale || false);
-        setOriginalPrice(product.originalPrice || 0);
+        
+        setIsFlashSale(Boolean(product.isFlashSale));
+        setOriginalPrice(product.originalPrice !== undefined && product.originalPrice !== null ? product.originalPrice : 0);
+        setFlashSalePrice(product.flashSalePrice !== undefined && product.flashSalePrice !== null ? product.flashSalePrice : 0);
         setFlashSaleBatch(product.flashSaleBatch || "batch-1");
 
         if (Array.isArray(product.variants) && product.variants.length > 0) {
           const loadedColors = [];
           const loadedDetails = {};
+          const detectedSizesSet = new Set();
 
           product.variants.forEach((v) => {
             if (v.color) {
@@ -84,11 +89,12 @@ export default function UpdateProductClient({ id }) {
               if (Array.isArray(v.sizes)) {
                 v.sizes.forEach((s) => {
                   if (s && typeof s === "object") {
-                    const sizeVal = s.size !== undefined && s.size !== null ? String(s.size) : null;
+                    const sizeVal = s.size !== undefined && s.size !== null ? Number(s.size) : null;
                     const qtyVal = Number(s.quantity ?? s.qty ?? s.stock ?? s.amount ?? 0);
                     
                     if (sizeVal !== null) {
                       sizeMap[sizeVal] = qtyVal;
+                      if (qtyVal > 0) detectedSizesSet.add(sizeVal);
                     }
                   }
                 });
@@ -107,6 +113,9 @@ export default function UpdateProductClient({ id }) {
 
           setColors(loadedColors);
           setVariantDetails(loadedDetails);
+          if (detectedSizesSet.size > 0) {
+            // Giữ lại các size mặc định nhưng sắp xếp hoặc đồng bộ nếu cần, ở đây giữ nguyên SIZE_OPTIONS hoặc theo ý muốn
+          }
         }
       } catch (err) {
         setError(err?.message || "Lỗi khi tải dữ liệu sản phẩm.");
@@ -166,6 +175,12 @@ export default function UpdateProductClient({ id }) {
     }
   };
 
+  const toggleSize = (size) => {
+    setSizes((prev) =>
+      prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size].sort((a, b) => a - b)
+    );
+  };
+
   const addColor = () => {
     const value = colorInput.trim();
     if (!value) return;
@@ -213,11 +228,10 @@ export default function UpdateProductClient({ id }) {
 
   const handleSizeQuantityChange = (color, size, val) => {
     const numValue = Math.max(0, parseInt(val) || 0);
-    const sizeKey = String(size);
     
     setVariantDetails((prev) => {
       const colorData = prev[color] || { image: "", quantity: 0, sizes: {} };
-      const updatedSizes = { ...colorData.sizes, [sizeKey]: numValue };
+      const updatedSizes = { ...colorData.sizes, [size]: numValue };
       
       const totalColorQty = Object.values(updatedSizes).reduce((a, b) => a + b, 0);
 
@@ -249,6 +263,10 @@ export default function UpdateProductClient({ id }) {
       setError("Vui lòng thêm ít nhất 1 màu.");
       return;
     }
+    if (sizes.length === 0) {
+      setError("Vui lòng chọn ít nhất 1 size.");
+      return;
+    }
 
     if (totalVariantsQuantity !== Number(quantity)) {
       if (totalVariantsQuantity > Number(quantity)) {
@@ -264,12 +282,12 @@ export default function UpdateProductClient({ id }) {
 
     const finalVariants = colors.map((color) => {
       const colorData = variantDetails[color] || {};
-      const sizesArray = Object.entries(colorData.sizes || {})
-        .filter(([_, qty]) => Number(qty) > 0)
-        .map(([size, qty]) => ({
+      const sizesArray = sizes
+        .map((size) => ({
           size: Number(size),
-          quantity: Number(qty),
-        }));
+          quantity: Number(colorData.sizes?.[size] || 0),
+        }))
+        .filter((s) => s.quantity > 0);
 
       return {
         color: color,
@@ -294,7 +312,8 @@ export default function UpdateProductClient({ id }) {
           variants: finalVariants,
           isFlashSale: Boolean(isFlashSale),
           originalPrice: isFlashSale ? Number(originalPrice) : 0,
-          flashSaleBatch: isFlashSale ? flashSaleBatch : null // Lưu đợt Flash Sale xuống DB
+          flashSalePrice: isFlashSale ? Number(flashSalePrice) : 0,
+          flashSaleBatch: isFlashSale ? flashSaleBatch : null
         }),
       });
 
@@ -466,7 +485,7 @@ export default function UpdateProductClient({ id }) {
 
               {isFlashSale && (
                 <div className="row g-3">
-                  <div className="col-md-6">
+                  <div className="col-md-4">
                     <label htmlFor="originalPrice" className="form-label small text-uppercase font-weight-bold text-muted">
                       Giá gốc ban đầu trước khi giảm (VNĐ)
                     </label>
@@ -474,7 +493,7 @@ export default function UpdateProductClient({ id }) {
                       type="number" 
                       className="form-control"
                       id="originalPrice"
-                      placeholder="Ví dụ: 3500000"
+                      placeholder="Ví dụ: 350000"
                       value={originalPrice}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -485,8 +504,26 @@ export default function UpdateProductClient({ id }) {
                     />
                   </div>
 
-                  {/* Lựa chọn đợt Flash Sale */}
-                  <div className="col-md-6">
+                  <div className="col-md-4">
+                    <label htmlFor="flashSalePrice" className="form-label small text-uppercase font-weight-bold text-danger">
+                      Giá bán Flash Sale (VNĐ)
+                    </label>
+                    <input 
+                      type="number" 
+                      className="form-control border-danger"
+                      id="flashSalePrice"
+                      placeholder="Ví dụ: 200000"
+                      value={flashSalePrice}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFlashSalePrice(val === "" ? "" : Math.max(0, Number(val)));
+                      }}
+                      required={isFlashSale}
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="col-md-4">
                     <label htmlFor="flashSaleBatch" className="form-label small text-uppercase font-weight-bold text-muted">
                       Đợt / Tuần Flash Sale áp dụng
                     </label>
@@ -562,15 +599,36 @@ export default function UpdateProductClient({ id }) {
               />
             </div>
 
+            {/* Chọn các Size hiện có */}
+            <div className="mb-3">
+              <label className="form-label font-weight-bold">⚙️ Chọn các Size hiện có</label>
+              <div className="d-flex flex-wrap gap-2">
+                {SIZE_OPTIONS.map((size) => {
+                  const isSelected = sizes.includes(size);
+                  return (
+                    <button
+                      key={size}
+                      type="button"
+                      className={`btn btn-sm ${isSelected ? "btn-dark" : "btn-outline-secondary"}`}
+                      onClick={() => toggleSize(size)}
+                      style={{ width: "45px", height: "38px" }}
+                    >
+                      {size}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Chọn Màu */}
             <div className="mb-3">
-              <label htmlFor="colorInput" className="form-label font-weight-bold">Màu sắc biến thể</label>
+              <label htmlFor="colorInput" className="form-label font-weight-bold">🎨 Thiết lập màu sắc</label>
               <div className="d-flex gap-2">
                 <input
                   type="text"
                   className="form-control"
                   id="colorInput"
-                  placeholder="Nhập tên màu rồi nhấn Enter (vd: Xanh)"
+                  placeholder="Nhập tên màu rồi ấn Enter"
                   value={colorInput}
                   onChange={(e) => setColorInput(e.target.value)}
                   onKeyDown={handleColorKeyDown}
@@ -579,45 +637,57 @@ export default function UpdateProductClient({ id }) {
                   Thêm màu
                 </button>
               </div>
+              {colors.length > 0 && (
+                <div className="d-flex flex-wrap gap-2 mt-2">
+                  {colors.map((color) => (
+                    <span key={color} className="badge bg-secondary d-flex align-items-center gap-1 p-2">
+                      {color}
+                      <i className="bi bi-x cursor-pointer" onClick={() => removeColor(color)} style={{ cursor: "pointer" }}></i>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Cấu hình Ảnh, Tổng lượng và Size chi tiết theo từng Màu */}
-            {colors.length > 0 && (
+            {/* Cấu hình chi tiết số lượng theo Màu & Size dạng bảng giống trang Thêm */}
+            {colors.length > 0 && sizes.length > 0 && (
               <div className="mb-4 p-3 border rounded bg-light">
                 <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">
-                  🎨 Cấu hình Ảnh & Số lượng chi tiết theo Size cho từng Màu
+                  📸 Cấu hình chi tiết số lượng theo Màu & Size
                 </h6>
                 <div className="d-flex flex-column gap-3">
                   {colors.map((color) => {
                     const colorData = variantDetails[color] || { image: "", quantity: 0, sizes: {} };
 
                     return (
-                      <div className="p-3 bg-white rounded border" key={color}>
-                        <div className="row g-2 align-items-center mb-2">
-                          <div className="col-md-2 col-12">
+                      <div className="p-3 bg-white rounded border position-relative" key={color}>
+                        <div className="row g-2 align-items-center mb-3">
+                          <div className="col-md-3">
                             <span className="badge bg-dark px-3 py-2 text-wrap w-100 text-center fs-6">
                               {color}
                             </span>
                           </div>
 
-                          <div className="col-md-7 col-10">
+                          <div className="col-md-7">
                             <div className="input-group input-group-sm">
-                              <span className="input-group-text">Ảnh Màu</span>
                               <input
                                 type="text"
                                 className="form-control"
-                                placeholder="URL hình ảnh của màu này"
+                                placeholder="Link URL ảnh riêng cho màu này"
                                 value={colorData.image}
                                 onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
                               />
                               <button
                                 type="button"
-                                className="btn btn-outline-primary"
+                                className="btn btn-outline-secondary"
                                 onClick={() => colorImageInputRefs.current[color]?.click()}
                                 disabled={uploading}
                               >
-                                <i className="bi bi-upload"></i>
+                                Chọn tép
                               </button>
+                              <span className="input-group-text bg-light text-muted">
+                                {colorData.image ? "Đã có ảnh" : "Khôn... chọn"}
+                              </span>
                               <input
                                 type="file"
                                 ref={(el) => {
@@ -630,46 +700,53 @@ export default function UpdateProductClient({ id }) {
                             </div>
                           </div>
 
-                          <div className="col-md-2 col-2 text-end">
-                            <span className="badge bg-info text-dark p-2 w-100">
-                              Tổng: {colorData.quantity}
-                            </span>
-                          </div>
-
-                          <div className="col-md-1 text-end">
+                          <div className="col-md-2 text-end">
                             <button
                               type="button"
                               onClick={() => removeColor(color)}
-                              className="btn btn-sm btn-outline-danger w-100"
+                              className="btn btn-sm btn-link text-danger fs-5 p-0"
+                              title="Xóa màu này"
                             >
-                              Xóa
+                              <i className="bi bi-x-lg">✕</i>
                             </button>
                           </div>
                         </div>
 
-                        {/* Phân bổ số lượng theo từng Size cho màu này */}
-                        <div className="mt-2 pt-2 border-top">
-                          <label className="small text-muted font-weight-bold mb-2 d-block">
-                            Nhập số lượng tồn kho cho từng Size của màu <span className="text-dark font-weight-bold">{color}</span>:
-                          </label>
-                          <div className="d-flex flex-wrap gap-2">
-                            {SIZE_OPTIONS.map((size) => {
-                              const sizeKey = String(size);
-                              const sizeQty = colorData.sizes[sizeKey] || 0;
-                              return (
-                                <div key={size} className="input-group input-group-sm" style={{ width: "110px" }}>
-                                  <span className="input-group-text bg-secondary text-white">Size {size}</span>
-                                  <input
-                                    type="number"
-                                    className="form-control text-center"
-                                    min="0"
-                                    value={sizeQty}
-                                    onChange={(e) => handleSizeQuantityChange(color, size, e.target.value)}
-                                  />
-                                </div>
-                              );
-                            })}
-                          </div>
+                        {/* Bảng phân bổ số lượng theo Size */}
+                        <div className="table-responsive">
+                          <table className="table table-bordered text-center align-middle mb-0">
+                            <thead className="table-light">
+                              <tr>
+                                <th style={{ width: "150px" }}>Size áp dụng</th>
+                                {sizes.map((size) => (
+                                  <th key={size}>{size}</th>
+                                ))}
+                                <th className="bg-light">Tổng màu</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr>
+                                <td className="fw-bold text-muted">Số lượng</td>
+                                {sizes.map((size) => {
+                                  const sizeQty = colorData.sizes[size] || 0;
+                                  return (
+                                    <td key={size} style={{ width: "80px" }}>
+                                      <input
+                                        type="number"
+                                        className="form-control form-control-sm text-center"
+                                        min="0"
+                                        value={sizeQty}
+                                        onChange={(e) => handleSizeQuantityChange(color, size, e.target.value)}
+                                      />
+                                    </td>
+                                  );
+                                })}
+                                <td className="fw-bold text-primary">
+                                  {colorData.quantity}
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
                         </div>
 
                       </div>

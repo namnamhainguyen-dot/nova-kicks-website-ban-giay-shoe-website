@@ -5,17 +5,34 @@ import clientPromise from "@/libs/mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
-const ITEMS_PER_PAGE = 10; // Số lượng sản phẩm trên 1 trang
+const ITEMS_PER_PAGE = 10;
 
-// 1. Hàm Query Trực Tiếp MongoDB Native Driver
-async function getProductsFromDB(categoryID) {
+// Hàm Query kết hợp lấy sản phẩm và thông tin Flash Sale (nếu có)
+async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery) {
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
     const filter = {};
+    
     if (categoryID) {
       filter.categoryID = categoryID;
+    }
+
+    if (filterIdsParam) {
+      const { ObjectId } = require("mongodb");
+      const ids = filterIdsParam.split(",").map((id) => {
+        try {
+          return new ObjectId(id.trim());
+        } catch {
+          return id;
+        }
+      });
+      filter._id = { $in: ids };
+    }
+
+    if (searchQuery) {
+      filter.name = { $regex: searchQuery, $options: "i" };
     }
 
     const rawProducts = await db
@@ -24,27 +41,25 @@ async function getProductsFromDB(categoryID) {
       .sort({ _id: -1 })
       .toArray();
 
-    return JSON.parse(JSON.stringify(rawProducts));
+    const allRawProducts = await db
+      .collection(COLLECTION_NAME)
+      .find({})
+      .sort({ _id: -1 })
+      .toArray();
+
+    return {
+      filtered: JSON.parse(JSON.stringify(rawProducts)),
+      all: JSON.parse(JSON.stringify(allRawProducts)),
+    };
   } catch (error) {
     console.error("[MongoDB Query Error] Lỗi kết nối hoặc lấy dữ liệu:", error);
-    return [];
+    return { filtered: [], all: [] };
   }
 }
 
-export default async function ProductsPage({ searchParams }) {
-  const params = await searchParams;
-  const categoryID = params?.categoryID;
-  const filterIdsParam = params?.filterIds;
-  const searchQuery = params?.search;
-  
-  // Lấy trang hiện tại từ URL (Mặc định là trang 1)
-  const currentPage = Math.max(1, parseInt(params?.page || "1", 10));
-
-  // 1. Lấy dữ liệu từ Database
-  const rawProducts = await getProductsFromDB(categoryID);
-
-  // 2. CHUẨN HÓA DỮ LIỆU
-  const products = (rawProducts || []).map((product) => {
+// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale
+function formatProducts(rawList) {
+  return (rawList || []).map((product) => {
     const availableColors =
       product.variants?.map((v) => ({
         color: v.color,
@@ -53,28 +68,51 @@ export default async function ProductsPage({ searchParams }) {
 
     const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
 
+    // --- XỬ LÝ GIÁ FLASH SALE ---
+    // Kiểm tra nếu sản phẩm có cấu hình giá flash sale (ví dụ: flashSalePrice hoặc salePrice)
+    const originalPrice = product.price || 0;
+    const flashSalePrice = product.flashSalePrice || product.salePrice || null;
+    
+    // Xác định xem sản phẩm có đang trong thời gian/chương trình giảm giá không
+    const isFlashSale = flashSalePrice && flashSalePrice < originalPrice;
+    
+    // Tính phần trăm giảm giá nếu có
+    const discountPercent = isFlashSale 
+      ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
+      : 0;
+
     return {
       ...product,
       _id: String(product._id),
       availableColors,
       availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này.",
+      // Thêm các thuộc tính giá để component con dễ dàng hiển thị giao diện
+      price: originalPrice,
+      flashSalePrice: flashSalePrice,
+      isFlashSale: isFlashSale,
+      discountPercent: discountPercent,
     };
   });
+}
 
-  // 3. LỌC SẢN PHẨM TỪ AI CHATBOX HOẶC TÌM KIẾM TỰ DO
-  let filteredProducts = products;
+export default async function ProductsPage({ searchParams }) {
+  const params = await searchParams;
+  const categoryID = params?.categoryID;
+  const filterIdsParam = params?.filterIds;
+  const searchQuery = params?.search;
+  
+  const currentPage = Math.max(1, parseInt(params?.page || "1", 10));
 
-  if (filterIdsParam) {
-    const filterIds = filterIdsParam.split(",");
-    filteredProducts = products.filter((p) => filterIds.includes(p._id));
-  } else if (searchQuery) {
-    filteredProducts = products.filter((p) =>
-      p.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }
+  const { filtered: rawFiltered, all: rawAll } = await getFilteredProductsFromDB(
+    categoryID,
+    filterIdsParam,
+    searchQuery
+  );
 
-  // 4. TÍNH TOÁN PHÂN TRANG
+  const products = formatProducts(rawAll);
+  const filteredProducts = formatProducts(rawFiltered);
+
   const totalItems = filteredProducts.length;
   const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
   const validPage = Math.min(currentPage, totalPages);
@@ -82,10 +120,8 @@ export default async function ProductsPage({ searchParams }) {
   const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   
-  // Danh sách sản phẩm của trang hiện tại
   const displayedProducts = filteredProducts.slice(startIndex, endIndex);
 
-  // Hàm hỗ trợ tạo URL khi bấm chuyển trang (giữ lại các query params cũ)
   const createPageUrl = (pageNumber) => {
     const query = new URLSearchParams();
     if (categoryID) query.set("categoryID", categoryID);
@@ -102,7 +138,6 @@ export default async function ProductsPage({ searchParams }) {
       style={{ paddingTop: "110px", minHeight: "100vh" }}
     >
       <style>{`
-        /* --- TỐI ƯU CARD VÀ HIỂN THỊ ẢNH SẢN PHẨM --- */
         .nk-card, .card-product, [class*="card"] {
           transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
                       box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -118,7 +153,6 @@ export default async function ProductsPage({ searchParams }) {
           box-shadow: 0 16px 32px rgba(0,0,0,0.08) !important;
         }
 
-        /* Đồng bộ khung chứa ảnh thành màu trắng và tạo khoảng đệm */
         .product-image-container, [class*="card"] .ratio, [class*="card"] .img-wrapper {
           background-color: #ffffff !important;
           border-radius: 12px 12px 0 0;
@@ -127,15 +161,15 @@ export default async function ProductsPage({ searchParams }) {
           align-items: center;
           justify-content: center;
           padding: 16px;
+          position: relative;
         }
 
-        /* Tối ưu kích thước và hiệu ứng ảnh giày */
         .img-hover-scale, [class*="card"] img {
           transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
           width: 100%;
           height: 190px;
           object-fit: contain;
-          mix-blend-mode: multiply; /* Giúp hòa trộn nền trắng của ảnh với nền khung card */
+          mix-blend-mode: multiply;
         }
 
         .nk-card:hover .img-hover-scale, 
@@ -178,11 +212,7 @@ export default async function ProductsPage({ searchParams }) {
           background-color: #f8f9fa;
           color: var(--accent, #d87c3c);
           border-color: var(--accent, #d87c3c);
-        }
-        .pagination .page-item.disabled .page-link {
-          background-color: #f1f3f5;
-          border-color: #e9ecef;
-          color: #adb5bd;
+          border-radius: 10px;
         }
       `}</style>
 
@@ -207,7 +237,7 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       </div>
 
-      {/* BANNER THÔNG BÁO KHI DÙNG BỘ LỌC TỪ AI CHATBOX */}
+      {/* BANNER THÔNG BÁO AI CHATBOX */}
       {filterIdsParam && (
         <div
           className="alert d-flex justify-content-between align-items-center mb-5 p-3 rounded-4 border-0 shadow-sm"
@@ -225,26 +255,21 @@ export default async function ProductsPage({ searchParams }) {
             </div>
           </div>
           <Link
-            href={
-              categoryID
-                ? `/products?categoryID=${categoryID}`
-                : "/products"
-            }
+            href={categoryID ? `/products?categoryID=${categoryID}` : "/products"}
             className="btn btn-sm btn-dark px-3 rounded-pill fw-semibold shadow-sm"
-            style={{ backgroundColor: "#212529" }}
           >
             Xóa bộ lọc AI <i className="fas fa-times ms-1"></i>
           </Link>
         </div>
       )}
 
-      {/* BỘ LỌC VÀ LƯỚI HIỂN THỊ SẢN PHẨM */}
+      {/* LƯỚI HIỂN THỊ SẢN PHẨM (Truyền danh sách đã gán thông tin Flash Sale vào ProductFilter) */}
       <ProductFilter
         key={`${categoryID || "all"}-${filterIdsParam || "none"}-page-${validPage}`}
         products={displayedProducts}
       />
 
-      {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM NÀO */}
+      {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM */}
       {displayedProducts.length === 0 && (
         <div className="text-center py-5 my-5 bg-light rounded-4 border border-dashed">
           <div className="mb-3 text-muted opacity-50" style={{ fontSize: "3rem" }}>
@@ -258,40 +283,26 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* THANH PHÂN TRANG (PAGINATION) */}
+      {/* PHÂN TRANG */}
       {totalPages > 1 && (
         <nav className="d-flex justify-content-center mt-5 pt-3">
           <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
-            {/* Nút Trước */}
             <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
-              <Link
-                className="page-link"
-                href={createPageUrl(validPage - 1)}
-                aria-label="Previous"
-              >
+              <Link className="page-link" href={createPageUrl(validPage - 1)}>
                 <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
               </Link>
             </li>
 
-            {/* Các nút số trang */}
             {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <li
-                key={pageNum}
-                className={`page-item ${pageNum === validPage ? "active" : ""}`}
-              >
+              <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
                 <Link className="page-link" href={createPageUrl(pageNum)}>
                   {pageNum}
                 </Link>
               </li>
             ))}
 
-            {/* Nút Sau */}
             <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
-              <Link
-                className="page-link"
-                href={createPageUrl(validPage + 1)}
-                aria-label="Next"
-              >
+              <Link className="page-link" href={createPageUrl(validPage + 1)}>
                 Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
               </Link>
             </li>
@@ -299,7 +310,6 @@ export default async function ProductsPage({ searchParams }) {
         </nav>
       )}
 
-      {/* CHATBOX AI: Vẫn giữ full danh sách sản phẩm để AI tư vấn toàn kho */}
       <ProductChatbox products={products} />
     </main>
   );

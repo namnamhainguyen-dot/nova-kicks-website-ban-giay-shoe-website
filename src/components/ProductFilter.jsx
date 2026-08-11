@@ -411,7 +411,7 @@ export default function ProductFilter({ products }) {
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
-  // 🛠️ SỬA LẠI: Hàm cập nhật đồng thời cả minPrice và maxPrice trong cùng 1 lần gọi router
+  // 🛠️ Hàm cập nhật đồng thời cả minPrice và maxPrice trong cùng 1 lần gọi router
   const setPriceParam = useCallback((minVal, maxVal) => {
     const params = new URLSearchParams(searchParams.toString());
     
@@ -463,11 +463,10 @@ export default function ProductFilter({ products }) {
 
       const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
       
-      // 🌟 SỬA TẠI ĐÂY: Lọc bỏ các giá trị rỗng/null/undefined trước khi chuyển thành số
       const uniqueSizes = [...new Set(mappedSizes)]
         .filter((size) => size !== null && size !== undefined && size !== "")
         .map(Number)
-        .filter((size) => !isNaN(size)) // Đảm bảo chỉ lấy số hợp lệ
+        .filter((size) => !isNaN(size))
         .sort((a, b) => a - b);
 
       return {
@@ -493,9 +492,10 @@ export default function ProductFilter({ products }) {
         return false;
       }
 
-      const price = Number(p.price) || 0;
-      const minOk = priceRange.min === "" || price >= Number(priceRange.min);
-      const maxOk = priceRange.max === "" || price <= Number(priceRange.max);
+      // Ưu tiên check giá theo Flash Sale nếu có, nếu không thì dùng giá gốc
+      const effectivePrice = p.isFlashSale && p.flashSalePrice ? Number(p.flashSalePrice) : Number(p.price) || 0;
+      const minOk = priceRange.min === "" || effectivePrice >= Number(priceRange.min);
+      const maxOk = priceRange.max === "" || effectivePrice <= Number(priceRange.max);
         
       const sizeOk =
         selectedSizes.length === 0 ||
@@ -685,8 +685,22 @@ export default function ProductFilter({ products }) {
                 </div>
               </div>
 
-              <div className="fw-bold text-danger fs-5 mb-3">
-                {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+              {/* 🌟 HIỂN THỊ GIÁ (ĐÃ FIX HỖ TRỢ FLASH SALE & GẠCH NGANG GIÁ GỐC) */}
+              <div className="fw-bold fs-5 mb-3">
+                {product.isFlashSale ? (
+                  <div className="d-flex align-items-center gap-2">
+                    <span className="text-danger">
+                      {product.flashSalePrice ? Number(product.flashSalePrice).toLocaleString("vi-VN") : 0} VND
+                    </span>
+                    <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
+                      {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-danger">
+                    {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                  </span>
+                )}
               </div>
             </div>
           </Link>

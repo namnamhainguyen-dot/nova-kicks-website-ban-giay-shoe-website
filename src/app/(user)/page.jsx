@@ -20,8 +20,10 @@ export default async function Menu() {
   const baseUrl = `${protocol}://${host}`;
 
   let productList = [];
+  let flashSaleData = [];
   let newsArticles = [];
 
+  // 1. Fetch danh sách sản phẩm tổng quát
   try {
     const res = await fetch(`${baseUrl}/api/products`, { cache: 'no-store' });
     if (res.ok) {
@@ -31,6 +33,23 @@ export default async function Menu() {
     console.error("Lỗi fetch products:", err);
   }
 
+  // 2. Fetch riêng danh sách Flash Sale (hoặc lọc từ productList nếu API chung đã hỗ trợ)
+  try {
+    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale`, { cache: 'no-store' });
+    if (flashRes.ok) {
+      const flashJson = await flashRes.json();
+      flashSaleData = Array.isArray(flashJson) ? flashJson.slice(0, 4) : (flashJson.products?.slice(0, 4) || []);
+    }
+  } catch (err) {
+    console.error("Lỗi fetch flash sale:", err);
+  }
+
+  // Fallback nếu API flash-sale chưa có riêng, lọc từ productList cũ nhưng chuẩn hóa điều kiện
+  if (flashSaleData.length === 0 && Array.isArray(productList)) {
+    flashSaleData = productList.filter(p => p.isFlashSale === true).slice(0, 4);
+  }
+
+  // 3. Fetch tin tức
   try {
     const newsRes = await fetch(`${baseUrl}/api/news`, { cache: 'no-store' });
     if (newsRes.ok) {
@@ -47,7 +66,6 @@ export default async function Menu() {
   const firstNewProductImage = displayProducts[0]?.image;
   const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
 
-  const flashSaleData = displayProducts.filter(p => p.isFlashSale === true).slice(0, 4);
   const regularProducts = displayProducts.filter(p => !p.isFlashSale);
   const newArrivalsData = regularProducts.slice(0, 4); 
   const hotProductsData = regularProducts.slice(4, 12); 
@@ -172,7 +190,10 @@ export default async function Menu() {
           <div className="row g-4">
             {flashSaleData.length > 0 ? (
               flashSaleData.map((p) => {
-                const oldPrice = p.originalPrice ? Number(p.originalPrice) : Number(p.price) * 1.35; 
+                // Ưu tiên lấy giá flashSalePrice và originalPrice chuẩn từ DB
+                const salePrice = p.flashSalePrice ? Number(p.flashSalePrice) : Number(p.price);
+                const oldPrice = p.originalPrice ? Number(p.originalPrice) : salePrice * 1.35; 
+                
                 return (
                   <div key={p._id} className="col-sm-6 col-md-3">
                     <div className="card h-100 border-0 rounded-4 text-center d-flex flex-column bg-white overflow-hidden shadow-sm">
@@ -183,7 +204,7 @@ export default async function Menu() {
                         <div className="card-body p-3 text-start">
                           <h6 className="fw-bold text-uppercase text-truncate mb-2 text-dark" style={{ fontSize: "0.85rem" }}>{p.name}</h6>
                           <div className="d-flex align-items-center gap-2">
-                            <span className="text-danger fw-black fs-6">{Number(p.price)?.toLocaleString('vi-VN')} đ</span>
+                            <span className="text-danger fw-black fs-6">{salePrice.toLocaleString('vi-VN')} đ</span>
                             <del className="small text-muted" style={{ fontSize: "0.75rem" }}>{Math.round(oldPrice).toLocaleString('vi-VN')} đ</del>
                           </div>
                         </div>
