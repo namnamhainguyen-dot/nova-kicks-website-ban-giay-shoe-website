@@ -462,7 +462,13 @@ export default function ProductFilter({ products }) {
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
       const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
-      const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
+      
+      // 🌟 SỬA TẠI ĐÂY: Lọc bỏ các giá trị rỗng/null/undefined trước khi chuyển thành số
+      const uniqueSizes = [...new Set(mappedSizes)]
+        .filter((size) => size !== null && size !== undefined && size !== "")
+        .map(Number)
+        .filter((size) => !isNaN(size)) // Đảm bảo chỉ lấy số hợp lệ
+        .sort((a, b) => a - b);
 
       return {
         ...p,

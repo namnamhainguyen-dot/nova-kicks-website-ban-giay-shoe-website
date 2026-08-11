@@ -1,4 +1,5 @@
 import clientPromise from "@/libs/mongodb";
+import { ObjectId } from "mongodb";
 import nodemailer from "nodemailer";
 
 // ── CẤU HÌNH GỬI MAIL (NODEMAILER) ──
@@ -94,13 +95,78 @@ export async function POST(request) {
     const result = await db.collection("orders").insertOne(newOrder);
     const orderId = String(result.insertedId);
 
-    // 3. Xử lý thanh toán giả lập
+    // 🌟 3. TỰ ĐỘNG TRỪ SỐ LƯỢNG KHO THEO TỪNG SIZE RIÊNG LẺ
+    if (Array.isArray(order_items)) {
+      for (const item of order_items) {
+        const productId = item.product_id || item.productId || item._id || item.id;
+        const buyQuantity = Number(item.quantity) || 0;
+        
+        const itemColor = item.color ? String(item.color).trim().toLowerCase() : null;
+        const itemSize = item.size ? Number(item.size) : null;
+
+        if (productId && buyQuantity > 0) {
+          const productFilter = ObjectId.isValid(productId) 
+            ? { _id: new ObjectId(productId) } 
+            : { _id: productId };
+
+          const product = await db.collection("products").findOne(productFilter);
+
+          if (product && Array.isArray(product.variants) && product.variants.length > 0 && itemColor && itemSize !== null) {
+            
+            // 1. Tìm vị trí (index) của màu sắc (color)
+            const colorIndex = product.variants.findIndex(v => {
+              const vColor = v.color ? String(v.color).trim().toLowerCase() : "";
+              return vColor === itemColor;
+            });
+
+            if (colorIndex !== -1) {
+              // 2. Tìm vị trí (index) của size trong mảng sizes của màu đó
+              const sizesArray = product.variants[colorIndex].sizes || [];
+              const sizeIndex = sizesArray.findIndex(s => Number(s.size) === itemSize);
+
+              if (sizeIndex !== -1) {
+                // Trừ đúng số lượng của size đó VÀ trừ luôn tổng kho chung của sản phẩm
+                await db.collection("products").updateOne(
+                  productFilter,
+                  { 
+                    $inc: { 
+                      [`variants.${colorIndex}.sizes.${sizeIndex}.quantity`]: -buyQuantity,
+                      quantity: -buyQuantity 
+                    } 
+                  }
+                );
+              } else {
+                // Fallback nếu không tìm thấy size khớp chính xác
+                await db.collection("products").updateOne(
+                  productFilter,
+                  { $inc: { quantity: -buyQuantity } }
+                );
+              }
+            } else {
+              // Fallback nếu không tìm thấy màu khớp
+              await db.collection("products").updateOne(
+                productFilter,
+                { $inc: { quantity: -buyQuantity } }
+              );
+            }
+          } else {
+            // Trường hợp sản phẩm không có biến thể phân loại
+            await db.collection("products").updateOne(
+              productFilter,
+              { $inc: { quantity: -buyQuantity } }
+            );
+          }
+        }
+      }
+    }
+
+    // 4. Xử lý thanh toán giả lập
     let paymentUrl = null;
     if (paymentMethod === "vnpay") {
       paymentUrl = `/checkout/payment-simulation?orderId=${orderId}&total=${final_total || total}`;
     }
 
-    // 4. Tạo giao diện HTML danh sách sản phẩm
+    // 5. Tạo giao diện HTML danh sách sản phẩm
     const itemsHtml = order_items
       .map(
         (item) => `
@@ -133,7 +199,7 @@ export async function POST(request) {
       )
       .join("");
 
-    // 5. Template Email giao diện mới
+    // 6. Template Email giao diện mới
     const emailTemplate = `
       <!DOCTYPE html>
       <html>
@@ -287,13 +353,13 @@ export async function POST(request) {
       </html>
     `;
 
-    // 6. Xác định địa chỉ email nhận thư
+    // 7. Xác định địa chỉ email nhận thư
     const receiverEmail =
       email && email !== "guest" && email.includes("@")
         ? email
         : process.env.EMAIL_USER;
 
-    // 7. Gửi mail bất đồng bộ
+    // 8. Gửi mail bất đồng bộ
     try {
       await transporter.sendMail({
         from: `"Nova Kicks Shop" <${process.env.EMAIL_USER}>`,
@@ -305,7 +371,7 @@ export async function POST(request) {
       console.error("Lỗi gửi email:", mailError);
     }
 
-    // 8. Phản hồi kết quả cho client
+    // 9. Phản hồi kết quả cho client
     return Response.json({
       success: true,
       _id: orderId,

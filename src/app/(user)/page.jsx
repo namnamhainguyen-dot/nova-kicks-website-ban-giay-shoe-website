@@ -1,5 +1,7 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import CountdownTimer from "@/components/CountdownTimer";
+import HeroBannerSlider from "@/components/HeroBannerSlider";
 import { headers } from "next/headers";
 
 const formatDate = (value) => {
@@ -53,35 +55,8 @@ export default async function Menu() {
   return (
     <main className="min-vh-100" style={{ backgroundColor: "var(--background)" }}>
       
-      {/* ================= HERO BANNER SECTION ================= */}
-      <section 
-        className="position-relative text-white d-flex align-items-center justify-content-center text-center" 
-        style={{ 
-          height: "85vh", 
-          backgroundImage: "linear-gradient(to bottom, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url('/img/Gemini_Generated_Image_jqml2cjqml2cjqml.png')", 
-          backgroundSize: "cover", 
-          backgroundPosition: "center",
-          marginTop: "-70px",
-          paddingTop: "70px"
-        }}
-      >
-        <div className="container px-3 z-1">
-          <span className="badge px-3 py-2 mb-3 text-uppercase tracking-widest fw-semibold" style={{ backgroundColor: "#ea580c", color: "#fff", fontSize: "0.75rem" }}>
-            Bộ Sưu Tập Mới 2026
-          </span>
-          <h1 className="display-4 fw-black text-uppercase tracking-wider mb-3 text-white" style={{ letterSpacing: "-1px" }}>
-            Bước Đệm Cho Tương Lai
-          </h1>
-          <p className="lead mx-auto mb-4 text-light opacity-85" style={{ maxWidth: "600px", fontSize: "1rem" }}>
-            Khám phá những thiết kế giày thể thao độc quyền, kết hợp hoàn hảo giữa phong cách đường phố và hiệu năng đỉnh cao.
-          </p>
-          <div className="d-flex justify-content-center gap-3">
-            <Link href="/products" className="btn btn-light rounded-pill px-4 py-3 fw-bold text-uppercase text-dark shadow-sm" style={{ fontSize: "0.85rem" }}>
-              Khám Phá Ngay
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* ================= HERO BANNER SLIDER SECTION ================= */}
+      <HeroBannerSlider />
 
       {/* ================= CATEGORIES MINI BANNERS ================= */}
       <section className="container my-5 py-2">
@@ -331,7 +306,7 @@ export default async function Menu() {
                 style={{ height: "300px" }}
               >
                 <iframe
-                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.4436614833214!2d106.62524727573752!3d10.854920057758362!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752bee0b0cd9e5%3A0xa1dcd919199401f4!2zQ8O0bmcgdmnDqm4gcGjhuqduIG3hu4FtIFF1YW5nIFRydW5n!5e0!3m2!1svi!2s!4v1715000000000!5m2!1svi!2s"
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.4436614833214!2d106.62524727573752!3d10.854920057758362!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x31752bee0b0cd9e5%3A0xa1dcd919199401f4!2zQ8O0bmcgdmnDqm4gcGjhuqduIG3hu4FtIFF1YW5nIFRydW5n!5e0!3m2!1svi!2!4v1715000000000!5m2!1svi!2s"
                   width="100%"
                   height="100%"
                   style={{ border: 0 }}
@@ -347,12 +322,33 @@ export default async function Menu() {
 
       {/* ================= BRAND LOGOS ================= */}
       <section className="container my-5 py-4 text-center">
-        <div className="row align-items-center justify-content-center g-5 opacity-50">
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">NIKE</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">ADIDAS</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">PUMA</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">NEW BALANCE</div>
-          <div className="col-4 col-md-2 fw-black tracking-widest fs-5 text-dark">REEBOK</div>
+        <div className="row align-items-center justify-content-center g-4 g-lg-5">
+          {[
+            { name: "Nike", logo: "https://upload.wikimedia.org/wikipedia/commons/a/a6/Logo_NIKE.svg", href: "/products?brand=nike" },
+            { name: "Adidas", logo: "https://upload.wikimedia.org/wikipedia/commons/2/20/Adidas_Logo.svg", href: "/products?brand=adidas" },
+            { name: "Puma", logo: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/puma.svg", href: "/products?brand=puma" },
+            { name: "New Balance", logo: "https://cdn.jsdelivr.net/gh/simple-icons/simple-icons/icons/newbalance.svg", href: "/products?brand=newbalance" },
+            { name: "Reebok", logo: "https://upload.wikimedia.org/wikipedia/commons/5/53/Reebok_2019_logo.svg", href: "/products?brand=reebok" },
+          ].map((brand, index) => (
+            <div className="col-4 col-md-2" key={index}>
+              <Link href={brand.href} className="d-block text-decoration-none">
+                <Image
+                  src={brand.logo}
+                  alt={brand.name}
+                  width={140}
+                  height={55}
+                  style={{
+                    objectFit: "contain",
+                    maxHeight: "48px",
+                    width: "100%",
+                    filter: "grayscale(100%) opacity(0.6)",
+                    transition: "all 0.3s ease",
+                  }}
+                  className="brand-logo-img"
+                />
+              </Link>
+            </div>
+          ))}
         </div>
       </section>
 

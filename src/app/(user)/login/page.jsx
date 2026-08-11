@@ -13,11 +13,25 @@ export default function Login() {
     password: "",
   });
 
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // 1. TỰ ĐỘNG TẢI THƯ VIỆN & RENDER NÚT BẤM CHUẨN GOOGLE FULL WIDTH
+  // 1. Tự động nạp lại thông tin (Email/Phone và Mật khẩu) nếu đã lưu trước đó
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem("rememberedIdentifier");
+    const rememberedPass = localStorage.getItem("rememberedPassword");
+    if (rememberedEmail) {
+      setFormData({
+        identifier: rememberedEmail,
+        password: rememberedPass || "",
+      });
+      setRememberMe(true);
+    }
+  }, []);
+
+  // 2. Tự động tải thư viện Google Sign-In
   useEffect(() => {
     const script = document.createElement("script");
     script.src = "https://accounts.google.com/gsi/client";
@@ -67,7 +81,15 @@ export default function Login() {
       document.cookie = `token=${encodeURIComponent(data.token)}; path=/; max-age=${60 * 60 * 24 * 7}`;
     }
 
-    // Kiểm tra chuẩn role (chuyển về chữ thường để tránh lỗi lệch ký tự hoa/thường)
+    // Xử lý Ghi nhớ tài khoản và mật khẩu
+    if (rememberMe) {
+      localStorage.setItem("rememberedIdentifier", formData.identifier.trim());
+      localStorage.setItem("rememberedPassword", formData.password);
+    } else {
+      localStorage.removeItem("rememberedIdentifier");
+      localStorage.removeItem("rememberedPassword");
+    }
+
     const userRole = data.user?.role?.toLowerCase();
 
     setTimeout(() => {
@@ -81,7 +103,7 @@ export default function Login() {
     }, 1000);
   };
 
-  // 2. XỬ LÝ DỮ LIỆU GOOGLE TRẢ VỀ
+  // Xử lý Google Response
   const handleGoogleResponse = async (response) => {
     setError("");
     setSuccess("");
@@ -116,7 +138,7 @@ export default function Login() {
     setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  // 3. XỬ LÝ ĐĂNG NHẬP THƯỜNG (EMAIL/PHONE & PASSWORD)
+  // 3. Xử lý đăng nhập thường (Email/Phone & Password)
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -205,7 +227,7 @@ export default function Login() {
             </label>
             <input 
               type="password" 
-              className="form-key rounded-0 border-secondary bg-white text-dark py-2 form-control" 
+              className="form-control rounded-0 border-secondary bg-white text-dark py-2" 
               id="password" 
               placeholder="••••••••"
               value={formData.password}
@@ -216,8 +238,15 @@ export default function Login() {
 
           <div className="d-flex justify-content-between align-items-center mb-4 small fw-bold text-uppercase tracking-wider">
             <div className="form-check m-0 d-flex align-items-center gap-2">
-              <input type="checkbox" className="form-check-input rounded-0 border-dark" id="remember" />
-              <label className="form-check-label text-secondary fs-7" htmlFor="remember">Ghi nhớ</label>
+              <input 
+                type="checkbox" 
+                className="form-check-input rounded-0 border-dark shadow-none" 
+                id="remember" 
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={{ accentColor: "#012a3a" }}
+              />
+              <label className="form-check-label text-secondary fs-7" htmlFor="remember" style={{ cursor: "pointer" }}>Ghi nhớ</label>
             </div>
             <a href="/forgot-password" className="text-secondary text-decoration-none fs-7">Quên mật khẩu</a>
           </div>

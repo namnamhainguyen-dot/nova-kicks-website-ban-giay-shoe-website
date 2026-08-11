@@ -165,8 +165,9 @@ export default async function Layout({ children }) {
         {/* ── FOOTER CHÂN TRANG ── */}
         <footer className="nk-footer">
           <div className="container">
-            <div className="row g-5">
-              <div className="col-12 col-md-5">
+            <div className="row justify-content-between g-4 g-lg-5">
+              {/* Cột 1: Thông tin & Mạng xã hội */}
+              <div className="col-12 col-md-4 col-lg-5">
                 <div className="mb-3">
                   <Link className="nk-footer-brand" href="/">
                     <Image
@@ -196,32 +197,34 @@ export default async function Layout({ children }) {
                 </div>
               </div>
 
-              <div className="col-6 col-md-4">
+              {/* Cột 2: Liên hệ */}
+              <div className="col-6 col-md-4 col-lg-4">
                 <p className="nk-footer-label">
                   <i className="fas fa-headset" style={{ marginRight: "8px", color: "var(--accent)" }}></i>
                   Liên hệ
                 </p>
                 <ul className="nk-footer-links">
                   <li>
-                    <a href="tel:0931839732">
-                      <i className="fas fa-phone" style={{ marginRight: "8px", color: "var(--accent)", width: "16px" }}></i>
-                      0931 839 732
+                    <a href="tel:0931839732" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+                      <i className="fas fa-phone" style={{ marginRight: "8px", color: "var(--accent)", width: "16px", textAlign: "right" }}></i>
+                      <span>0931 839 732</span>
                     </a>
                   </li>
                   <li>
-                    <a href="mailto:namnamhainguyen@gmail.com">
-                      <i className="fas fa-envelope" style={{ marginRight: "8px", color: "var(--accent)", width: "16px" }}></i>
-                      namnamhainguyen@gmail.com
+                    <a href="mailto:namnamhainguyen@gmail.com" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+                      <i className="fas fa-envelope" style={{ marginRight: "8px", color: "var(--accent)", width: "16px", textAlign: "right" }}></i>
+                      <span>namnamhainguyen@gmail.com</span>
                     </a>
                   </li>
-                  <li style={{ color: "var(--text-secondary)", fontSize: "0.82rem", display: "flex", alignItems: "center", gap: "8px" }}>
-                    <i className="fas fa-location-dot" style={{ color: "var(--accent)", width: "16px" }}></i>
-                    123 CVPM Quang Trung, Quận 12, TP.HCM
+                  <li style={{ display: "flex", alignItems: "flex-start", color: "var(--text-secondary)", fontSize: "0.82rem" }}>
+                    <i className="fas fa-location-dot" style={{ marginRight: "8px", color: "var(--accent)", width: "26px", textAlign: "right", marginTop: "3px" }}></i>
+                    <span>123 CVPM Quang Trung, Quận 12, TP.HCM</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="col-6 col-md-3">
+              {/* Cột 3: Liên kết */}
+              <div className="col-6 col-md-3 col-lg-3">
                 <p className="nk-footer-label">
                   <i className="fas fa-link" style={{ marginRight: "8px", color: "var(--accent)" }}></i>
                   Liên kết
@@ -251,7 +254,7 @@ export default async function Layout({ children }) {
             </div>
           </div>
         </footer>
-
+        
         {/* Load Bootstrap JS */}
         <Script 
           src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 

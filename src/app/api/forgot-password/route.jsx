@@ -21,6 +21,13 @@ export async function POST(request) {
     // 1. Kết nối DB bằng clientPromise của bạn và trỏ vào database "Nova-kicks"
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
+    const existingUser = await db.collection("users").findOne({ email: email.trim() });
+    if (!existingUser) {
+      return NextResponse.json(
+        { message: "Email này chưa được đăng ký trong hệ thống!" }, 
+        { status: 404 } // Trả về lỗi 404 để client bắt được và hiển thị thông báo đỏ
+      );
+    }
     const otpCollection = db.collection("otps"); // Sử dụng bảng viết thường 'otps' theo chuẩn Mongo
 
     // 2. Sinh mã OTP ngẫu nhiên

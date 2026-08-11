@@ -13,7 +13,7 @@ function buildIdFilter(id) {
 
 export async function GET(request, { params }) {
   try {
-    const { id } = await params; // ✅ await params
+    const { id } = await params;
     const client = await clientPromise;
     const db = client.db(DB_NAME);
     const product = await db.collection(COLLECTION_NAME).findOne(buildIdFilter(id));
@@ -31,10 +31,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
-    const { id } = await params; // ✅ await params
+    const { id } = await params;
     const body = await request.json();
     
-    // 🌟 BỔ SUNG: Nhận thêm `isFlashSale` và `originalPrice` từ Client gửi lên
     const { name, price, description, image, quantity, status, categoryID, variants, isFlashSale, originalPrice } = body;
 
     const updateData = {};
@@ -46,21 +45,24 @@ export async function PUT(request, { params }) {
     if (status !== undefined) updateData.status = status;
     if (categoryID !== undefined) updateData.categoryID = categoryID;
 
-    // 🌟 BỔ SUNG: Xử lý cập nhật trạng thái Flash Sale xuống Database
     if (isFlashSale !== undefined) {
       updateData.isFlashSale = Boolean(isFlashSale);
-      // Nếu tắt Flash Sale, ép giá gốc về 0 luôn cho sạch dữ liệu
       updateData.originalPrice = isFlashSale ? Number(originalPrice || 0) : 0;
     }
 
-    // 🌟 XỬ LÝ LƯU MẢNG VARIANTS CHI TIẾT SỐ LƯỢNG THEO MÀU
     if (variants !== undefined) {
       updateData.variants = Array.isArray(variants) 
         ? variants.map((v) => ({
             color: v.color ? String(v.color).trim() : "",
             image: v.image ? String(v.image).trim() : "",
-            quantity: Math.max(0, parseInt(v.quantity) || 0), // Đảm bảo số lượng >= 0
-            sizes: Array.isArray(v.sizes) ? v.sizes.map(Number) : [] // Đồng bộ mảng kích cỡ dạng số
+            quantity: Math.max(0, parseInt(v.quantity) || 0),
+            // Sửa lại đoạn map này để lưu giữ nguyên cấu trúc object gồm size và quantity
+            sizes: Array.isArray(v.sizes) 
+              ? v.sizes.map((s) => ({
+                  size: Number(s.size) || 0,
+                  quantity: Math.max(0, parseInt(s.quantity) || 0)
+                }))
+              : []
           }))
         : [];
     }
@@ -83,6 +85,38 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error(error);
     return Response.json({ error: "Failed to update product" }, { status: 500 });
+  }
+}
+
+// 🌟 BỔ SUNG PHƯƠNG THỨC PATCH ĐỂ TRỪ SỐ LƯỢNG KHI MUA HÀNG
+export async function PATCH(request, { params }) {
+  try {
+    const { id } = await params;
+    const body = await request.json();
+    const { buyQuantity } = body; // Số lượng khách mua (ví dụ: 5)
+
+    const deductQty = Number(buyQuantity) || 0;
+    if (deductQty <= 0) {
+      return Response.json({ error: "Số lượng trừ không hợp lệ." }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db(DB_NAME);
+
+    // Dùng toán tử $inc để trừ trực tiếp số lượng tổng đi một lượng `deductQty`
+    const result = await db.collection(COLLECTION_NAME).updateOne(
+      buildIdFilter(id),
+      { $inc: { quantity: -deductQty } }
+    );
+
+    if (result.matchedCount === 0) {
+      return Response.json({ error: "Không tìm thấy sản phẩm để trừ kho." }, { status: 404 });
+    }
+
+    return Response.json({ success: true, message: "Đã trừ số lượng kho thành công!" });
+  } catch (error) {
+    console.error(error);
+    return Response.json({ error: "Failed to deduct product quantity" }, { status: 500 });
   }
 }
 

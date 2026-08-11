@@ -24,12 +24,10 @@ export default function UpdateProductClient({ id }) {
   const [categoryID, setCategoryID] = useState(""); 
   const [categories, setCategories] = useState([]); 
 
-  // Biến thể
-  const [sizes, setSizes] = useState([]); 
-  const [colors, setColors] = useState([]); 
+  // Biến thể màu và size chi tiết
+  const [colors, setColors] = useState([]);
   const [colorInput, setColorInput] = useState("");
-  const [imagesByColor, setImagesByColor] = useState({});
-  const [quantitiesByColor, setQuantitiesByColor] = useState({});
+  const [variantDetails, setVariantDetails] = useState({});
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,7 +35,6 @@ export default function UpdateProductClient({ id }) {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
 
-  // Refs cho input file
   const mainImageInputRef = useRef(null);
   const colorImageInputRefs = useRef({});
 
@@ -74,37 +71,41 @@ export default function UpdateProductClient({ id }) {
         setOriginalPrice(product.originalPrice || 0);
 
         if (Array.isArray(product.variants) && product.variants.length > 0) {
-          const uniqueColors = new Set();
-          const loadedImagesMap = {};
-          const loadedQuantitiesMap = {}; 
-          let unionSizes = new Set();
+          const loadedColors = [];
+          const loadedDetails = {};
 
           product.variants.forEach((v) => {
             if (v.color) {
-              uniqueColors.add(v.color);
-              if (v.image) loadedImagesMap[v.color] = v.image;
-              loadedQuantitiesMap[v.color] = v.quantity !== undefined ? v.quantity : 0;
-
+              loadedColors.push(v.color);
+              
+              const sizeMap = {};
               if (Array.isArray(v.sizes)) {
-                v.sizes.forEach(s => unionSizes.add(Number(s)));
+                v.sizes.forEach((s) => {
+                  if (s && typeof s === "object") {
+                    const sizeVal = s.size !== undefined && s.size !== null ? String(s.size) : null;
+                    const qtyVal = Number(s.quantity ?? s.qty ?? s.stock ?? s.amount ?? 0);
+                    
+                    if (sizeVal !== null) {
+                      sizeMap[sizeVal] = qtyVal;
+                    }
+                  }
+                });
               }
+
+              const calculatedColorQty = Object.values(sizeMap).reduce((a, b) => a + b, 0);
+              const finalColorQty = calculatedColorQty > 0 ? calculatedColorQty : Number(v.quantity || 0);
+
+              loadedDetails[v.color] = {
+                image: v.image || "",
+                quantity: finalColorQty,
+                sizes: sizeMap,
+              };
             }
           });
 
-          setColors(Array.from(uniqueColors));
-          setImagesByColor(loadedImagesMap);
-          setQuantitiesByColor(loadedQuantitiesMap); 
-          setSizes(Array.from(unionSizes).sort((a, b) => a - b));
-        } else {
-          setSizes(Array.isArray(product.sizes) ? product.sizes.map(Number) : []);
-          setColors(Array.isArray(product.colors) ? product.colors : []);
-          setImagesByColor(product.imagesByColor && typeof product.imagesByColor === "object" ? product.imagesByColor : {});
-          
-          const initialQuantities = {};
-          (product.colors || []).forEach(c => { initialQuantities[c] = 0; });
-          setQuantitiesByColor(initialQuantities);
+          setColors(loadedColors);
+          setVariantDetails(loadedDetails);
         }
-
       } catch (err) {
         setError(err?.message || "Lỗi khi tải dữ liệu sản phẩm.");
       } finally {
@@ -115,7 +116,6 @@ export default function UpdateProductClient({ id }) {
     loadData();
   }, [id]);
 
-  // Hàm upload ảnh lên server
   const uploadImage = async (file) => {
     try {
       setUploading(true);
@@ -142,38 +142,28 @@ export default function UpdateProductClient({ id }) {
     }
   };
 
-  // Xử lý upload ảnh chính
   const handleMainImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const url = await uploadImage(file);
-    if (url) {
-      setImage(url);
-    }
+    if (url) setImage(url);
   };
 
-  // Xử lý upload ảnh theo màu
   const handleColorImageUpload = async (color, e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const url = await uploadImage(file);
     if (url) {
-      setImagesByColor(prev => ({ ...prev, [color]: url }));
+      setVariantDetails((prev) => ({
+        ...prev,
+        [color]: {
+          ...prev[color],
+          image: url,
+        },
+      }));
     }
   };
 
-  // Bật/tắt 1 size
-  const toggleSize = (size) => {
-    setSizes((prev) =>
-      prev.includes(size)
-        ? prev.filter((s) => s !== size)
-        : [...prev, size].sort((a, b) => a - b)
-    );
-  };
-
-  // Thêm 1 màu mới
   const addColor = () => {
     const value = colorInput.trim();
     if (!value) return;
@@ -182,7 +172,14 @@ export default function UpdateProductClient({ id }) {
       return;
     }
     setColors((prev) => [...prev, value]);
-    setQuantitiesByColor((prev) => ({ ...prev, [value]: 0 }));
+    setVariantDetails((prev) => ({
+      ...prev,
+      [value]: {
+        image: "",
+        quantity: 0,
+        sizes: {},
+      },
+    }));
     setColorInput("");
   };
 
@@ -195,12 +192,7 @@ export default function UpdateProductClient({ id }) {
 
   const removeColor = (color) => {
     setColors((prev) => prev.filter((c) => c !== color));
-    setImagesByColor((prev) => {
-      const updated = { ...prev };
-      delete updated[color];
-      return updated;
-    });
-    setQuantitiesByColor((prev) => {
+    setVariantDetails((prev) => {
       const updated = { ...prev };
       delete updated[color];
       return updated;
@@ -208,18 +200,40 @@ export default function UpdateProductClient({ id }) {
   };
 
   const handleColorImageUrlChange = (color, url) => {
-    setImagesByColor((prev) => ({ ...prev, [color]: url }));
-  };
-
-  const handleColorQuantityChange = (color, val) => {
-    const numValue = Math.max(0, parseInt(val) || 0);
-    setQuantitiesByColor((prev) => ({
+    setVariantDetails((prev) => ({
       ...prev,
-      [color]: numValue
+      [color]: {
+        ...prev[color],
+        image: url,
+      },
     }));
   };
 
-  const totalVariantsQuantity = colors.reduce((sum, color) => sum + (quantitiesByColor[color] || 0), 0);
+  const handleSizeQuantityChange = (color, size, val) => {
+    const numValue = Math.max(0, parseInt(val) || 0);
+    const sizeKey = String(size);
+    
+    setVariantDetails((prev) => {
+      const colorData = prev[color] || { image: "", quantity: 0, sizes: {} };
+      const updatedSizes = { ...colorData.sizes, [sizeKey]: numValue };
+      
+      const totalColorQty = Object.values(updatedSizes).reduce((a, b) => a + b, 0);
+
+      return {
+        ...prev,
+        [color]: {
+          ...colorData,
+          quantity: totalColorQty,
+          sizes: updatedSizes,
+        },
+      };
+    });
+  };
+
+  const totalVariantsQuantity = colors.reduce((sum, color) => {
+    return sum + (variantDetails[color]?.quantity || 0);
+  }, 0);
+
   const remainingQuantity = Number(quantity) - totalVariantsQuantity;
 
   const handleSubmit = async (event) => {
@@ -229,10 +243,6 @@ export default function UpdateProductClient({ id }) {
       setError("Vui lòng chọn một danh mục sản phẩm.");
       return;
     }
-    if (sizes.length === 0) {
-      setError("Vui lòng chọn ít nhất 1 size.");
-      return;
-    }
     if (colors.length === 0) {
       setError("Vui lòng thêm ít nhất 1 màu.");
       return;
@@ -240,9 +250,9 @@ export default function UpdateProductClient({ id }) {
 
     if (totalVariantsQuantity !== Number(quantity)) {
       if (totalVariantsQuantity > Number(quantity)) {
-        setError(`Không thể lưu! Tổng số lượng các màu (${totalVariantsQuantity}) đang vượt quá số lượng tổng của sản phẩm (${quantity}) là ${Math.abs(remainingQuantity)} sản phẩm.`);
+        setError(`Không thể lưu! Tổng số lượng các biến thể màu (${totalVariantsQuantity}) đang vượt quá số lượng tổng sản phẩm (${quantity}).`);
       } else {
-        setError(`Không thể lưu! Bạn chưa phân bổ hết số lượng. Vui lòng cấu hình thêm ${remainingQuantity} sản phẩm cho các màu để khớp với số lượng tổng (${quantity}).`);
+        setError(`Không thể lưu! Tổng số lượng phân bổ (${totalVariantsQuantity}) chưa khớp với số lượng tổng (${quantity}).`);
       }
       return;
     }
@@ -250,12 +260,22 @@ export default function UpdateProductClient({ id }) {
     setSaving(true);
     setError("");
 
-    const finalVariants = colors.map((color) => ({
-      color: color,
-      image: imagesByColor[color] || "",
-      quantity: quantitiesByColor[color] || 0,
-      sizes: sizes.map(Number) 
-    }));
+    const finalVariants = colors.map((color) => {
+      const colorData = variantDetails[color] || {};
+      const sizesArray = Object.entries(colorData.sizes || {})
+        .filter(([_, qty]) => Number(qty) > 0)
+        .map(([size, qty]) => ({
+          size: Number(size),
+          quantity: Number(qty),
+        }));
+
+      return {
+        color: color,
+        image: colorData.image || "",
+        quantity: Number(colorData.quantity || 0),
+        sizes: sizesArray,
+      };
+    });
 
     try {
       const response = await fetch(`/api/products/${id}`, {
@@ -306,6 +326,7 @@ export default function UpdateProductClient({ id }) {
       }
 
       router.push("/admin/product");
+      router.refresh();
     } catch (err) {
       setError(err?.message || "Đã có lỗi xảy ra.");
     } finally {
@@ -355,7 +376,11 @@ export default function UpdateProductClient({ id }) {
                   id="price"
                   placeholder="Nhập giá sản phẩm"
                   value={price}
-                  onChange={(e) => setPrice(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setPrice(val === "" ? "" : Math.max(0, Number(val)));
+                  }}
+                  min="0"
                   required
                 />
               </div>
@@ -448,13 +473,13 @@ export default function UpdateProductClient({ id }) {
                       id="originalPrice"
                       placeholder="Ví dụ: 3500000"
                       value={originalPrice}
-                      onChange={(e) => setOriginalPrice(e.target.value)}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setOriginalPrice(val === "" ? "" : Math.max(0, Number(val)));
+                      }}
                       required={isFlashSale}
                       min="0"
                     />
-                    <small className="form-text text-muted">
-                      Giá gốc cũ dùng để gạch ngang trên trang chủ (Ô <span className="font-weight-bold">Giá bán hiện tại</span> ở trên sẽ là giá khuyến mãi chạy Flash sale).
-                    </small>
                   </div>
                 </div>
               )}
@@ -518,39 +543,15 @@ export default function UpdateProductClient({ id }) {
               />
             </div>
 
-            {/* Chọn Size */}
-            <div className="mb-3">
-              <label className="form-label font-weight-bold">Size kích cỡ</label>
-              <div className="d-flex flex-wrap gap-2">
-                {SIZE_OPTIONS.map((size) => {
-                  const active = sizes.includes(size);
-                  return (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => toggleSize(size)}
-                      className={`btn btn-sm ${active ? "btn-dark" : "btn-outline-secondary"}`}
-                      style={{ minWidth: 44 }}
-                    >
-                      {size}
-                    </button>
-                  );
-                })}
-              </div>
-              {sizes.length === 0 && (
-                <div className="form-text text-danger">Chưa chọn size nào.</div>
-              )}
-            </div>
-
             {/* Chọn Màu */}
             <div className="mb-3">
-              <label htmlFor="colorInput" className="form-label font-weight-bold">Màu sắc</label>
+              <label htmlFor="colorInput" className="form-label font-weight-bold">Màu sắc biến thể</label>
               <div className="d-flex gap-2">
                 <input
                   type="text"
                   className="form-control"
                   id="colorInput"
-                  placeholder="Nhập tên màu rồi nhấn Enter (vd: Đen)"
+                  placeholder="Nhập tên màu rồi nhấn Enter (vd: Xanh)"
                   value={colorInput}
                   onChange={(e) => setColorInput(e.target.value)}
                   onKeyDown={handleColorKeyDown}
@@ -559,122 +560,106 @@ export default function UpdateProductClient({ id }) {
                   Thêm màu
                 </button>
               </div>
-
-              {colors.length > 0 && (
-                <div className="d-flex flex-wrap gap-2 mt-2">
-                  {colors.map((color) => (
-                    <span
-                      key={color}
-                      className="badge bg-secondary d-flex align-items-center gap-2"
-                      style={{ fontSize: 14, padding: "8px 10px" }}
-                    >
-                      {color}
-                    </span>
-                  ))}
-                </div>
-              )}
-              {colors.length === 0 && (
-                <div className="form-text text-danger">Chưa thêm màu nào.</div>
-              )}
             </div>
 
-            {/* Cấu hình ảnh và số lượng theo màu */}
+            {/* Cấu hình Ảnh, Tổng lượng và Size chi tiết theo từng Màu */}
             {colors.length > 0 && (
               <div className="mb-4 p-3 border rounded bg-light">
                 <h6 className="form-label font-weight-bold border-bottom pb-2 mb-3 text-dark">
-                  📷 Cấu hình đường dẫn ảnh & số lượng chi tiết theo màu sắc
+                  🎨 Cấu hình Ảnh & Số lượng chi tiết theo Size cho từng Màu
                 </h6>
                 <div className="d-flex flex-column gap-3">
-                  {colors.map((color) => (
-                    <div className="row g-2 align-items-center p-2 bg-white rounded border" key={color}>
-                      
-                      {/* Badge Màu sắc */}
-                      <div className="col-md-2 col-12 d-flex justify-content-between align-items-center">
-                        <span className="badge bg-dark px-3 py-2 text-wrap w-100 text-center">
-                          {color}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeColor(color)}
-                          className="btn btn-sm btn-outline-danger ms-2 d-md-none"
-                        >
-                          Xóa
-                        </button>
-                      </div>
+                  {colors.map((color) => {
+                    const colorData = variantDetails[color] || { image: "", quantity: 0, sizes: {} };
 
-                      {/* Ô nhập ảnh */}
-                      <div className="col-md-6 col-12">
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">Link Ảnh</span>
-                          <input
-                            type="text"
-                            className="form-control"
-                            placeholder="URL hình ảnh"
-                            value={imagesByColor[color] || ""}
-                            onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            className="btn btn-outline-primary"
-                            onClick={() => colorImageInputRefs.current[color]?.click()}
-                            disabled={uploading}
-                          >
-                            <i className="bi bi-upload"></i>
-                          </button>
-                          <input
-                            type="file"
-                            ref={(el) => {
-                              if (el) colorImageInputRefs.current[color] = el;
-                            }}
-                            className="d-none"
-                            accept="image/*"
-                            onChange={(e) => handleColorImageUpload(color, e)}
-                          />
-                          {imagesByColor[color] && (
-                            <span className="input-group-text p-1 bg-white">
-                              <img 
-                                src={imagesByColor[color]} 
-                                alt="Preview" 
-                                style={{ width: "24px", height: "24px", objectFit: "cover" }}
-                                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                              />
+                    return (
+                      <div className="p-3 bg-white rounded border" key={color}>
+                        <div className="row g-2 align-items-center mb-2">
+                          <div className="col-md-2 col-12">
+                            <span className="badge bg-dark px-3 py-2 text-wrap w-100 text-center fs-6">
+                              {color}
                             </span>
-                          )}
+                          </div>
+
+                          <div className="col-md-7 col-10">
+                            <div className="input-group input-group-sm">
+                              <span className="input-group-text">Ảnh Màu</span>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="URL hình ảnh của màu này"
+                                value={colorData.image}
+                                onChange={(e) => handleColorImageUrlChange(color, e.target.value)}
+                              />
+                              <button
+                                type="button"
+                                className="btn btn-outline-primary"
+                                onClick={() => colorImageInputRefs.current[color]?.click()}
+                                disabled={uploading}
+                              >
+                                <i className="bi bi-upload"></i>
+                              </button>
+                              <input
+                                type="file"
+                                ref={(el) => {
+                                  if (el) colorImageInputRefs.current[color] = el;
+                                }}
+                                className="d-none"
+                                accept="image/*"
+                                onChange={(e) => handleColorImageUpload(color, e)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="col-md-2 col-2 text-end">
+                            <span className="badge bg-info text-dark p-2 w-100">
+                              Tổng: {colorData.quantity}
+                            </span>
+                          </div>
+
+                          <div className="col-md-1 text-end">
+                            <button
+                              type="button"
+                              onClick={() => removeColor(color)}
+                              className="btn btn-sm btn-outline-danger w-100"
+                            >
+                              Xóa
+                            </button>
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Ô nhập số lượng */}
-                      <div className="col-md-3 col-9">
-                        <div className="input-group input-group-sm">
-                          <span className="input-group-text">Số lượng</span>
-                          <input
-                            type="number"
-                            className="form-control"
-                            min="0"
-                            placeholder="0"
-                            value={quantitiesByColor[color] || 0}
-                            onChange={(e) => handleColorQuantityChange(color, e.target.value)}
-                          />
+                        {/* Phân bổ số lượng theo từng Size cho màu này */}
+                        <div className="mt-2 pt-2 border-top">
+                          <label className="small text-muted font-weight-bold mb-2 d-block">
+                            Nhập số lượng tồn kho cho từng Size của màu <span className="text-dark font-weight-bold">{color}</span>:
+                          </label>
+                          <div className="d-flex flex-wrap gap-2">
+                            {SIZE_OPTIONS.map((size) => {
+                              const sizeKey = String(size);
+                              const sizeQty = colorData.sizes[sizeKey] || 0;
+                              return (
+                                <div key={size} className="input-group input-group-sm" style={{ width: "110px" }}>
+                                  <span className="input-group-text bg-secondary text-white">Size {size}</span>
+                                  <input
+                                    type="number"
+                                    className="form-control text-center"
+                                    min="0"
+                                    value={sizeQty}
+                                    onChange={(e) => handleSizeQuantityChange(color, size, e.target.value)}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Nút xóa màu desktop */}
-                      <div className="col-md-1 col-3 text-end d-none d-md-block">
-                        <button
-                          type="button"
-                          onClick={() => removeColor(color)}
-                          className="btn btn-sm btn-close"
-                          aria-label="Delete"
-                        />
                       </div>
-
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
 
-            {/* Các nút thao tác */}
             <div className="d-flex gap-2">
               <button type="submit" className="btn btn-dark" disabled={saving || deleting || uploading}>
                 {saving ? "Đang lưu..." : "Lưu sản phẩm"}

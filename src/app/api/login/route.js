@@ -36,6 +36,8 @@ export async function POST(request) {
             email: DEMO_ADMIN.email,
             password: await bcrypt.hash(DEMO_ADMIN.password, 10),
             role: "admin",
+            avatar: "", // Khởi tạo avatar rỗng cho admin
+            addresses: [],
             createdAt: new Date(),
             updatedAt: new Date(),
           });
@@ -53,6 +55,8 @@ export async function POST(request) {
             email: DEMO_ADMIN.email,
             phone: null,
             role: "admin",
+            avatar: "", // 👈 Bổ sung avatar cho admin demo
+            addresses: [],
           },
           token: "demo-admin-token",
         },
@@ -94,8 +98,9 @@ export async function POST(request) {
           email: user.email || null,
           phone: user.phone || null,
           role: user.role || "user",
+          avatar: user.avatar || "", // 👈 ĐÃ BỔ SUNG: Trả về avatar từ Database
+          addresses: user.addresses || [], // 👈 ĐÃ BỔ SUNG: Trả về danh sách địa chỉ luôn nếu cần dùng
         },
-        // 🟢 ĐÃ BỔ SUNG: Trả về token cho người dùng thường (có thể dùng _id hoặc JWT thực tế của bạn)
         token: user._id.toString(), 
       },
       { status: 200 }

@@ -125,6 +125,7 @@ export default function Profile() {
                   parsedUser.phone = freshUserData.phone || parsedUser.phone;
                   parsedUser.fullname = freshUserData.fullname || parsedUser.fullname;
                   parsedUser.avatar = freshUserData.avatar || parsedUser.avatar;
+                  parsedUser.avatar = freshUserData.avatar;
                   localStorage.setItem("user", JSON.stringify(parsedUser));
                 }
               }
@@ -364,11 +365,11 @@ export default function Profile() {
         const updatedUserData = { ...user, ...payload, _id: currentUserId };
         localStorage.setItem("user", JSON.stringify(updatedUserData));
         
-        // 🔔 Phát tín hiệu đồng bộ dữ liệu (avatar, fullname) sang các component khác như Header / Admin
+        // 🔔 Phát tín hiệu đồng bộ dữ liệu sang các component khác như Header / Admin
         window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updatedUserData }));
 
         setIsEditingProfile(false);
-        window.location.reload();
+        // XÓA hoặc BÌNH LUẬN DÒNG NÀY LẠI: window.location.reload();
       } else {
         alert(`Lỗi từ server: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
       }
@@ -655,7 +656,7 @@ export default function Profile() {
   return (
     <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
-      <main className="container mb-5 flex-grow-1">
+      <main className="container mb-5 flex-grow-1" style={{ marginTop: "-110px" }}>
         {/* Tiêu đề được đưa vào chung trong main */}
         <div className="mb-4">
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>

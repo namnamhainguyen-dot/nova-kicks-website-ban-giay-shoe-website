@@ -105,22 +105,38 @@ export default function UserActions() {
             aria-expanded="false"
             style={{ fontSize: "0.75rem", textTransform: "uppercase" }}
           >
-            {/* AVATAR */}
-            <img
-              src={userAvatar || "https://via.placeholder.com/30"}
-              alt="Avatar"
-              className="rounded-circle object-fit-cover shadow-sm"
-              style={{
-                width: "28px",
-                height: "28px",
-                border: "2px solid #fff",
-                boxShadow: "0 0 0 1px #e5e7eb",
-              }}
-            />
+            {/* AVATAR HOẶC FALLBACK CHỮ CÁI ĐẦU */}
+            {userAvatar ? (
+              <img
+                src={userAvatar}
+                alt="Avatar"
+                className="rounded-circle object-fit-cover shadow-sm"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  border: "2px solid #fff",
+                  boxShadow: "0 0 0 1px #e5e7eb",
+                }}
+              />
+            ) : (
+              <div
+                className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold shadow-sm"
+                style={{
+                  width: "28px",
+                  height: "28px",
+                  backgroundColor: "#d97706",
+                  fontSize: "12px",
+                  border: "2px solid #fff",
+                  boxShadow: "0 0 0 1px #e5e7eb",
+                }}
+              >
+                {(user.fullname || user.name || "U").charAt(0).toUpperCase()}
+              </div>
+            )}
             <span>CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
           </Link>
 
-          {/* ✨ DROPDOWN MENU ĐÃ ĐƯỢC THIẾT KẾ LẠI */}
+          {/* ✨ DROPDOWN MENU */}
           <ul
             className="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 mt-2"
             aria-labelledby="userDropdown"
@@ -130,7 +146,6 @@ export default function UserActions() {
               animation: "fadeIn 0.2s ease-in-out",
             }}
           >
-            {/* Header nhỏ hiển thị nhanh thông tin tài khoản */}
             <li className="px-3 py-2 mb-1 border-bottom">
               <span className="d-block text-muted" style={{ fontSize: "0.7rem" }}>Tài khoản đang đăng nhập</span>
               <span className="d-block text-dark fw-bold text-truncate" style={{ fontSize: "0.8rem" }}>
