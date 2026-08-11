@@ -16,12 +16,6 @@ export default function ProductCreate() {
   const [quantity, setQuantity] = useState("");
   const [status, setStatus] = useState("active");
 
-  // Flash Sale
-  const [isFlashSale, setIsFlashSale] = useState(false);
-  const [originalPrice, setOriginalPrice] = useState("");
-  const [flashSalePrice, setFlashSalePrice] = useState("");
-  const [flashSaleBatch, setFlashSaleBatch] = useState("batch-1");
-
   // Quản lý danh mục
   const [categoryID, setCategoryID] = useState(""); 
   const [categories, setCategories] = useState([]); 
@@ -148,7 +142,7 @@ export default function ProductCreate() {
 
   const handleSizeQuantityChange = (color, size, val) => {
     const numValue = Math.max(0, parseInt(val) || 0);
-    const sizeKey = String(size); // Key dạng string (ví dụ: "36", "37")
+    const sizeKey = String(size);
     
     setVariantDetails((prev) => {
       const colorData = prev[color] || { image: "", quantity: 0, sizes: {} };
@@ -197,20 +191,18 @@ export default function ProductCreate() {
     setSaving(true);
     setError("");
 
-    // Sửa lại đoạn map variants để ép kiểu dữ liệu size chuẩn xác tuyệt đối không bị NaN
     const finalVariants = colors.map((color) => {
       const colorData = variantDetails[color] || {};
       
-      // Duyệt qua từng size trong SIZE_OPTIONS để tạo đúng cấu trúc object { size, quantity }
       const sizesArray = SIZE_OPTIONS
         .map((sizeValue) => {
           const qty = colorData.sizes?.[sizeValue] || colorData.sizes?.[String(sizeValue)] || 0;
           return {
-            size: Number(sizeValue),       // Lưu giá trị size thực tế (vd: 36, 37, 40...)
-            quantity: Number(qty) || 0,    // Số lượng của size đó
+            size: Number(sizeValue),
+            quantity: Number(qty) || 0,
           };
         })
-        .filter((item) => item.quantity > 0); // Chỉ giữ lại các size có số lượng lớn hơn 0 (giống sản phẩm mẫu)
+        .filter((item) => item.quantity > 0);
 
       return {
         color,
@@ -233,10 +225,6 @@ export default function ProductCreate() {
           status,
           categoryID,
           variants: finalVariants,
-          isFlashSale: Boolean(isFlashSale),
-          originalPrice: isFlashSale ? Number(originalPrice || 0) : 0,
-          flashSalePrice: isFlashSale ? Number(flashSalePrice || 0) : 0,
-          flashSaleBatch: isFlashSale ? flashSaleBatch : null
         }),
       });
 
@@ -351,84 +339,6 @@ export default function ProductCreate() {
                   <option value="inactive">Ngừng bán</option>
                 </select>
               </div>
-            </div>
-
-            {/* Flash Sale */}
-            <div className="card p-3 mb-4 rounded bg-light border-warning">
-              <h6 className="form-label font-weight-bold text-danger text-uppercase mb-3">
-                Cấu hình Chương trình Flash Sale
-              </h6>
-              
-              <div className="form-check form-switch mb-3">
-                <input 
-                  className="form-check-input" 
-                  type="checkbox" 
-                  id="isFlashSaleToggle"
-                  checked={isFlashSale}
-                  onChange={(e) => setIsFlashSale(e.target.checked)}
-                  style={{ cursor: "pointer" }}
-                />
-                <label className="form-check-label font-weight-bold text-dark" htmlFor="isFlashSaleToggle" style={{ cursor: "pointer" }}>
-                  Kích hoạt trạng thái Flash Sale cho sản phẩm này
-                </label>
-              </div>
-
-              {isFlashSale && (
-                <div className="row g-3">
-                  <div className="col-md-4">
-                    <label htmlFor="originalPrice" className="form-label small text-uppercase font-weight-bold text-muted">
-                      Giá gốc ban đầu trước khi giảm (VNĐ)
-                    </label>
-                    <input 
-                      type="number" 
-                      className="form-control"
-                      id="originalPrice"
-                      placeholder="Ví dụ: 350000"
-                      value={originalPrice}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setOriginalPrice(val === "" ? "" : Math.max(0, Number(val)));
-                      }}
-                      required={isFlashSale}
-                      min="0"
-                    />
-                  </div>
-
-                  <div className="col-md-4">
-                    <label htmlFor="flashSalePrice" className="form-label small text-uppercase font-weight-bold text-danger">
-                      Giá bán Flash Sale (VNĐ)
-                    </label>
-                    <input 
-                      type="number" 
-                      className="form-control border-danger"
-                      id="flashSalePrice"
-                      placeholder="Ví dụ: 200000"
-                      value={flashSalePrice}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFlashSalePrice(val === "" ? "" : Math.max(0, Number(val)));
-                      }}
-                      required={isFlashSale}
-                      min="0"
-                    />
-                  </div>
-
-                  <div className="col-md-4">
-                    <label htmlFor="flashSaleBatch" className="form-label small text-uppercase font-weight-bold text-muted">
-                      Đợt / Tuần Flash Sale áp dụng
-                    </label>
-                    <select
-                      className="form-select"
-                      id="flashSaleBatch"
-                      value={flashSaleBatch}
-                      onChange={(e) => setFlashSaleBatch(e.target.value)}
-                    >
-                      <option value="batch-1">Đợt 1 (Tuần hiện tại)</option>
-                      <option value="batch-2">Đợt 2 (Tuần kế tiếp / Set trước)</option>
-                    </select>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Ảnh chính */}
