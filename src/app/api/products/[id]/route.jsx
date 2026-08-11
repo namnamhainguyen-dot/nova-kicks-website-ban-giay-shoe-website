@@ -34,7 +34,19 @@ export async function PUT(request, { params }) {
     const { id } = await params;
     const body = await request.json();
     
-    const { name, price, description, image, quantity, status, categoryID, variants, isFlashSale, originalPrice } = body;
+    const { 
+      name, 
+      price, 
+      description, 
+      image, 
+      quantity, 
+      status, 
+      categoryID, 
+      variants, 
+      isFlashSale, 
+      originalPrice, 
+      flashSaleBatch // Đã bổ sung nhận dữ liệu đợt Flash Sale từ client
+    } = body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name;
@@ -50,13 +62,17 @@ export async function PUT(request, { params }) {
       updateData.originalPrice = isFlashSale ? Number(originalPrice || 0) : 0;
     }
 
+    // Xử lý cập nhật đợt Flash Sale vào database
+    if (flashSaleBatch !== undefined) {
+      updateData.flashSaleBatch = flashSaleBatch ? String(flashSaleBatch).trim() : null;
+    }
+
     if (variants !== undefined) {
       updateData.variants = Array.isArray(variants) 
         ? variants.map((v) => ({
             color: v.color ? String(v.color).trim() : "",
             image: v.image ? String(v.image).trim() : "",
             quantity: Math.max(0, parseInt(v.quantity) || 0),
-            // Sửa lại đoạn map này để lưu giữ nguyên cấu trúc object gồm size và quantity
             sizes: Array.isArray(v.sizes) 
               ? v.sizes.map((s) => ({
                   size: Number(s.size) || 0,
@@ -88,12 +104,11 @@ export async function PUT(request, { params }) {
   }
 }
 
-// 🌟 BỔ SUNG PHƯƠNG THỨC PATCH ĐỂ TRỪ SỐ LƯỢNG KHI MUA HÀNG
 export async function PATCH(request, { params }) {
   try {
     const { id } = await params;
     const body = await request.json();
-    const { buyQuantity } = body; // Số lượng khách mua (ví dụ: 5)
+    const { buyQuantity } = body;
 
     const deductQty = Number(buyQuantity) || 0;
     if (deductQty <= 0) {
@@ -103,7 +118,6 @@ export async function PATCH(request, { params }) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // Dùng toán tử $inc để trừ trực tiếp số lượng tổng đi một lượng `deductQty`
     const result = await db.collection(COLLECTION_NAME).updateOne(
       buildIdFilter(id),
       { $inc: { quantity: -deductQty } }

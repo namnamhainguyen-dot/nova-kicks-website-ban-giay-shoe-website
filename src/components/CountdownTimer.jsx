@@ -1,43 +1,72 @@
 "use client";
-
 import { useState, useEffect } from "react";
 
-export default function CountdownTimer() {
-  // Đặt thời gian đếm ngược ban đầu (Ví dụ: 4 giờ, 20 phút, 13 giây tính ra giây)
-  const [timeLeft, setTimeLeft] = useState(4 * 3600 + 20 * 60 + 13);
+export default function CountdownTimer({ endTime }) {
+  const [mounted, setMounted] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
-    if (timeLeft <= 0) return;
+    setMounted(true);
+    
+    // Xác định thời gian kết thúc: Lấy từ prop endTime hoặc mặc định là cuối ngày hôm nay
+    const getTargetTime = () => {
+      if (endTime) {
+        return new Date(endTime).getTime();
+      }
+      const target = new Date();
+      target.setHours(23, 59, 59, 999);
+      return target.getTime();
+    };
 
-    // Cứ mỗi 1000ms (1 giây) thì trừ đi 1 giây
+    const targetTime = getTargetTime();
+    setTimeLeft(Math.max(0, targetTime - Date.now()));
+
     const timer = setInterval(() => {
-      setTimeLeft((prev) => prev - 1);
+      const remaining = targetTime - Date.now();
+      if (remaining <= 0) {
+        clearInterval(timer);
+        setTimeLeft(0);
+      } else {
+        setTimeLeft(remaining);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [endTime]);
 
-  // Hàm biến đổi tổng số giây thành định dạng Giờ : Phút : Giây
-  const formatTime = (totalSeconds) => {
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
+  // Tránh lệch SSR/Client trong lần render đầu tiên
+  if (!mounted) {
+    return (
+      <div className="d-flex align-items-center gap-2">
+        <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">00</div>
+        <span className="fw-bold text-white">:</span>
+        <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">00</div>
+        <span className="fw-bold text-white">:</span>
+        <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">00</div>
+      </div>
+    );
+  }
 
-    // Thêm số 0 phía trước nếu số < 10 (ví dụ: 04, 09)
-    return {
-      hours: String(hours).padStart(2, "0"),
-      minutes: String(minutes).padStart(2, "0"),
-      seconds: String(seconds).padStart(2, "0"),
-    };
-  };
+  // Tính tổng số giờ, phút, giây còn lại
+  const totalHours = Math.floor(timeLeft / (1000 * 60 * 60));
+  const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
-  const time = formatTime(timeLeft);
+  const formatNum = (num) => String(Math.max(0, num)).padStart(2, "0");
 
   return (
-    <div className="d-flex gap-2 font-monospace small fw-bold">
-      <span className="bg-dark text-white px-2 py-1">{time.hours}</span>:
-      <span className="bg-dark text-white px-2 py-1">{time.minutes}</span>:
-      <span className="bg-dark text-white px-2 py-1">{time.seconds}</span>
+    <div className="d-flex align-items-center gap-2">
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">
+        {formatNum(totalHours)}
+      </div>
+      <span className="fw-bold text-white">:</span>
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">
+        {formatNum(minutes)}
+      </div>
+      <span className="fw-bold text-white">:</span>
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">
+        {formatNum(seconds)}
+      </div>
     </div>
   );
 }

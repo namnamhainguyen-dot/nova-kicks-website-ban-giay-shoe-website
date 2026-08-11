@@ -47,7 +47,7 @@ export default async function Menu() {
   const firstNewProductImage = displayProducts[0]?.image;
   const firstBestProductImage = displayProducts[1]?.image || displayProducts[0]?.image;
 
-  const flashSaleData = displayProducts.filter(p => p.isFlashSale === true);
+  const flashSaleData = displayProducts.filter(p => p.isFlashSale === true).slice(0, 4);
   const regularProducts = displayProducts.filter(p => !p.isFlashSale);
   const newArrivalsData = regularProducts.slice(0, 4); 
   const hotProductsData = regularProducts.slice(4, 12); 

@@ -8,20 +8,27 @@ export async function GET() {
     const database = client.db(dbName);
     const productsCollection = database.collection("products");
 
-    // Lọc thẳng các Document có trường isFlashSale bằng true
-    // Dùng .limit(4) để lấy đúng 4 sản phẩm hiển thị hàng ngang giống UI của bạn
+    // Lấy 4 sản phẩm Flash Sale
     const flashSaleProducts = await productsCollection
       .find({ isFlashSale: true })
       .limit(4)
       .toArray();
 
-    // Định dạng lại _id từ ObjectId thành chuỗi String để Frontend dễ xử lý map()
     const formattedProducts = flashSaleProducts.map(p => ({
       ...p,
       _id: p._id.toString()
     }));
 
-    return NextResponse.json(formattedProducts, { status: 200 });
+    // Giả lập hoặc lấy thời gian kết thúc đợt sale (Ví dụ: tính thời gian kết thúc sau 7 ngày tính từ hôm nay)
+    // Bạn có thể lưu mốc thời gian này vào một Collection riêng trong DB để quản lý chung.
+    const now = new Date();
+    const endTime = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    return NextResponse.json({
+      batchId: "week-sale-" + Math.floor(now.getTime() / (7 * 24 * 60 * 60 * 1000)),
+      endTime: endTime, // Truyền thời gian kết thúc sang cho CountdownTimer ở Frontend
+      products: formattedProducts
+    }, { status: 200 });
 
   } catch (error) {
     return NextResponse.json(

@@ -19,6 +19,7 @@ export default function UpdateProductClient({ id }) {
   // Flash Sale
   const [isFlashSale, setIsFlashSale] = useState(false);
   const [originalPrice, setOriginalPrice] = useState(0);
+  const [flashSaleBatch, setFlashSaleBatch] = useState("batch-1");
 
   // Quản lý danh mục
   const [categoryID, setCategoryID] = useState(""); 
@@ -69,6 +70,7 @@ export default function UpdateProductClient({ id }) {
         setCategoryID(product.categoryID || product.categoryId || product.category?._id || "");
         setIsFlashSale(product.isFlashSale || false);
         setOriginalPrice(product.originalPrice || 0);
+        setFlashSaleBatch(product.flashSaleBatch || "batch-1");
 
         if (Array.isArray(product.variants) && product.variants.length > 0) {
           const loadedColors = [];
@@ -291,7 +293,8 @@ export default function UpdateProductClient({ id }) {
           categoryID, 
           variants: finalVariants,
           isFlashSale: Boolean(isFlashSale),
-          originalPrice: isFlashSale ? Number(originalPrice) : 0 
+          originalPrice: isFlashSale ? Number(originalPrice) : 0,
+          flashSaleBatch: isFlashSale ? flashSaleBatch : null // Lưu đợt Flash Sale xuống DB
         }),
       });
 
@@ -480,6 +483,22 @@ export default function UpdateProductClient({ id }) {
                       required={isFlashSale}
                       min="0"
                     />
+                  </div>
+
+                  {/* Lựa chọn đợt Flash Sale */}
+                  <div className="col-md-6">
+                    <label htmlFor="flashSaleBatch" className="form-label small text-uppercase font-weight-bold text-muted">
+                      Đợt / Tuần Flash Sale áp dụng
+                    </label>
+                    <select
+                      className="form-select"
+                      id="flashSaleBatch"
+                      value={flashSaleBatch}
+                      onChange={(e) => setFlashSaleBatch(e.target.value)}
+                    >
+                      <option value="batch-1">Đợt 1 (Tuần hiện tại)</option>
+                      <option value="batch-2">Đợt 2 (Tuần kế tiếp / Set trước)</option>
+                    </select>
                   </div>
                 </div>
               )}
