@@ -1,21 +1,37 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export default function CountdownTimer({ endTime }) {
+export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_time" }) {
   const [mounted, setMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
     setMounted(true);
     
-    // Xác định thời gian kết thúc: Mặc định là 7 ngày kể từ bây giờ nếu không truyền prop endTime
     const getTargetTime = () => {
+      // 1. Nếu có truyền prop endTime trực tiếp thì ưu tiên dùng
       if (endTime) {
         return new Date(endTime).getTime();
       }
+
+      // 2. Nếu không, kiểm tra trong localStorage xem đã lưu mốc thời gian trước đó chưa
+      const savedTargetTime = localStorage.getItem(storageKey);
+      if (savedTargetTime) {
+        const parsedTime = Number(savedTargetTime);
+        // Kiểm tra nếu thời gian đã lưu vẫn còn trong tương lai thì dùng tiếp
+        if (parsedTime > Date.now()) {
+          return parsedTime;
+        }
+      }
+
+      // 3. Nếu chưa có hoặc đã hết hạn, tạo mới 7 ngày kể từ bây giờ
       const target = new Date();
-      target.setDate(target.getDate() + 7); // Cộng thêm 7 ngày
-      return target.getTime();
+      target.setDate(target.getDate() + 7);
+      const newTargetTime = target.getTime();
+      
+      // Lưu lại vào localStorage
+      localStorage.setItem(storageKey, newTargetTime.toString());
+      return newTargetTime;
     };
 
     const targetTime = getTargetTime();
@@ -32,7 +48,7 @@ export default function CountdownTimer({ endTime }) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [endTime]);
+  }, [endTime, storageKey]);
 
   // Tránh lệch SSR/Client trong lần render đầu tiên
   if (!mounted) {
