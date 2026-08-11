@@ -8,13 +8,13 @@ export default function CountdownTimer({ endTime }) {
   useEffect(() => {
     setMounted(true);
     
-    // Xác định thời gian kết thúc: Lấy từ prop endTime hoặc mặc định là cuối ngày hôm nay
+    // Xác định thời gian kết thúc: Mặc định là 7 ngày kể từ bây giờ nếu không truyền prop endTime
     const getTargetTime = () => {
       if (endTime) {
         return new Date(endTime).getTime();
       }
       const target = new Date();
-      target.setHours(23, 59, 59, 999);
+      target.setDate(target.getDate() + 7); // Cộng thêm 7 ngày
       return target.getTime();
     };
 
@@ -43,12 +43,15 @@ export default function CountdownTimer({ endTime }) {
         <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">00</div>
         <span className="fw-bold text-white">:</span>
         <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">00</div>
+        <span className="fw-bold text-white">:</span>
+        <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">00</div>
       </div>
     );
   }
 
-  // Tính tổng số giờ, phút, giây còn lại
-  const totalHours = Math.floor(timeLeft / (1000 * 60 * 60));
+  // Tính toán số ngày, giờ, phút, giây còn lại
+  const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
   const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
 
@@ -56,15 +59,23 @@ export default function CountdownTimer({ endTime }) {
 
   return (
     <div className="d-flex align-items-center gap-2">
-      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">
-        {formatNum(totalHours)}
+      {/* Ô Ngày */}
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm" title="Ngày">
+        {formatNum(days)}
       </div>
       <span className="fw-bold text-white">:</span>
-      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">
+      {/* Ô Giờ */}
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm" title="Giờ">
+        {formatNum(hours)}
+      </div>
+      <span className="fw-bold text-white">:</span>
+      {/* Ô Phút */}
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm" title="Phút">
         {formatNum(minutes)}
       </div>
       <span className="fw-bold text-white">:</span>
-      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm">
+      {/* Ô Giây */}
+      <div className="bg-white text-dark px-2 py-1 rounded fw-black fs-6 shadow-sm" title="Giây">
         {formatNum(seconds)}
       </div>
     </div>
