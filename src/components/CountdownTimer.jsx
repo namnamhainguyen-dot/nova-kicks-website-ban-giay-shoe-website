@@ -9,30 +9,22 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
     setMounted(true);
     
     const getTargetTime = () => {
-      // 1. Ưu tiên tuyệt đối mốc thời gian cụ thể được truyền từ props (Thường lấy từ Server/API sản phẩm)
-      // Cách này giúp TẤT CẢ mọi người dùng đều nhìn thấy chung một thời gian kết thúc.
-      if (endTime) {
-        return new Date(endTime).getTime();
+      // 1. Lấy mốc cơ sở ban đầu (từ props hoặc mốc cố định hệ thống)
+      let baseTime = endTime 
+        ? new Date(endTime).getTime() 
+        : new Date("2026-09-01T00:00:00").getTime();
+
+      const now = Date.now();
+
+      // 2. Nếu mốc thời gian đã qua, tự động tịnh tiến sang chu kỳ Flash Sale mới 
+      // (Ví dụ: Chu kỳ lặp lại là mỗi 7 ngày = 7 * 24 * 60 * 60 * 1000 ms)
+      const cycleDuration = 7 * 24 * 60 * 60 * 1000; 
+
+      while (baseTime <= now) {
+        baseTime += cycleDuration;
       }
 
-      // 2. Nếu không truyền endTime từ ngoài vào, ta dùng chung một mốc tính toán đồng bộ 
-      // (Ví dụ: Cố định kết thúc vào 00:00:00 ngày Chủ Nhật tới hoặc một mốc giờ thống nhất)
-      // Ở đây dùng mốc thời gian cố định hoặc lấy từ localStorage nếu bạn muốn lưu khoá chung
-      const savedTargetTime = localStorage.getItem(storageKey);
-      if (savedTargetTime) {
-        const parsedTime = Number(savedTargetTime);
-        if (parsedTime > Date.now()) {
-          return parsedTime;
-        }
-      }
-
-      // Mặc định tạo mốc 7 ngày mới nếu chưa có
-      const target = new Date();
-      target.setDate(target.getDate() + 7);
-      const newTargetTime = target.getTime();
-      
-      localStorage.setItem(storageKey, newTargetTime.toString());
-      return newTargetTime;
+      return baseTime;
     };
 
     const targetTime = getTargetTime();

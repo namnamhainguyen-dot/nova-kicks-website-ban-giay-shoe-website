@@ -1,5 +1,5 @@
 import clientPromise from "@/libs/mongodb";
-import { ObjectId } from "mongodb"; // 🟢 Import ObjectId để xử lý filter chính xác
+import { ObjectId } from "mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
@@ -9,14 +9,14 @@ export async function GET(request) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // ── LẤY QUERY PARAMETERS TỪ URL ──
     const { searchParams } = new URL(request.url);
     const categoryID = searchParams.get("categoryID");
+    const isFlashSaleParam = searchParams.get("flashSale"); // 🌟 Thêm param check flashsale
 
-    // Tạo điều kiện lọc (Query Object)
     const query = {};
+
+    // 1. Lọc theo danh mục (Category)
     if (categoryID) {
-      // 🟢 Xử lý hỗ trợ cả dạng ObjectId lẫn String trong DB Compass
       if (ObjectId.isValid(categoryID)) {
         query.$or = [
           { categoryID: categoryID },
@@ -32,18 +32,23 @@ export async function GET(request) {
       }
     }
 
-    // Truy vấn dữ liệu từ MongoDB với điều kiện query, sắp xếp sản phẩm mới nhất lên đầu
+    // 🌟 2. Lọc tự động Flash Sale theo thời gian thực nếu có yêu cầu
+    if (isFlashSaleParam === "true") {
+      const now = new Date();
+      query.isFlashSale = true;
+      query.flashSaleStart = { $lte: now };
+      query.flashSaleEnd = { $gt: now };
+    }
+
     const productsList = await db
       .collection(COLLECTION_NAME)
       .find(query)
       .sort({ _id: -1 })
       .toArray();
 
-    // Chuẩn hóa _id thành String để tránh lỗi Serialization trên Next.js Client Component
     const normalized = productsList.map((product) => ({
       ...product,
       _id: String(product._id),
-      // Chuyển luôn categoryID trong document thành string nếu nó đang là ObjectId
       categoryID: product.categoryID ? String(product.categoryID) : String(product.categoryId || ""),
     }));
 
@@ -68,7 +73,12 @@ export async function POST(request) {
       showOnHome, 
       categoryId, 
       categoryID, 
-      variants 
+      variants,
+      // 🌟 Bổ sung các trường Flash Sale nhận từ form Admin
+      isFlashSale,
+      flashSalePrice,
+      flashSaleStart,
+      flashSaleEnd
     } = body;
 
     if (!name || !price) {
@@ -78,18 +88,16 @@ export async function POST(request) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 🌟 CHUẨN HÓA DỮ LIỆU MẢNG VARIANTS TRƯỚC KHI LƯU DB
     const processedVariants = Array.isArray(variants)
       ? variants.map((v) => ({
           color: v.color ? String(v.color).trim() : "",
           image: v.image ? String(v.image).trim() : "",
           quantity: Math.max(0, parseInt(v.quantity) || 0),
-          // Sửa lại đoạn map sizes này:
           sizes: Array.isArray(v.sizes)
             ? v.sizes.map((s) => ({
                 size: Number(s.size) || 0,
                 quantity: Number(s.quantity) || 0,
-              })).filter((s) => s.size > 0) // Lọc bỏ các size không hợp lệ nếu có
+              })).filter((s) => s.size > 0)
             : [],
         }))
       : [];
@@ -104,15 +112,21 @@ export async function POST(request) {
       quantity: Number(quantity) || 0,
       status: status || "active",
       showOnHome: Boolean(showOnHome),
-      // 🟢 Nếu chuỗi ID hợp lệ thì lưu dạng ObjectId vào DB cho chuẩn quan hệ, nếu không thì lưu string
       categoryID: ObjectId.isValid(finalCategoryID) ? new ObjectId(finalCategoryID) : finalCategoryID,
       variants: processedVariants,
+      
+      // 🌟 Lưu cấu hình Flash Sale vào DB (Chuyển chuỗi thời gian thành kiểu Date của MongoDB)
+      isFlashSale: Boolean(isFlashSale),
+      flashSalePrice: Number(flashSalePrice) || 0,
+      flashSaleStart: flashSaleStart ? new Date(flashSaleStart) : null,
+      flashSaleEnd: flashSaleEnd ? new Date(flashSaleEnd) : null,
+
       createdAt: new Date(),
     };
 
     const result = await db.collection(COLLECTION_NAME).insertOne(newProduct);
     newProduct._id = String(result.insertedId);
-    newProduct.categoryID = String(newProduct.categoryID); // Convert lại string để trả về client
+    newProduct.categoryID = String(newProduct.categoryID);
 
     return Response.json(newProduct, { status: 201 });
   } catch (error) {
