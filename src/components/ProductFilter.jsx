@@ -706,20 +706,23 @@ export default function ProductFilter({ products }) {
               </div>
             </div>
 
-            {/* 🌟 HIỂN THỊ GIÁ (DỰA TRÊN hasFlashSale ĐÃ CHUẨN HÓA) */}
+            {/* 🌟 SỬA LẠI: HIỂN THỊ GIÁ AN TOÀN TRÁNH BỊ TRÙNG */}
             <div className="fw-bold fs-5 mb-3">
-              {product.hasFlashSale ? (
+              {product.hasFlashSale && 
+              product.flashSalePrice !== null && 
+              product.flashSalePrice !== undefined && 
+              Number(product.flashSalePrice) < Number(product.originalPrice || product.price) ? (
                 <div className="d-flex align-items-center gap-2">
                   <span className="text-danger">
                     {Number(product.flashSalePrice).toLocaleString("vi-VN")} VND
                   </span>
                   <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
-                    {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                    {Number(product.originalPrice || product.price).toLocaleString("vi-VN")} VND
                   </span>
                 </div>
               ) : (
                 <span className="text-danger">
-                  {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                  {Number(product.originalPrice || product.price || 0).toLocaleString("vi-VN")} VND
                 </span>
               )}
             </div>
