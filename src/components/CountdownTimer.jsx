@@ -9,12 +9,26 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
     setMounted(true);
     
     const getTargetTime = () => {
-    // Test: Chỉ định thời gian kết thúc là 2 phút tính từ lúc bạn load trang
-    const testEndTime = new Date(Date.now() + 2 * 60 * 1000); 
-    
-    // Tạm thời comment các dòng tính toán cũ lại để máy nó chỉ chạy 2 phút
-    return testEndTime.getTime();
-  };
+      // 1. Lấy mốc thời gian gốc (ưu tiên từ props, nếu không có dùng mốc test hoặc mốc cố định)
+      let baseTime = endTime 
+        ? new Date(endTime).getTime() 
+        : Date.now() + (2 * 60 * 1000); // Thay bằng 2 phút để test hoặc thời gian bạn muốn
+
+      const now = Date.now();
+
+      // 2. Định nghĩa khoảng thời gian của 1 chu kỳ (Ví dụ: 7 ngày hoặc 2 phút để test)
+      // Nếu đang test 2 phút thì để: 2 * 60 * 1000
+      // Nếu chạy thật thì để: 7 * 24 * 60 * 60 * 1000
+      const cycleDuration = 2 * 60 * 1000; 
+
+      // 3. Tịnh tiến liên tục: Nếu mốc thời gian đã nằm trong quá khứ so với hiện tại, 
+      // tự động cộng dồn thêm 1 chu kỳ cho đến khi ra được mốc thời gian ở tương lai gần nhất.
+      while (baseTime <= now) {
+        baseTime += cycleDuration;
+      }
+
+      return baseTime;
+    };
 
     const targetTime = getTargetTime();
     setTimeLeft(Math.max(0, targetTime - Date.now()));
