@@ -469,10 +469,16 @@ export default function ProductFilter({ products }) {
         .filter((size) => !isNaN(size))
         .sort((a, b) => a - b);
 
+      // 🌟 Xử lý chuẩn hóa logic Flash Sale tại đây để các phần sau tái sử dụng dễ dàng
+      const hasFlashSale = Boolean(p.isFlashSale && p.flashSalePrice !== null && p.flashSalePrice !== undefined && Number(p.flashSalePrice) > 0);
+      const effectivePrice = hasFlashSale ? Number(p.flashSalePrice) : (Number(p.price) || 0);
+
       return {
         ...p,
         displayColors: uniqueColors,
         displaySizes: uniqueSizes,
+        hasFlashSale,
+        effectivePrice,
       };
     });
   }, [products]);
@@ -483,7 +489,7 @@ export default function ProductFilter({ products }) {
     return [...new Set(sizes)].sort((a, b) => a - b);
   }, [processedProducts]);
 
-  // Logic lọc sản phẩm
+  // Logic lọc sản phẩm (Đã sử dụng effectivePrice để bộ lọc chuẩn xác theo giá Flash Sale)
   const filtered = useMemo(() => {
     return processedProducts.filter((p) => {
       const productId = p._id?.$oid || p._id;
@@ -492,10 +498,8 @@ export default function ProductFilter({ products }) {
         return false;
       }
 
-      // Ưu tiên check giá theo Flash Sale nếu có, nếu không thì dùng giá gốc
-      const effectivePrice = p.isFlashSale && p.flashSalePrice ? Number(p.flashSalePrice) : Number(p.price) || 0;
-      const minOk = priceRange.min === "" || effectivePrice >= Number(priceRange.min);
-      const maxOk = priceRange.max === "" || effectivePrice <= Number(priceRange.max);
+      const minOk = priceRange.min === "" || p.effectivePrice >= Number(priceRange.min);
+      const maxOk = priceRange.max === "" || p.effectivePrice <= Number(priceRange.max);
         
       const sizeOk =
         selectedSizes.length === 0 ||
@@ -583,8 +587,25 @@ export default function ProductFilter({ products }) {
           >
             <div
               className="d-flex align-items-center justify-content-center overflow-hidden"
-              style={{ height: "250px", backgroundColor: "#f9f9f9" }}
+              style={{ height: "250px", backgroundColor: "#f9f9f9", position: "relative" }}
             >
+              {/* 🌟 Badge hiển thị Flash Sale trên ảnh (tùy chọn UI) */}
+              {product.hasFlashSale && (
+                <span style={{
+                  position: "absolute",
+                  top: "12px",
+                  left: "12px",
+                  backgroundColor: "#ef4444",
+                  color: "#fff",
+                  fontSize: "11px",
+                  fontWeight: "700",
+                  padding: "3px 8px",
+                  borderRadius: "4px",
+                  zIndex: 5
+                }}>
+                  FLASH SALE
+                </span>
+              )}
               <img
                 src={product.image || "/img/no-image.png"}
                 alt={product.name}
@@ -593,127 +614,127 @@ export default function ProductFilter({ products }) {
               />
             </div>
 
-            <div className="card-body pb-0">
-              <h5 className="fw-bold text-truncate card-title" title={product.name}>
-                {product.name}
-              </h5>
+          <div className="card-body pb-0">
+            <h5 className="fw-bold text-truncate card-title" title={product.name}>
+              {product.name}
+            </h5>
 
-              {/* HIỂN THỊ KÍCH THƯỚC */}
-              {product.displaySizes?.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
-                  {product.displaySizes.slice(0, 4).map((size) => (
-                    <span
-                      key={size}
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: "600",
-                        padding: "2px 7px",
-                        borderRadius: "6px",
-                        border: "1px solid #d1d5db",
-                        backgroundColor: "#f9fafb",
-                        color: "#374151",
-                      }}
-                    >
-                      {size}
-                    </span>
-                  ))}
-                  {product.displaySizes.length > 4 && (
-                    <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                      +{product.displaySizes.length - 4}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {/* HIỂN THỊ MÀU SẮC */}
-              {product.displayColors?.length > 0 && (
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "10px" }}>
-                  {product.displayColors.slice(0, 4).map((color) => (
-                    <span
-                      key={color}
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: "500",
-                        padding: "2px 7px",
-                        borderRadius: "6px",
-                        border: "1px solid #e5e7eb",
-                        backgroundColor: "#fff",
-                        color: "#6b7280",
-                      }}
-                    >
-                      {color}
-                    </span>
-                  ))}
-                  {product.displayColors.length > 4 && (
-                    <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
-                      +{product.displayColors.length - 4}
-                    </span>
-                  )}
-                </div>
-              )}
-
-              <p
-                className="small text-secondary mb-2 custom-scrollbar"
-                style={{ 
-                  height: "72px",
-                  overflowY: "auto",
-                  paddingRight: "4px",
-                  textAlign: "justify",
-                  fontSize: "13px",
-                  lineHeight: "1.4"
-                }}
-              >
-                {product.description}
-              </p>
-
-              {/* THANH SỐ LƯỢNG TỒN KHO */}
-              <div className="mb-2" style={{ fontSize: "12px" }}>
-                <div className="d-flex justify-content-between align-items-center mb-1">
-                  <span className="text-muted">
-                    Còn lại: <strong style={{ color: "#111" }}>{stockQty}</strong> sản phẩm
+            {/* HIỂN THỊ KÍCH THƯỚC */}
+            {product.displaySizes?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                {product.displaySizes.slice(0, 4).map((size) => (
+                  <span
+                    key={size}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      padding: "2px 7px",
+                      borderRadius: "6px",
+                      border: "1px solid #d1d5db",
+                      backgroundColor: "#f9fafb",
+                      color: "#374151",
+                    }}
+                  >
+                    {size}
                   </span>
-                </div>
-                <div className="progress" style={{ height: "4px", backgroundColor: "#e5e7eb" }}>
-                  <div
-                    className="progress-bar bg-dark"
-                    role="progressbar"
-                    style={{ width: `${progressWidth}%` }}
-                    aria-valuenow={stockQty}
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                  />
-                </div>
-              </div>
-
-              {/* 🌟 HIỂN THỊ GIÁ (ĐÃ FIX HỖ TRỢ FLASH SALE & GẠCH NGANG GIÁ GỐC) */}
-              <div className="fw-bold fs-5 mb-3">
-                {product.isFlashSale ? (
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="text-danger">
-                      {product.flashSalePrice ? Number(product.flashSalePrice).toLocaleString("vi-VN") : 0} VND
-                    </span>
-                    <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
-                      {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-danger">
-                    {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                ))}
+                {product.displaySizes.length > 4 && (
+                  <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                    +{product.displaySizes.length - 4}
                   </span>
                 )}
               </div>
-            </div>
-          </Link>
+            )}
 
-          <div className="card-body pt-0">
-            <Link href={`/products/${productId}`} style={{ textDecoration: "none" }}>
-              <button className="btn btn-dark w-100">Xem chi tiết</button>
-            </Link>
+            {/* HIỂN THỊ MÀU SẮC */}
+            {product.displayColors?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "10px" }}>
+                {product.displayColors.slice(0, 4).map((color) => (
+                  <span
+                    key={color}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "500",
+                      padding: "2px 7px",
+                      borderRadius: "6px",
+                      border: "1px solid #e5e7eb",
+                      backgroundColor: "#fff",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {color}
+                  </span>
+                ))}
+                {product.displayColors.length > 4 && (
+                  <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                    +{product.displayColors.length - 4}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <p
+              className="small text-secondary mb-2 custom-scrollbar"
+              style={{ 
+                height: "72px",
+                overflowY: "auto",
+                paddingRight: "4px",
+                textAlign: "justify",
+                fontSize: "13px",
+                lineHeight: "1.4"
+              }}
+            >
+              {product.description}
+            </p>
+
+            {/* THANH SỐ LƯỢNG TỒN KHO */}
+            <div className="mb-2" style={{ fontSize: "12px" }}>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span className="text-muted">
+                  Còn lại: <strong style={{ color: "#111" }}>{stockQty}</strong> sản phẩm
+                </span>
+              </div>
+              <div className="progress" style={{ height: "4px", backgroundColor: "#e5e7eb" }}>
+                <div
+                  className="progress-bar bg-dark"
+                  role="progressbar"
+                  style={{ width: `${progressWidth}%` }}
+                  aria-valuenow={stockQty}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                />
+              </div>
+            </div>
+
+            {/* 🌟 HIỂN THỊ GIÁ (DỰA TRÊN hasFlashSale ĐÃ CHUẨN HÓA) */}
+            <div className="fw-bold fs-5 mb-3">
+              {product.hasFlashSale ? (
+                <div className="d-flex align-items-center gap-2">
+                  <span className="text-danger">
+                    {Number(product.flashSalePrice).toLocaleString("vi-VN")} VND
+                  </span>
+                  <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
+                    {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                  </span>
+                </div>
+              ) : (
+                <span className="text-danger">
+                  {product.price ? Number(product.price).toLocaleString("vi-VN") : 0} VND
+                </span>
+              )}
+            </div>
           </div>
+        </Link>
+
+        <div className="card-body pt-0">
+          <Link href={`/products/${productId}`} style={{ textDecoration: "none" }}>
+            <button className="btn btn-dark w-100">Xem chi tiết</button>
+          </Link>
         </div>
       </div>
-    );
-  }, [isFavorite, toggleWishlist]);
+    </div>
+  );
+}, [isFavorite, toggleWishlist]);
 
   return (
     <div>
@@ -780,79 +801,79 @@ export default function ProductFilter({ products }) {
             <FilterPanel {...filterPanelProps} />
           </div>
         </div>
-      )}
+    )}
 
-      <div className="row g-4">
-        {/* Sidebar desktop */}
-        <div className="col-md-3 d-none d-md-block">
-          <FilterPanel {...filterPanelProps} />
-        </div>
+    <div className="row g-4">
+      {/* Sidebar desktop */}
+      <div className="col-md-3 d-none d-md-block">
+        <FilterPanel {...filterPanelProps} />
+      </div>
 
-        {/* Product grid */}
-        <div className="col-12 col-md-9">
-          <div className="d-none d-md-flex align-items-center mb-3" style={{ fontSize: "13px", color: "#6b7280", gap: "8px" }}>
-            <span>
-              Hiển thị <strong style={{ color: "#111" }}>{filtered.length}</strong> / {products?.length || 0} sản phẩm
-            </span>
-            {activeCount > 0 && (
-              <button
-                onClick={clearAll}
-                style={{
-                  background: "none",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "20px",
-                  padding: "2px 10px",
-                  fontSize: "12px",
-                  color: "#ef4444",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Xóa bộ lọc
-              </button>
-            )}
-          </div>
-
-          {filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
-              {showFavoritesOnly ? (
-                <>
-                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>❤️</div>
-                  <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Chưa thêm sản phẩm vào mục yêu thích</p>
-                  <p style={{ fontSize: "14px" }}>Hãy nhấn nút trái tim ở sản phẩm bạn thích để xem lại tại đây.</p>
-                </>
-              ) : (
-                <>
-                  <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
-                  <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
-                  <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
-                </>
-              )}
-              <button
-                onClick={clearAll}
-                style={{
-                  marginTop: "12px",
-                  padding: "8px 20px",
-                  borderRadius: "8px",
-                  background: "#111",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Xóa bộ lọc
-              </button>
-            </div>
-          ) : (
-            <div className="row g-4">
-              {filtered.map((product) => (
-                <ProductCard key={product._id?.$oid || product._id} product={product} />
-              ))}
-            </div>
+      {/* Product grid */}
+      <div className="col-12 col-md-9">
+        <div className="d-none d-md-flex align-items-center mb-3" style={{ fontSize: "13px", color: "#6b7280", gap: "8px" }}>
+          <span>
+            Hiển thị <strong style={{ color: "#111" }}>{filtered.length}</strong> / {products?.length || 0} sản phẩm
+          </span>
+          {activeCount > 0 && (
+            <button
+              onClick={clearAll}
+              style={{
+                background: "none",
+                border: "1px solid #e5e7eb",
+                borderRadius: "20px",
+                padding: "2px 10px",
+                fontSize: "12px",
+                color: "#ef4444",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Xóa bộ lọc
+            </button>
           )}
         </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
+            {showFavoritesOnly ? (
+              <>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>❤️</div>
+                <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Chưa thêm sản phẩm vào mục yêu thích</p>
+                <p style={{ fontSize: "14px" }}>Hãy nhấn nút trái tim ở sản phẩm bạn thích để xem lại tại đây.</p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
+                <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
+                <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
+              </>
+            )}
+            <button
+              onClick={clearAll}
+              style={{
+                marginTop: "12px",
+                padding: "8px 20px",
+                borderRadius: "8px",
+                background: "#111",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Xóa bộ lọc
+            </button>
+          </div>
+        ) : (
+          <div className="row g-4">
+            {filtered.map((product) => (
+              <ProductCard key={product._id?.$oid || product._id} product={product} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }

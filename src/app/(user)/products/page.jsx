@@ -70,11 +70,18 @@ function formatProducts(rawList) {
 
     // --- XỬ LÝ GIÁ FLASH SALE ---
     const originalPrice = product.price || 0;
-    // Kiểm tra xem sản phẩm có cấu hình giá flash sale hay không
-    const flashSalePrice = product.flashSalePrice || product.salePrice || null;
     
-    // Nếu có flashSalePrice và nhỏ hơn giá gốc, đồng thời sản phẩm đang bật cờ flash sale
-    const isFlashSale = flashSalePrice && flashSalePrice < originalPrice;
+    // Chỉ lấy flashSalePrice nếu sản phẩm thực sự cấu hình và hợp lệ
+    const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
+    
+    // Điều kiện chuẩn: Có cờ flash sale (hoặc có giá sale) VÀ giá sale phải nhỏ hơn giá gốc
+    const isFlashSale = Boolean(
+      (product.isFlashSale === true || product.isFlashSale === "true") && 
+      rawFlashSalePrice && 
+      Number(rawFlashSalePrice) < Number(originalPrice)
+    );
+
+    const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
     
     // Tính phần trăm giảm giá nếu có
     const discountPercent = isFlashSale 
@@ -88,12 +95,11 @@ function formatProducts(rawList) {
       availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này.",
       
-      // QUAN TRỌNG: Nếu có flash sale, ta đổi giá hiển thị chính (price) thành giá giảm để card sản phẩm nhận diện, 
-      // đồng thời giữ lại giá gốc để làm gạch ngang.
+      // GIỮ NGUYÊN GIÁ GỐC CHO PRICE NẾU KHÔNG PHẢI FLASH SALE
       price: isFlashSale ? flashSalePrice : originalPrice,
-      originalPrice: originalPrice, // Giá gốc để hiển thị gạch ngang
+      originalPrice: originalPrice, 
       flashSalePrice: flashSalePrice,
-      isFlashSale: isFlashSale,
+      isFlashSale: isFlashSale, // Đảm bảo trả về chuẩn boolean true/false
       discountPercent: discountPercent,
     };
   });
