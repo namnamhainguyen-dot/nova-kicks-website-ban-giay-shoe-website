@@ -17,18 +17,21 @@ function FilterPanel({
   activeCount,
   clearAll,
 }) {
-  const [localMin, setLocalMin] = useState(priceRange.min ?? "");
-  const [localMax, setLocalMax] = useState(priceRange.max ?? "");
+  // State tạm cho input để xử lý mượt mà, không gọi router liên tục khi đang gõ
+  const [localMin, setLocalMin] = useState(priceRange.min ?? '');
+  const [localMax, setLocalMax] = useState(priceRange.max ?? '');
 
+  // Đồng bộ local state với URL params khi thay đổi từ bên ngoài (ví dụ: nút Xóa tất cả, Preset)
   useEffect(() => {
-    setLocalMin(priceRange.min ?? "");
-    setLocalMax(priceRange.max ?? "");
+    setLocalMin(priceRange.min ?? '');
+    setLocalMax(priceRange.max ?? '');
   }, [priceRange.min, priceRange.max]);
 
+  // Xử lý thay đổi input trực tiếp (chỉ cập nhật giao diện state nội bộ, KHÔNG gọi router)
   const handleInputChange = useCallback((type, e) => {
-    const value = e.target.value.replace(/,/g, "");
-    if (value === "" || /^\d*$/.test(value)) {
-      if (type === "min") {
+    const value = e.target.value.replace(/,/g, '');
+    if (value === '' || /^\d*$/.test(value)) {
+      if (type === 'min') {
         setLocalMin(value);
       } else {
         setLocalMax(value);
@@ -36,31 +39,35 @@ function FilterPanel({
     }
   }, []);
 
+  // 🛠️ SỬA LẠI: Gửi đồng thời cả min và max lên hàm xử lý ở component cha để tránh bị ghi đè
   const handleApplyPrice = useCallback(() => {
-    const minVal = localMin !== "" ? String(Number(localMin)) : "";
-    const maxVal = localMax !== "" ? String(Number(localMax)) : "";
+    const minVal = localMin !== '' ? String(Number(localMin)) : '';
+    const maxVal = localMax !== '' ? String(Number(localMax)) : '';
+    
     setPriceParam(minVal, maxVal);
   }, [localMin, localMax, setPriceParam]);
 
+  // Xử lý khi người dùng bấm Enter
   const handleKeyDown = useCallback((e) => {
-    if (e.key === "Enter") {
-      e.currentTarget.blur();
+    if (e.key === 'Enter') {
+      e.currentTarget.blur(); 
       handleApplyPrice();
     }
   }, [handleApplyPrice]);
 
+  // Hàm xử lý preset giá (Gửi đồng thời cả min/max hoặc xóa trắng cả 2)
   const handlePresetPrice = useCallback((preset) => {
-    const presetMinStr = preset.min !== "" && preset.min !== undefined ? String(preset.min) : "";
-    const presetMaxStr = preset.max !== "" && preset.max !== undefined ? String(preset.max) : "";
+    const presetMinStr = preset.min !== '' && preset.min !== undefined ? String(preset.min) : '';
+    const presetMaxStr = preset.max !== '' && preset.max !== undefined ? String(preset.max) : '';
 
-    const isActive =
-      Number(localMin || 0) === Number(presetMinStr || 0) &&
+    const isActive = 
+      Number(localMin || 0) === Number(presetMinStr || 0) && 
       Number(localMax || 0) === Number(presetMaxStr || 0);
-
+    
     if (isActive) {
-      setLocalMin("");
-      setLocalMax("");
-      setPriceParam("", "");
+      setLocalMin('');
+      setLocalMax('');
+      setPriceParam('', '');
     } else {
       setLocalMin(presetMinStr);
       setLocalMax(presetMaxStr);
@@ -68,19 +75,22 @@ function FilterPanel({
     }
   }, [localMin, localMax, setPriceParam]);
 
+  // Format số tiền hiển thị
   const formatPrice = useCallback((value) => {
-    if (!value && value !== 0) return "";
-    return Number(value).toLocaleString("vi-VN");
+    if (!value && value !== 0) return '';
+    return Number(value).toLocaleString('vi-VN');
   }, []);
 
+  // Hàm kiểm tra preset đang active
   const isPresetActive = useCallback((min, max) => {
-    const currentMin = localMin !== "" ? Number(localMin) : "";
-    const currentMax = localMax !== "" ? Number(localMax) : "";
-    const presetMin = min !== "" && min !== undefined ? Number(min) : "";
-    const presetMax = max !== "" && max !== undefined ? Number(max) : "";
+    const currentMin = localMin !== '' ? Number(localMin) : '';
+    const currentMax = localMax !== '' ? Number(localMax) : '';
+    const presetMin = min !== '' && min !== undefined ? Number(min) : '';
+    const presetMax = max !== '' && max !== undefined ? Number(max) : '';
     return currentMin === presetMin && currentMax === presetMax;
   }, [localMin, localMax]);
 
+  // Các preset giá chuẩn hóa
   const pricePresets = useMemo(() => [
     { label: "Dưới 200k", min: 0, max: 200000 },
     { label: "200k–500k", min: 200000, max: 500000 },
@@ -127,7 +137,7 @@ function FilterPanel({
         )}
       </div>
 
-      {/* MỤC LỌC SẢN PHẨM YÊU THÍCH */}
+      {/* 🌟 MỤC LỌC SẢN PHẨM YÊU THÍCH */}
       <div style={{ marginBottom: "24px" }}>
         <p
           style={{
@@ -174,7 +184,7 @@ function FilterPanel({
         </button>
       </div>
 
-      {/* BỘ LỌC GIÁ */}
+      {/* BỘ LỌC GIÁ TỐI ƯU */}
       <div style={{ marginBottom: "24px" }}>
         <p
           style={{
@@ -189,13 +199,14 @@ function FilterPanel({
           Giá (VND)
         </p>
         
+        {/* Input range */}
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div style={{ flex: 1, position: "relative" }}>
             <input
               type="text"
               placeholder="Từ"
               value={localMin}
-              onChange={(e) => handleInputChange("min", e)}
+              onChange={(e) => handleInputChange('min', e)}
               onKeyDown={handleKeyDown}
               style={{
                 width: "100%",
@@ -204,9 +215,10 @@ function FilterPanel({
                 padding: "8px 10px",
                 fontSize: "13px",
                 outline: "none",
+                transition: "border-color 0.2s",
               }}
             />
-            {localMin !== "" && (
+            {localMin !== '' && (
               <span style={{
                 position: "absolute",
                 right: "8px",
@@ -221,14 +233,14 @@ function FilterPanel({
             )}
           </div>
           
-          <span style={{ color: "#9ca3af", fontSize: "12px" }}>—</span>
+          <span style={{ color: "#9ca3af", fontSize: "12px", fontWeight: "300" }}>—</span>
           
           <div style={{ flex: 1, position: "relative" }}>
             <input
               type="text"
               placeholder="Đến"
               value={localMax}
-              onChange={(e) => handleInputChange("max", e)}
+              onChange={(e) => handleInputChange('max', e)}
               onKeyDown={handleKeyDown}
               style={{
                 width: "100%",
@@ -237,9 +249,10 @@ function FilterPanel({
                 padding: "8px 10px",
                 fontSize: "13px",
                 outline: "none",
+                transition: "border-color 0.2s",
               }}
             />
-            {localMax !== "" && (
+            {localMax !== '' && (
               <span style={{
                 position: "absolute",
                 right: "8px",
@@ -255,6 +268,7 @@ function FilterPanel({
           </div>
         </div>
 
+        {/* Nút bấm áp dụng khoảng giá nhanh cho người dùng */}
         <div style={{ marginTop: "10px" }}>
           <button
             onClick={handleApplyPrice}
@@ -274,6 +288,7 @@ function FilterPanel({
           </button>
         </div>
 
+        {/* Preset buttons */}
         <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "10px" }}>
           {pricePresets.map((preset) => {
             const active = isPresetActive(preset.min, preset.max);
@@ -290,6 +305,7 @@ function FilterPanel({
                   color: active ? "#fff" : "#374151",
                   cursor: "pointer",
                   fontWeight: active ? 700 : 500,
+                  transition: "all 0.2s ease",
                   whiteSpace: "nowrap",
                 }}
               >
@@ -298,9 +314,28 @@ function FilterPanel({
             );
           })}
         </div>
+
+        {/* Range slider indicator */}
+        {(localMin !== '' || localMax !== '') && (
+          <div style={{ 
+            marginTop: "10px",
+            padding: "6px 10px",
+            background: "#f3f4f6",
+            borderRadius: "6px",
+            fontSize: "12px",
+            color: "#6b7280",
+            display: "flex",
+            justifyContent: "space-between"
+          }}>
+            <span>Khoảng giá đã chọn</span>
+            <span style={{ fontWeight: 600, color: "#111" }}>
+              {localMin !== '' ? formatPrice(localMin) : '0'} - {localMax !== '' ? formatPrice(localMax) : '∞'} VND
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* BỘ LỌC KÍCH THƯỚC */}
+      {/* Bộ lọc Kích thước */}
       {allSizes && allSizes.length > 0 && (
         <div>
           <p
@@ -331,6 +366,7 @@ function FilterPanel({
                     fontSize: "12px",
                     fontWeight: active ? 700 : 600,
                     cursor: "pointer",
+                    transition: "all 0.15s",
                   }}
                 >
                   {size}
@@ -351,6 +387,7 @@ export default function ProductFilter({ products }) {
 
   const { toggleWishlist, isFavorite } = useContext(WishlistContext);
 
+  // Đọc dữ liệu trực tiếp từ URL Search Params
   const priceRange = useMemo(() => ({
     min: searchParams.get("minPrice") ?? "",
     max: searchParams.get("maxPrice") ?? "",
@@ -363,6 +400,7 @@ export default function ProductFilter({ products }) {
 
   const showFavoritesOnly = searchParams.get("favorites") === "true";
 
+  // Hàm cập nhật query param trên URL
   const updateQueryParam = useCallback((key, value) => {
     const params = new URLSearchParams(searchParams.toString());
     if (value !== "" && value !== null && value !== undefined && value !== false) {
@@ -373,18 +411,26 @@ export default function ProductFilter({ products }) {
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
+  // 🛠️ Hàm cập nhật đồng thời cả minPrice và maxPrice trong cùng 1 lần gọi router
   const setPriceParam = useCallback((minVal, maxVal) => {
     const params = new URLSearchParams(searchParams.toString());
     
-    if (minVal !== "" && minVal != null) params.set("minPrice", minVal);
-    else params.delete("minPrice");
+    if (minVal !== "" && minVal !== null && minVal !== undefined) {
+      params.set("minPrice", minVal);
+    } else {
+      params.delete("minPrice");
+    }
 
-    if (maxVal !== "" && maxVal != null) params.set("maxPrice", maxVal);
-    else params.delete("maxPrice");
+    if (maxVal !== "" && maxVal !== null && maxVal !== undefined) {
+      params.set("maxPrice", maxVal);
+    } else {
+      params.delete("maxPrice");
+    }
 
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
+  // Toggle size trong URL
   const toggleSizeParam = useCallback((size) => {
     const params = new URLSearchParams(searchParams.toString());
     let currentSizes = selectedSizes.includes(size)
@@ -399,27 +445,32 @@ export default function ProductFilter({ products }) {
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams, selectedSizes]);
 
+  // Toggle yêu thích trong URL
   const toggleFavoriteParam = useCallback(() => {
     updateQueryParam("favorites", !showFavoritesOnly ? "true" : "");
   }, [updateQueryParam, showFavoritesOnly]);
 
+  // Xóa tất cả filter
   const clearAll = useCallback(() => {
     router.push(window.location.pathname, { scroll: false });
   }, [router]);
 
+  // ĐỒNG BỘ DỮ LIỆU: Trích xuất màu sắc và kích cỡ từ variants
   const processedProducts = useMemo(() => {
     return (products || []).map((p) => {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
       const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
+      
       const uniqueSizes = [...new Set(mappedSizes)]
         .filter((size) => size !== null && size !== undefined && size !== "")
         .map(Number)
         .filter((size) => !isNaN(size))
         .sort((a, b) => a - b);
 
-      const hasFlashSale = Boolean(p.isFlashSale && p.flashSalePrice != null && Number(p.flashSalePrice) > 0);
+      // 🌟 Xử lý chuẩn hóa logic Flash Sale tại đây để các phần sau tái sử dụng dễ dàng
+      const hasFlashSale = Boolean(p.isFlashSale && p.flashSalePrice !== null && p.flashSalePrice !== undefined && Number(p.flashSalePrice) > 0);
       const effectivePrice = hasFlashSale ? Number(p.flashSalePrice) : (Number(p.price) || 0);
 
       return {
@@ -432,11 +483,13 @@ export default function ProductFilter({ products }) {
     });
   }, [products]);
 
+  // Lấy danh sách tổng hợp các size duy nhất
   const allSizes = useMemo(() => {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
     return [...new Set(sizes)].sort((a, b) => a - b);
   }, [processedProducts]);
 
+  // Logic lọc sản phẩm (Đã sử dụng effectivePrice để bộ lọc chuẩn xác theo giá Flash Sale)
   const filtered = useMemo(() => {
     return processedProducts.filter((p) => {
       const productId = p._id?.$oid || p._id;
@@ -456,6 +509,7 @@ export default function ProductFilter({ products }) {
     });
   }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite]);
 
+  // Đếm số lượng bộ lọc đang hoạt động
   const activeCount = useMemo(() => {
     let count = selectedSizes.length;
     if (priceRange.min !== "" || priceRange.max !== "") count++;
@@ -475,6 +529,7 @@ export default function ProductFilter({ products }) {
     clearAll,
   }), [priceRange, setPriceParam, selectedSizes, toggleSizeParam, allSizes, showFavoritesOnly, toggleFavoriteParam, activeCount, clearAll]);
 
+  // Component Product Card để tránh lặp code
   const ProductCard = useCallback(({ product }) => {
     const stockQty = product.quantity ?? 12;
     const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
@@ -487,6 +542,7 @@ export default function ProductFilter({ products }) {
           className="card h-100 border-0 shadow-sm card-product nk-card"
           style={{ backgroundColor: "var(--surface-card)", borderRadius: "12px", overflow: "hidden", position: "relative" }}
         >
+          {/* NÚT TRÁI TIM WISHLIST */}
           <button
             onClick={(e) => {
               e.preventDefault();
@@ -498,6 +554,7 @@ export default function ProductFilter({ products }) {
               right: "12px",
               zIndex: 10,
               background: "rgba(255, 255, 255, 0.8)",
+              backdropFilter: "blur(4px)",
               border: "none",
               borderRadius: "50%",
               width: "36px",
@@ -506,7 +563,10 @@ export default function ProductFilter({ products }) {
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+              transition: "all 0.2s ease"
             }}
+            title={isFav ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -521,11 +581,15 @@ export default function ProductFilter({ products }) {
             </svg>
           </button>
 
-          <Link href={`/products/${productId}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <Link
+            href={`/products/${productId}`}
+            style={{ textDecoration: "none", color: "inherit" }}
+          >
             <div
               className="d-flex align-items-center justify-content-center overflow-hidden"
               style={{ height: "250px", backgroundColor: "#f9f9f9", position: "relative" }}
             >
+              {/* 🌟 Badge hiển thị Flash Sale trên ảnh (tùy chọn UI) */}
               {product.hasFlashSale && (
                 <span style={{
                   position: "absolute",
@@ -550,39 +614,130 @@ export default function ProductFilter({ products }) {
               />
             </div>
 
-            <div className="card-body pb-0">
-              <h5 className="fw-bold text-truncate card-title" title={product.name}>
-                {product.name}
-              </h5>
+          <div className="card-body pb-0">
+            <h5 className="fw-bold text-truncate card-title" title={product.name}>
+              {product.name}
+            </h5>
 
-              <div className="fw-bold fs-5 mb-3">
-                {product.hasFlashSale && product.flashSalePrice != null ? (
-                  <div className="d-flex align-items-center gap-2">
-                    <span className="text-danger">
-                      {Number(product.flashSalePrice).toLocaleString("vi-VN")} VND
-                    </span>
-                    <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
-                      {Number(product.originalPrice || product.price).toLocaleString("vi-VN")} VND
-                    </span>
-                  </div>
-                ) : (
-                  <span className="text-danger">
-                    {Number(product.originalPrice || product.price || 0).toLocaleString("vi-VN")} VND
+            {/* HIỂN THỊ KÍCH THƯỚC */}
+            {product.displaySizes?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                {product.displaySizes.slice(0, 4).map((size) => (
+                  <span
+                    key={size}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      padding: "2px 7px",
+                      borderRadius: "6px",
+                      border: "1px solid #d1d5db",
+                      backgroundColor: "#f9fafb",
+                      color: "#374151",
+                    }}
+                  >
+                    {size}
+                  </span>
+                ))}
+                {product.displaySizes.length > 4 && (
+                  <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                    +{product.displaySizes.length - 4}
                   </span>
                 )}
               </div>
-            </div>
-          </Link>
+            )}
 
-          <div className="card-body pt-0">
-            <Link href={`/products/${productId}`} style={{ textDecoration: "none" }}>
-              <button className="btn btn-dark w-100">Xem chi tiết</button>
-            </Link>
+            {/* HIỂN THỊ MÀU SẮC */}
+            {product.displayColors?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "10px" }}>
+                {product.displayColors.slice(0, 4).map((color) => (
+                  <span
+                    key={color}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "500",
+                      padding: "2px 7px",
+                      borderRadius: "6px",
+                      border: "1px solid #e5e7eb",
+                      backgroundColor: "#fff",
+                      color: "#6b7280",
+                    }}
+                  >
+                    {color}
+                  </span>
+                ))}
+                {product.displayColors.length > 4 && (
+                  <span style={{ fontSize: "11px", color: "#9ca3af", padding: "2px 4px" }}>
+                    +{product.displayColors.length - 4}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <p
+              className="small text-secondary mb-2 custom-scrollbar"
+              style={{ 
+                height: "72px",
+                overflowY: "auto",
+                paddingRight: "4px",
+                textAlign: "justify",
+                fontSize: "13px",
+                lineHeight: "1.4"
+              }}
+            >
+              {product.description}
+            </p>
+
+            {/* THANH SỐ LƯỢNG TỒN KHO */}
+            <div className="mb-2" style={{ fontSize: "12px" }}>
+              <div className="d-flex justify-content-between align-items-center mb-1">
+                <span className="text-muted">
+                  Còn lại: <strong style={{ color: "#111" }}>{stockQty}</strong> sản phẩm
+                </span>
+              </div>
+              <div className="progress" style={{ height: "4px", backgroundColor: "#e5e7eb" }}>
+                <div
+                  className="progress-bar bg-dark"
+                  role="progressbar"
+                  style={{ width: `${progressWidth}%` }}
+                  aria-valuenow={stockQty}
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                />
+              </div>
+            </div>
+
+            {/* 🌟 SỬA LẠI: HIỂN THỊ GIÁ AN TOÀN TRÁNH BỊ TRÙNG */}
+            <div className="fw-bold fs-5 mb-3">
+              {product.hasFlashSale && 
+              product.flashSalePrice !== null && 
+              product.flashSalePrice !== undefined && 
+              Number(product.flashSalePrice) < Number(product.originalPrice || product.price) ? (
+                <div className="d-flex align-items-center gap-2">
+                  <span className="text-danger">
+                    {Number(product.flashSalePrice).toLocaleString("vi-VN")} VND
+                  </span>
+                  <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
+                    {Number(product.originalPrice || product.price).toLocaleString("vi-VN")} VND
+                  </span>
+                </div>
+              ) : (
+                <span className="text-danger">
+                  {Number(product.originalPrice || product.price || 0).toLocaleString("vi-VN")} VND
+                </span>
+              )}
+            </div>
           </div>
+        </Link>
+
+        <div className="card-body pt-0">
+          <Link href={`/products/${productId}`} style={{ textDecoration: "none" }}>
+            <button className="btn btn-dark w-100">Xem chi tiết</button>
+          </Link>
         </div>
       </div>
-    );
-  }, [isFavorite, toggleWishlist]);
+    </div>
+  );
+}, [isFavorite, toggleWishlist]);
 
   return (
     <div>
@@ -604,6 +759,9 @@ export default function ProductFilter({ products }) {
             cursor: "pointer",
           }}
         >
+          <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h18M7 12h10M11 20h2" />
+          </svg>
           Bộ lọc{activeCount > 0 ? ` (${activeCount})` : ""}
         </button>
         <span style={{ fontSize: "13px", color: "#6b7280" }}>
@@ -630,6 +788,7 @@ export default function ProductFilter({ products }) {
               height: "100%",
               overflowY: "auto",
               padding: "24px 16px",
+              borderRadius: "0 12px 12px 0",
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -645,68 +804,79 @@ export default function ProductFilter({ products }) {
             <FilterPanel {...filterPanelProps} />
           </div>
         </div>
-      )}
+    )}
 
-      <div className="row g-4">
-        {/* Sidebar desktop */}
-        <div className="col-md-3 d-none d-md-block">
-          <FilterPanel {...filterPanelProps} />
-        </div>
+    <div className="row g-4">
+      {/* Sidebar desktop */}
+      <div className="col-md-3 d-none d-md-block">
+        <FilterPanel {...filterPanelProps} />
+      </div>
 
-        {/* Product grid */}
-        <div className="col-12 col-md-9">
-          <div className="d-none d-md-flex align-items-center mb-3" style={{ fontSize: "13px", color: "#6b7280", gap: "8px" }}>
-            <span>
-              Hiển thị <strong style={{ color: "#111" }}>{filtered.length}</strong> / {products?.length || 0} sản phẩm
-            </span>
-            {activeCount > 0 && (
-              <button
-                onClick={clearAll}
-                style={{
-                  background: "none",
-                  border: "1px solid #e5e7eb",
-                  borderRadius: "20px",
-                  padding: "2px 10px",
-                  fontSize: "12px",
-                  color: "#ef4444",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Xóa bộ lọc
-              </button>
-            )}
-          </div>
-
-          {filtered.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
-              <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
-              <button
-                onClick={clearAll}
-                style={{
-                  marginTop: "12px",
-                  padding: "8px 20px",
-                  borderRadius: "8px",
-                  background: "#111",
-                  color: "#fff",
-                  border: "none",
-                  cursor: "pointer",
-                  fontWeight: 600,
-                }}
-              >
-                Xóa bộ lọc
-              </button>
-            </div>
-          ) : (
-            <div className="row g-4">
-              {filtered.map((product) => (
-                <ProductCard key={product._id?.$oid || product._id} product={product} />
-              ))}
-            </div>
+      {/* Product grid */}
+      <div className="col-12 col-md-9">
+        <div className="d-none d-md-flex align-items-center mb-3" style={{ fontSize: "13px", color: "#6b7280", gap: "8px" }}>
+          <span>
+            Hiển thị <strong style={{ color: "#111" }}>{filtered.length}</strong> / {products?.length || 0} sản phẩm
+          </span>
+          {activeCount > 0 && (
+            <button
+              onClick={clearAll}
+              style={{
+                background: "none",
+                border: "1px solid #e5e7eb",
+                borderRadius: "20px",
+                padding: "2px 10px",
+                fontSize: "12px",
+                color: "#ef4444",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Xóa bộ lọc
+            </button>
           )}
         </div>
+
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
+            {showFavoritesOnly ? (
+              <>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>❤️</div>
+                <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Chưa thêm sản phẩm vào mục yêu thích</p>
+                <p style={{ fontSize: "14px" }}>Hãy nhấn nút trái tim ở sản phẩm bạn thích để xem lại tại đây.</p>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize: "40px", marginBottom: "12px" }}>🔍</div>
+                <p style={{ fontWeight: 600, fontSize: "16px", color: "#374151" }}>Không tìm thấy sản phẩm</p>
+                <p style={{ fontSize: "14px" }}>Thử thay đổi bộ lọc</p>
+              </>
+            )}
+            <button
+              onClick={clearAll}
+              style={{
+                marginTop: "12px",
+                padding: "8px 20px",
+                borderRadius: "8px",
+                background: "#111",
+                color: "#fff",
+                border: "none",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Xóa bộ lọc
+            </button>
+          </div>
+        ) : (
+          <div className="row g-4">
+            {filtered.map((product) => (
+              <ProductCard key={product._id?.$oid || product._id} product={product} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
-  );
+  </div>
+);
 }
