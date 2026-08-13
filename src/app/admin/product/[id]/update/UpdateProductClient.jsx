@@ -512,20 +512,25 @@ export default function UpdateProductClient({ id }) {
                     />
                   </div>
 
-                  {/* Lựa chọn đợt Flash Sale */}
+                  {/* Lựa chọn đợt / số tuần Flash Sale */}
                   <div className="col-md-4">
                     <label htmlFor="flashSaleBatch" className="form-label small text-uppercase font-weight-bold text-muted">
-                      Đợt / Tuần Flash Sale áp dụng
+                      Tuần Flash Sale áp dụng (Số tuần)
                     </label>
-                    <select
-                      className="form-select"
+                    <input 
+                      type="number" 
+                      className="form-control"
                       id="flashSaleBatch"
+                      placeholder="Ví dụ: 18"
                       value={flashSaleBatch}
-                      onChange={(e) => setFlashSaleBatch(e.target.value)}
-                    >
-                      <option value="batch-1">Đợt 1 (Tuần hiện tại)</option>
-                      <option value="batch-2">Đợt 2 (Tuần kế tiếp / Set trước)</option>
-                    </select>
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setFlashSaleBatch(val === "" ? "" : Number(val));
+                      }}
+                      min="1"
+                      max="53"
+                    />
+                    <div className="form-text text-muted">Nhập số tuần trong năm (VD: 18) để khớp với API lọc theo tuần.</div>
                   </div>
                 </div>
               )}
