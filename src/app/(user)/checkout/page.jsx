@@ -479,7 +479,7 @@ export default function Checkout() {
       setIsOrdering(false);
       
       // Chuyển hướng sang trang hiển thị mã QR thanh toán kèm số tiền
-      router.push(`/checkout/payment?amount=${finalTotal}`);
+      router.push(`/checkout/payment-simulation?amount=${finalTotal}`);
       return;
     }
 
