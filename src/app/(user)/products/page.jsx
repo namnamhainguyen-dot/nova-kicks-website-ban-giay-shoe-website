@@ -79,7 +79,7 @@ function formatProducts(rawList) {
     
     // Kiểm tra xem sản phẩm có được cấu hình đúng tuần hiện tại hay không
     // (Giả sử trường lưu tuần flash sale trong DB của bạn là `flashSaleWeek` hoặc `weekNumber`)
-    const productWeek = product.flashSaleWeek ? Number(product.flashSaleWeek) : null;
+    const productWeek = product.flashSaleBatch ? Number(product.flashSaleBatch) : null;
     
     // Nếu admin set tuần, phải khớp với tuần hiện tại. Nếu không set trường tuần, mặc định cho phép hoặc bỏ qua tùy ý bạn.
     const isWeekValid = productWeek ? productWeek === currentWeekNumber : true;
