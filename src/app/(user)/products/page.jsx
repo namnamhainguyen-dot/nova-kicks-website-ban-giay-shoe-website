@@ -57,8 +57,13 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
   }
 }
 
-// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale cho trang danh sách
+// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale theo tuần
 function formatProducts(rawList) {
+  // Tính số tuần hiện tại trong năm (giống như logic ở trang chủ hoặc bộ lọc)
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const currentWeekNumber = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+
   return (rawList || []).map((product) => {
     const availableColors =
       product.variants?.map((v) => ({
@@ -68,15 +73,21 @@ function formatProducts(rawList) {
 
     const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
 
-    // --- XỬ LÝ GIÁ FLASH SALE ---
+    // --- XỬ LÝ GIÁ FLASH SALE THEO TUẦN ---
     const originalPrice = product.price || 0;
-    
-    // Chỉ lấy flashSalePrice nếu sản phẩm thực sự cấu hình và hợp lệ
     const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
     
-    // Điều kiện chuẩn: Có cờ flash sale (hoặc có giá sale) VÀ giá sale phải nhỏ hơn giá gốc
+    // Kiểm tra xem sản phẩm có được cấu hình đúng tuần hiện tại hay không
+    // (Giả sử trường lưu tuần flash sale trong DB của bạn là `flashSaleWeek` hoặc `weekNumber`)
+    const productWeek = product.flashSaleWeek ? Number(product.flashSaleWeek) : null;
+    
+    // Nếu admin set tuần, phải khớp với tuần hiện tại. Nếu không set trường tuần, mặc định cho phép hoặc bỏ qua tùy ý bạn.
+    const isWeekValid = productWeek ? productWeek === currentWeekNumber : true;
+
+    // Điều kiện chuẩn: Có cờ flash sale, đúng tuần, VÀ giá sale phải nhỏ hơn giá gốc
     const isFlashSale = Boolean(
       (product.isFlashSale === true || product.isFlashSale === "true") && 
+      isWeekValid && 
       rawFlashSalePrice && 
       Number(rawFlashSalePrice) < Number(originalPrice)
     );
@@ -95,11 +106,10 @@ function formatProducts(rawList) {
       availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này.",
       
-      // GIỮ NGUYÊN GIÁ GỐC CHO PRICE NẾU KHÔNG PHẢI FLASH SALE
       price: isFlashSale ? flashSalePrice : originalPrice,
       originalPrice: originalPrice, 
       flashSalePrice: flashSalePrice,
-      isFlashSale: isFlashSale, // Đảm bảo trả về chuẩn boolean true/false
+      isFlashSale: isFlashSale, 
       discountPercent: discountPercent,
     };
   });
