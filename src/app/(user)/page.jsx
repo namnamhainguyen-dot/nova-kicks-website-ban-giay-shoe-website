@@ -33,14 +33,21 @@ export default async function Menu() {
     console.error("Lỗi fetch products:", err);
   }
 
-  // Tính số tuần hiện tại của năm để query Flash Sale chuẩn xác theo tuần
+  // Tính toán Tháng và Tuần trong tháng hiện tại
   const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const currentWeekNumber = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  const currentMonth = now.getMonth() + 1; // Tháng hiện tại (1 - 12)
+  
+  // Tính tuần thứ mấy trong tháng (Tuần 1, 2, 3, 4...)
+  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const dayOfWeekOffset = (firstDayOfMonth.getDay() + 6) % 7; // Chuẩn hóa Thứ 2 là đầu tuần
+  const currentWeekOfMonth = Math.ceil((now.getDate() + dayOfWeekOffset) / 7);
 
-  // 2. Fetch riêng danh sách Flash Sale theo đúng số tuần hiện tại
+  // Tạo mã batch theo định dạng "Tháng-Tuần" (Ví dụ: Tháng 8 tuần 2 -> batch = "8-2")
+  const currentBatch = `${currentMonth}-${currentWeekOfMonth}`;
+
+  // 2. Fetch riêng danh sách Flash Sale theo đúng batch tháng-tuần này
   try {
-    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale?batch=${currentWeekNumber}`, { cache: 'no-store' });
+    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale?batch=${currentBatch}`, { cache: 'no-store' });
     if (flashRes.ok) {
       const flashJson = await flashRes.json();
       flashSaleData = Array.isArray(flashJson) ? flashJson.slice(0, 4) : (flashJson.products?.slice(0, 4) || []);
@@ -49,12 +56,13 @@ export default async function Menu() {
     console.error("Lỗi fetch flash sale:", err);
   }
 
-  // Fallback chuẩn hóa: Lọc từ productList dựa trên cờ isFlashSale và khớp đúng số tuần hiện tại
+  // Fallback chuẩn hóa: Lọc từ productList dựa trên batch tương ứng
   if (flashSaleData.length === 0 && Array.isArray(productList)) {
     flashSaleData = productList.filter(p => {
       const isFlagOn = p.isFlashSale === true || p.isFlashSale === "true";
-      const productWeek = Number(p.flashSaleBatch || p.flashSaleWeek) || 0;
-      return isFlagOn && productWeek === currentWeekNumber;
+      // Giả sử trong DB bạn lưu trường flashSaleBatch dạng "8-2" hoặc tương tự
+      const productBatch = String(p.flashSaleBatch || p.flashSaleWeek || "").trim();
+      return isFlagOn && productBatch === currentBatch;
     }).slice(0, 4);
   }
 

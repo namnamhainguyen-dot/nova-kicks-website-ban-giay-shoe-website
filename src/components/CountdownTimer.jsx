@@ -11,27 +11,18 @@ export default function CountdownTimer() {
     const calculateTimeLeft = () => {
       const now = new Date();
       
-      // Tính thời điểm bắt đầu của tuần hiện tại (ví dụ: Thứ Hai đầu tuần lúc 00:00:00)
-      // Hoặc tính mốc kết thúc tuần (Chủ Nhật lúc 23:59:59) để reset đúng hạn
+      // Tìm thời điểm kết thúc của tuần hiện tại (ví dụ: Chủ Nhật lúc 23:59:59)
       const currentDay = now.getDay(); // 0 là Chủ Nhật, 1 là Thứ Hai,...
-      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const daysUntilEndOfWeek = currentDay === 0 ? 0 : 7 - currentDay;
       
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() + distanceToMonday);
-      startOfWeek.setHours(0, 0, 0, 0);
+      const endOfWeek = new Date(now);
+      endOfWeek.setDate(now.getDate() + daysUntilEndOfWeek);
+      endOfWeek.setHours(23, 59, 59, 999);
 
-      // Chu kỳ 1 tuần tính bằng mili-giây
-      const weekDuration = 7 * 24 * 60 * 60 * 1000;
-      
-      // Mốc kết thúc tuần này = Mốc đầu tuần + 7 ngày
-      let targetTime = startOfWeek.getTime() + weekDuration;
+      let targetTime = endOfWeek.getTime();
+      const remaining = targetTime - now.getTime();
 
-      // Nếu vì lý do nào đó targetTime đã qua, dịch lên tuần tiếp theo
-      while (targetTime <= now.getTime()) {
-        targetTime += weekDuration;
-      }
-
-      return targetTime - now.getTime();
+      return Math.max(0, remaining);
     };
 
     setTimeLeft(calculateTimeLeft());
@@ -40,7 +31,7 @@ export default function CountdownTimer() {
       const remaining = calculateTimeLeft();
       
       if (remaining <= 0) {
-        // Hết tuần -> Reload lại trang để Server nhận diện số tuần mới (currentWeekNumber) và đổi sản phẩm Flash Sale
+        // Hết tuần -> Reload lại trang để hệ thống tự động nhận diện sang Tuần mới / Tháng mới
         window.location.reload();
       } else {
         setTimeLeft(remaining);
