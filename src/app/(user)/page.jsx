@@ -33,9 +33,14 @@ export default async function Menu() {
     console.error("Lỗi fetch products:", err);
   }
 
-  // 2. Fetch riêng danh sách Flash Sale (hoặc lọc từ productList nếu API chung đã hỗ trợ)
+  // Tính số tuần hiện tại của năm để query Flash Sale chuẩn xác theo tuần
+  const now = new Date();
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+  const currentWeekNumber = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+
+  // 2. Fetch riêng danh sách Flash Sale theo đúng số tuần hiện tại
   try {
-    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale?batch=batch-2`, { cache: 'no-store' });
+    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale?batch=${currentWeekNumber}`, { cache: 'no-store' });
     if (flashRes.ok) {
       const flashJson = await flashRes.json();
       flashSaleData = Array.isArray(flashJson) ? flashJson.slice(0, 4) : (flashJson.products?.slice(0, 4) || []);
@@ -44,9 +49,13 @@ export default async function Menu() {
     console.error("Lỗi fetch flash sale:", err);
   }
 
-  // Fallback nếu API flash-sale chưa có riêng, lọc từ productList cũ nhưng chuẩn hóa điều kiện
+  // Fallback chuẩn hóa: Lọc từ productList dựa trên cờ isFlashSale và khớp đúng số tuần hiện tại
   if (flashSaleData.length === 0 && Array.isArray(productList)) {
-    flashSaleData = productList.filter(p => p.isFlashSale === true).slice(0, 4);
+    flashSaleData = productList.filter(p => {
+      const isFlagOn = p.isFlashSale === true || p.isFlashSale === "true";
+      const productWeek = Number(p.flashSaleBatch || p.flashSaleWeek) || 0;
+      return isFlagOn && productWeek === currentWeekNumber;
+    }).slice(0, 4);
   }
 
   // 3. Fetch tin tức
@@ -190,7 +199,6 @@ export default async function Menu() {
           <div className="row g-4">
             {flashSaleData.length > 0 ? (
               flashSaleData.map((p) => {
-                // Ưu tiên lấy giá flashSalePrice và originalPrice chuẩn từ DB
                 const salePrice = p.flashSalePrice ? Number(p.flashSalePrice) : Number(p.price);
                 const oldPrice = p.originalPrice ? Number(p.originalPrice) : salePrice * 1.35; 
                 
