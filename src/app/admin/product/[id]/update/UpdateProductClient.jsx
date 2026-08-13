@@ -16,11 +16,11 @@ export default function UpdateProductClient({ id }) {
   const [quantity, setQuantity] = useState(0);
   const [status, setStatus] = useState("active");
 
-  // Flash Sale (Đã tách bạch hoàn toàn, không bị ảnh hưởng hay đồng bộ tự động với giá thường nữa)
+  // Flash Sale (Đã đổi flashSaleBatch thành dạng chuỗi "Tháng-Tuần")
   const [isFlashSale, setIsFlashSale] = useState(false);
   const [originalPrice, setOriginalPrice] = useState(0);
   const [flashSalePrice, setFlashSalePrice] = useState(0);
-  const [flashSaleBatch, setFlashSaleBatch] = useState("batch-1");
+  const [flashSaleBatch, setFlashSaleBatch] = useState("8-1"); // Mặc định tháng 8 tuần 1
 
   // Quản lý danh mục
   const [categoryID, setCategoryID] = useState(""); 
@@ -70,11 +70,11 @@ export default function UpdateProductClient({ id }) {
         setStatus(product.status || "active");
         setCategoryID(product.categoryID || product.categoryId || product.category?._id || "");
         
-        // SỬA TẠI ĐÂY: Dùng kiểu kiểm tra tường minh để không bị nuốt mất số liệu 0 hoặc ghi đè nhầm
         setIsFlashSale(Boolean(product.isFlashSale));
         setOriginalPrice(product.originalPrice !== undefined && product.originalPrice !== null ? product.originalPrice : 0);
         setFlashSalePrice(product.flashSalePrice !== undefined && product.flashSalePrice !== null ? product.flashSalePrice : 0);
-        setFlashSaleBatch(product.flashSaleBatch || "batch-1");
+        // Đọc flashSaleBatch dưới dạng chuỗi (hỗ trợ dữ liệu cũ nếu lưu số thì ép sang string)
+        setFlashSaleBatch(product.flashSaleBatch ? String(product.flashSaleBatch) : "8-1");
 
         if (Array.isArray(product.variants) && product.variants.length > 0) {
           const loadedColors = [];
@@ -266,7 +266,6 @@ export default function UpdateProductClient({ id }) {
     setSaving(true);
     setError("");
 
-    // Xử lý chuẩn xác cấu trúc sizes thành Array of Objects giống hệt trang Sửa
     const finalVariants = colors.map((color) => {
       const colorData = variantDetails[color] || {};
       const sizesArray = Object.entries(colorData.sizes || {})
@@ -285,7 +284,6 @@ export default function UpdateProductClient({ id }) {
     });
 
     try {
-      // ĐÃ SỬA: Chuyển từ POST sang PUT và thêm /${id} để cập nhật đúng sản phẩm hiện tại
       const response = await fetch(`/api/products/${id}`, {
         method: "PUT", 
         headers: { "Content-Type": "application/json" },
@@ -301,7 +299,7 @@ export default function UpdateProductClient({ id }) {
           isFlashSale: Boolean(isFlashSale),
           originalPrice: isFlashSale ? Number(originalPrice) : 0,
           flashSalePrice: isFlashSale ? Number(flashSalePrice) : 0,
-          flashSaleBatch: isFlashSale ? flashSaleBatch : null
+          flashSaleBatch: isFlashSale ? String(flashSaleBatch).trim() : null // Đảm bảo lưu dạng chuỗi "Tháng-Tuần"
         }),
       });
 
@@ -389,7 +387,6 @@ export default function UpdateProductClient({ id }) {
                   onChange={(e) => {
                     const val = e.target.value;
                     setPrice(val === "" ? "" : Math.max(0, Number(val)));
-                    // ĐÃ XÓA đoạn code tự động gán đợt giá flash sale ở đây để bảo toàn giá trị Flash Sale độc lập
                   }}
                   min="0"
                   required
@@ -512,25 +509,28 @@ export default function UpdateProductClient({ id }) {
                     />
                   </div>
 
-                  {/* Lựa chọn đợt / số tuần Flash Sale */}
+                  {/* ĐÃ CẬP NHẬT: Chọn đợt Flash Sale theo Tháng và Tuần trong tháng */}
                   <div className="col-md-4">
                     <label htmlFor="flashSaleBatch" className="form-label small text-uppercase font-weight-bold text-muted">
-                      Tuần Flash Sale áp dụng (Số tuần)
+                      Đợt Flash Sale (Tháng - Tuần)
                     </label>
-                    <input 
-                      type="number" 
-                      className="form-control"
+                    <select 
+                      className="form-select"
                       id="flashSaleBatch"
-                      placeholder="Ví dụ: 18"
                       value={flashSaleBatch}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setFlashSaleBatch(val === "" ? "" : Number(val));
-                      }}
-                      min="1"
-                      max="53"
-                    />
-                    <div className="form-text text-muted">Nhập số tuần trong năm (VD: 18) để khớp với API lọc theo tuần.</div>
+                      onChange={(e) => setFlashSaleBatch(e.target.value)}
+                      required={isFlashSale}
+                    >
+                      <option value="8-1">Tháng 8 - Tuần 1</option>
+                      <option value="8-2">Tháng 8 - Tuần 2</option>
+                      <option value="8-3">Tháng 8 - Tuần 3</option>
+                      <option value="8-4">Tháng 8 - Tuần 4</option>
+                      <option value="9-1">Tháng 9 - Tuần 1</option>
+                      <option value="9-2">Tháng 9 - Tuần 2</option>
+                      <option value="9-3">Tháng 9 - Tuần 3</option>
+                      <option value="9-4">Tháng 9 - Tuần 4</option>
+                    </select>
+                    <div className="form-text text-muted">Chọn đúng tuần trong tháng để khớp với trang chủ.</div>
                   </div>
                 </div>
               )}
