@@ -1,47 +1,59 @@
 import { NextResponse } from "next/server";
 
-// GIẢ LẬP DATABASE (Trong thực tế, bạn sẽ dùng Mongoose/Prisma để query DB thật ở đây)
-// Cấu trúc: { sessionId: "id_khach_hang", user: "Tên khách", messages: [{ sender: "user" | "admin", text: "..." }] }
-let mockDatabase = []; 
+// Giả sử đây là mảng lưu tin nhắn tạm thời hoặc kết nối MongoDB/Database
+let messagesDatabase = []; 
 
 export async function GET(req) {
   const { searchParams } = new URL(req.url);
   const sessionId = searchParams.get("sessionId");
 
-  // Nếu Khách gọi (có sessionId) -> Trả về tin nhắn của khách đó
+  // Nếu Client truyền sessionId, chỉ lọc tin nhắn của đúng Session đó
   if (sessionId) {
-    const chat = mockDatabase.find(c => c.sessionId === sessionId);
-    return NextResponse.json(chat ? chat.messages : []);
+    const sessionMessages = messagesDatabase.filter((m) => m.sessionId === sessionId);
+    return NextResponse.json(sessionMessages);
   }
 
-  // Nếu Admin gọi (không truyền sessionId) -> Trả về toàn bộ danh sách khách đang chat
-  return NextResponse.json(mockDatabase);
+  // Phía Admin (không truyền sessionId): Nhóm tin nhắn theo sessionId để trả về danh sách hội thoại
+  const conversationsMap = {};
+
+  messagesDatabase.forEach((msg) => {
+    if (!conversationsMap[msg.sessionId]) {
+      conversationsMap[msg.sessionId] = {
+        sessionId: msg.sessionId,
+        user: msg.user || "Khách hàng",
+        time: msg.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        messages: [],
+      };
+    }
+    // Cập nhật tên mới nhất nếu tin nhắn do 'user' gửi
+    if (msg.sender === "user" && msg.user) {
+      conversationsMap[msg.sessionId].user = msg.user;
+    }
+    conversationsMap[msg.sessionId].messages.push(msg);
+  });
+
+  return NextResponse.json(Object.values(conversationsMap));
 }
 
 export async function POST(req) {
   try {
-    const { sessionId, user, sender, text } = await req.json();
+    const body = await req.json();
+    const { sessionId, user, sender, text, mode } = body;
 
-    let chat = mockDatabase.find(c => c.sessionId === sessionId);
-    
-    // Nếu khách chưa từng chat, tạo phiên chat mới
-    if (!chat) {
-      chat = {
-        sessionId,
-        user: user || "Khách Ẩn Danh",
-        time: new Date().toLocaleTimeString(),
-        messages: []
-      };
-      mockDatabase.push(chat);
-    }
+    const newMessage = {
+      id: Date.now(),
+      sessionId,
+      user: user || "Khách hàng",
+      sender, // 'user', 'admin', hoặc 'bot'
+      text,
+      mode,
+      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    };
 
-    // Thêm tin nhắn mới vào cuộc hội thoại
-    const newMessage = { id: Date.now(), sender, text };
-    chat.messages.push(newMessage);
-    chat.time = new Date().toLocaleTimeString(); // Cập nhật thời gian mới nhất
+    messagesDatabase.push(newMessage);
 
-    return NextResponse.json({ success: true, newMessage });
+    return NextResponse.json({ success: true, message: newMessage }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Lỗi server" }, { status: 500 });
+    return NextResponse.json({ error: "Lỗi lưu tin nhắn" }, { status: 500 });
   }
 }
