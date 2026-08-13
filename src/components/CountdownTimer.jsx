@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_time", onExpire }) {
+export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_time" }) {
   const [mounted, setMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
 
@@ -11,10 +11,10 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
     const getTargetTime = () => {
       let baseTime = endTime 
         ? new Date(endTime).getTime() 
-        : Date.now() + (2 * 60 * 1000); // Thay bằng 2 phút để test
+        : Date.now() + (2 * 60 * 1000); // Mốc test 2 phút
 
       const now = Date.now();
-      const cycleDuration = 2 * 60 * 1000; // Chu kỳ (2 phút hoặc 7 * 24 * 60 * 60 * 1000 khi chạy thật)
+      const cycleDuration = 2 * 60 * 1000; // Chu kỳ (Đổi thành 7 * 24 * 60 * 60 * 1000 khi chạy thật)
 
       while (baseTime <= now) {
         baseTime += cycleDuration;
@@ -23,25 +23,22 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
       return baseTime;
     };
 
-    // Khởi tạo mốc thời gian mục tiêu ban đầu
     let currentTargetTime = getTargetTime();
     setTimeLeft(Math.max(0, currentTargetTime - Date.now()));
 
     const timer = setInterval(() => {
       let remaining = currentTargetTime - Date.now();
       
-      // Nếu hết giờ, tự động tính lại mốc targetTime mới (vòng lặp tiếp theo)
       if (remaining <= 0) {
-        currentTargetTime = getTargetTime();
-        remaining = currentTargetTime - Date.now();
-        if (onExpire) onExpire();
+        // Khi hết giờ, tự động tải lại trang ở phía Client để lấy sản phẩm Flash Sale mới từ DB
+        window.location.reload();
+      } else {
+        setTimeLeft(remaining);
       }
-      
-      setTimeLeft(remaining);
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [endTime, storageKey, onExpire]);
+  }, [endTime, storageKey]);
 
   if (!mounted) {
     return (
