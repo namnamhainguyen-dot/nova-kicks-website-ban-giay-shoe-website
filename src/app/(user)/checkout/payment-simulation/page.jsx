@@ -19,19 +19,18 @@ function PaymentContent() {
   const hasCreatedOrder = useRef(false);
 
   // Hàm gọi API hủy đơn hàng và hoàn kho
-  const cancelOrderOnServer = async (idToCancel) => {
-    if (!idToCancel) return;
-    try {
-      await fetch("/api/orders/cancel", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId: idToCancel }),
-      });
-    } catch (err) {
-      console.error("Lỗi khi gọi API hủy đơn rác:", err);
-    }
-  };
-
+// Hàm gọi API hủy/xóa đơn hàng rác
+const cancelOrderOnServer = async (idToCancel) => {
+  if (!idToCancel) return;
+  try {
+    // Gọi thẳng vào API [id] method DELETE hoặc PATCH
+    await fetch(`/api/orders/${idToCancel}`, {
+      method: "DELETE", // Hoặc dùng method: "PATCH" với body: JSON.stringify({ status: "cancelled" })
+    });
+  } catch (err) {
+    console.error("Lỗi khi hủy đơn hàng rác:", err);
+  }
+};
   // 1. Vừa vào trang QR: Lấy thông tin pending_order từ sessionStorage và gọi API tạo đơn hàng (isPaid: false)
   useEffect(() => {
     if (hasCreatedOrder.current) return;
@@ -133,12 +132,15 @@ function PaymentContent() {
   }, [orderId, isPaid, router]);
 
   // Xử lý khi nhấn nút "Hủy bỏ / Quay lại": Hủy đơn và trả lại kho ngay lập tức
-  const handleCancel = () => {
-    if (orderId && !isPaid) {
-      cancelOrderOnServer(orderId);
-    }
-    sessionStorage.removeItem("pending_order");
-  };
+// Thay vì dùng Link thuần túy, dùng hàm xử lý async
+const handleCancel = async (e) => {
+  e.preventDefault();
+  if (orderId && !isPaid) {
+    await cancelOrderOnServer(orderId); // Chờ xóa/hủy đơn trên DB xong
+  }
+  sessionStorage.removeItem("pending_order");
+  router.push("/checkout"); // Sau đó mới đẩy về trang checkout
+};
 
   // Thông tin tài khoản nhận tiền
   const bankId = "MB";
@@ -168,9 +170,12 @@ function PaymentContent() {
         <div className="text-center p-5 card shadow-sm border-0 rounded-4" style={{ maxWidth: "450px" }}>
           <h4 className="text-danger fw-bold mb-3">⚠️ Có lỗi xảy ra</h4>
           <p className="text-muted mb-4">{errorMessage}</p>
-          <Link href="/checkout" className="btn btn-dark rounded-pill px-4">
+          <button 
+            onClick={handleCancel} 
+            className="btn btn-dark rounded-pill px-4"
+          >
             Quay lại trang thanh toán
-          </Link>
+          </button>
         </div>
       </main>
     );
@@ -229,9 +234,11 @@ function PaymentContent() {
           <span>Đang chờ thanh toán thực tế... ({Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")})</span>
         </div>
 
-        <Link href="/checkout" onClick={handleCancel} className="text-muted small text-decoration-none">
-          ← Quay lại trang thanh toán / Hủy bỏ
-        </Link>
+        <button 
+        onClick={handleCancel} 
+        className="btn btn-link text-muted small text-decoration-none p-0 border-0 bg-transparent">
+        ← Quay lại trang thanh toán / Hủy bỏ
+        </button>
       </div>
     </main>
   );
