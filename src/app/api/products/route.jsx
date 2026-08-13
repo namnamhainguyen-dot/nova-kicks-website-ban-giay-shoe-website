@@ -36,8 +36,21 @@ export async function GET(request) {
     if (isFlashSaleParam === "true") {
       const now = new Date();
       query.isFlashSale = true;
-      query.flashSaleStart = { $lte: now };
-      query.flashSaleEnd = { $gt: now };
+      // Chỉ lọc theo thời gian nếu sản phẩm có set ngày tháng, ngược lại bỏ qua để dễ test
+      query.$or = [
+        {
+          flashSaleStart: { $lte: now },
+          flashSaleEnd: { $gt: now }
+        },
+        {
+          flashSaleStart: null,
+          flashSaleEnd: null
+        },
+        {
+          flashSaleStart: { $exists: false },
+          flashSaleEnd: { $exists: false }
+        }
+      ];
     }
 
     const productsList = await db
