@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import clientPromise, { dbName } from "@/lib/mongodb";
+import clientPromise, { dbName } from "@/libs/mongodb";
 
 // GET: Lấy tin nhắn theo sessionId (cho Client) hoặc lấy toàn bộ danh sách hội thoại (cho Admin)
 export async function GET(req) {
