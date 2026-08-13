@@ -25,7 +25,7 @@ export default function AdminDirectReplyPage() {
             return data;
           });
 
-          // Nếu chưa chọn khách nào và có dữ liệu -> Tự động chọn cuộc trò chuyện đầu tiên
+          // Tự động chọn cuộc trò chuyện đầu tiên nếu chưa chọn
           setActiveSessionId((prevId) => {
             if (!prevId && data.length > 0) {
               return data[0].sessionId;
@@ -41,7 +41,6 @@ export default function AdminDirectReplyPage() {
     fetchConversations();
     const interval = setInterval(fetchConversations, 3000);
 
-    // Lắng nghe sự kiện từ storage / custom event nếu có hành động mới
     const handleStorageChange = (e) => {
       if (e.key === "chat_refresh") fetchConversations();
     };
@@ -55,18 +54,19 @@ export default function AdminDirectReplyPage() {
     };
   }, []);
 
-  // Cuộn xuống tin nhắn cuối cùng khi có tin nhắn mới hoặc đổi cuộc trò chuyện
+  // Chỉ cuộn xuống tin nhắn cuối cùng khi đổi Session hoặc khi tổng số tin nhắn thay đổi
+  const activeChat = conversations.find((c) => c.sessionId === activeSessionId);
+  const totalMessagesCount = activeChat?.messages?.length || 0;
+
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [conversations, activeSessionId]);
-
-  // Lấy thông tin phiên chat đang được chọn
-  const activeChat = conversations.find((c) => c.sessionId === activeSessionId);
+  }, [activeSessionId, totalMessagesCount]);
 
   // Lọc danh sách khách hàng theo ô tìm kiếm
-  const filteredConversations = conversations.filter((conv) =>
-    (conv.user || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (conv.sessionId || "").toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredConversations = conversations.filter(
+    (conv) =>
+      (conv.user || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (conv.sessionId || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // 2. XỬ LÝ GỬI TIN NHẮN TRẢ LỜI CỦA ADMIN
@@ -75,11 +75,11 @@ export default function AdminDirectReplyPage() {
     if (!replyText.trim() || !activeSessionId) return;
 
     const currentText = replyText.trim();
-    setReplyText(""); // Xóa ngay ô input cho trải nghiệm mượt mà
+    setReplyText("");
 
     const nowTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-    // Cập nhật giao diện tạm thời (Optimistic Update)
+    // Optimistic Update
     const newMessage = { id: Date.now(), sender: "admin", text: currentText };
     setConversations((prev) =>
       prev.map((chat) =>
@@ -93,7 +93,6 @@ export default function AdminDirectReplyPage() {
       )
     );
 
-    // Gửi dữ liệu thật lên API
     try {
       const res = await fetch("/api/messages", {
         method: "POST",
@@ -101,7 +100,7 @@ export default function AdminDirectReplyPage() {
         body: JSON.stringify({
           sessionId: activeSessionId,
           sender: "admin",
-          user: "Khách hàng",
+          user: activeChat?.user || "Khách hàng",
           text: currentText,
           mode: "admin",
         }),
@@ -146,7 +145,6 @@ export default function AdminDirectReplyPage() {
             <div className="overflow-auto flex-grow-1">
               {filteredConversations.length > 0 ? (
                 filteredConversations.map((conv) => {
-                  // Chuẩn hóa tin nhắn cuối cùng để hiển thị preview ở danh sách bên trái
                   const lastMsgObj = conv.messages?.[conv.messages.length - 1];
                   const lastMsgText = lastMsgObj
                     ? lastMsgObj.text || lastMsgObj.content || lastMsgObj.message
@@ -212,14 +210,24 @@ export default function AdminDirectReplyPage() {
                   {activeChat.messages && activeChat.messages.length > 0 ? (
                     activeChat.messages.map((msg, index) => {
                       const isAdmin = msg.sender === "admin";
+                      const isBot = msg.sender === "bot";
                       const msgContent = msg.text || msg.content || msg.message || "";
 
                       return (
-                        <div key={msg.id || index} className={`d-flex ${isAdmin ? "justify-content-end" : "justify-content-start"}`}>
+                        <div key={msg.id || index} className={`d-flex flex-column ${isAdmin ? "align-items-end" : "align-items-start"}`}>
+                          <span className="text-muted mb-1 px-1" style={{ fontSize: "0.7rem" }}>
+                            {isAdmin ? "Admin" : isBot ? "Bot AI" : activeChat.user || "Khách hàng"}
+                          </span>
                           <div
-                            className={`p-2 px-3 rounded-3 shadow-sm ${isAdmin ? "text-white" : "bg-white border text-dark"}`}
+                            className={`p-2 px-3 rounded-3 shadow-sm ${
+                              isAdmin
+                                ? "text-white"
+                                : isBot
+                                ? "bg-light border text-secondary"
+                                : "bg-white border text-dark"
+                            }`}
                             style={{
-                              backgroundColor: isAdmin ? "#d87c3c" : "#fff",
+                              backgroundColor: isAdmin ? "#d87c3c" : undefined,
                               maxWidth: "70%",
                               fontSize: "0.95rem",
                               lineHeight: "1.4",

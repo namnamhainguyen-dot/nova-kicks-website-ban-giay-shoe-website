@@ -2,12 +2,19 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function buildFallbackResponse(userMessage, products = []) {
-  const productNames = products.slice(0, 3).map((p) => p.name || p.title).filter(Boolean);
-  const matchedIds = products.slice(0, 3).map((p) => p._id?.$oid || p._id || p.id).filter(Boolean);
+  const productNames = products
+    .slice(0, 3)
+    .map((p) => p.name || p.title)
+    .filter(Boolean);
+  const matchedIds = products
+    .slice(0, 3)
+    .map((p) => p._id?.$oid || p._id || p.id)
+    .filter(Boolean);
 
-  const reply = productNames.length > 0
-    ? `Mình đang ở chế độ dự phòng vì khóa Gemini chưa được cấu hình hoặc bị giới hạn. Bạn có thể xem các sản phẩm phù hợp như: ${productNames.join(", ")}.`
-    : `Mình đang ở chế độ dự phòng. Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
+  const reply =
+    productNames.length > 0
+      ? `Mình đang ở chế độ dự phòng vì khóa Gemini chưa được cấu hình hoặc bị giới hạn. Bạn có thể xem các sản phẩm phù hợp như: ${productNames.join(", ")}.`
+      : `Mình đang ở chế độ dự phòng. Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
 
   return {
     reply,
@@ -35,19 +42,21 @@ export async function POST(req) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
+    // Cập nhật tên model ổn định mới nhất (gemini-1.5-flash)
     const model = genAI.getGenerativeModel({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
       },
     });
 
+    // Rút gọn bớt dữ liệu sản phẩm để tránh làm phình Prompt/Token
     const productsContext = products.map((p) => ({
-      id: p._id?.$oid || p._id || p.id,
+      id: String(p._id?.$oid || p._id || p.id),
       name: p.name,
       price: p.price,
       sizes: p.availableSizes || p.displaySizes || p.sizes || [],
-      colors: (p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || []),
+      colors: p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || [],
     }));
 
     const singlePrompt = `
@@ -63,7 +72,7 @@ export async function POST(req) {
 
       Nhiệm vụ:
       - Dựa vào lịch sử và tin nhắn mới nhất, lọc ra danh sách các product ID phù hợp.
-      - Trả về JSON theo đúng cấu trúc sau:
+      - Trả về JSON theo đúng cấu trúc sau (không kèm ký tự markdown như \`\`\`json):
       {
         "reply": "Câu trả lời tư vấn ngắn gọn (2-3 câu), xưng 'mình' gọi 'bạn'.",
         "matchedIds": ["id1", "id2"]
@@ -71,7 +80,12 @@ export async function POST(req) {
     `;
 
     const result = await model.generateContent(singlePrompt);
-    const textResponse = result.response.text().trim();
+    let textResponse = result.response.text().trim();
+
+    // Làm sạch các ký tự bọc Codeblock của Markdown nếu có
+    if (textResponse.startsWith("```")) {
+      textResponse = textResponse.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
+    }
 
     let parsedData = {
       reply: "Mình đã tiếp nhận yêu cầu, bạn xem các sản phẩm bên dưới nhé!",
@@ -95,7 +109,6 @@ export async function POST(req) {
   } catch (error) {
     console.error("Lỗi API Chatbot Chi Tiết:", error);
 
-    // Xử lý lỗi Rate Limit 429 hoặc các lỗi khác không làm sập UI
     let fallbackText = "⏳ Hệ thống tư vấn AI đang bận hoặc đạt giới hạn tạm thời. Bạn vui lòng thử lại sau vài giây nhé!";
     
     if (!error?.message?.includes("429")) {

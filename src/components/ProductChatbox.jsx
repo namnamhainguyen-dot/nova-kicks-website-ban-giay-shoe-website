@@ -1,8 +1,7 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-// Tin nhắn chào mặc định
 const WELCOME_MESSAGE = {
   role: "bot",
   text: "Xin chào! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá...), mình tìm cho liền nhé! 🤖",
@@ -15,40 +14,109 @@ export default function ProductChatbox({ products }) {
   const [isLoading, setIsLoading] = useState(false);
   const [replyMode, setReplyMode] = useState("bot");
 
-  // Tạo cố định 1 sessionId duy nhất cho phiên chat của khách hàng
-  const [sessionId] = useState(() => {
-    if (typeof window !== "undefined") {
-      let savedId = localStorage.getItem("chat_session_id");
-      if (!savedId) {
-        savedId = "session_" + Math.floor(Math.random() * 100000);
-        localStorage.setItem("chat_session_id", savedId);
-      }
-      return savedId;
-    }
-    return "session_" + Math.floor(Math.random() * 100000);
-  });
-
   const router = useRouter();
   const searchParams = useSearchParams();
   const chatEndRef = useRef(null);
 
+  // 1. Hàm lấy thông tin User từ LocalStorage
+  const getLoggedInCustomer = useCallback(() => {
+    if (typeof window === "undefined") return { id: "", name: "" };
+
+    const candidateKeys = ["user", "userInfo", "currentUser", "account", "auth"];
+
+    for (const key of candidateKeys) {
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+
+        const parsedUser = JSON.parse(raw);
+        if (!parsedUser || typeof parsedUser !== "object") continue;
+
+        const customerName =
+          parsedUser.fullname ||
+          parsedUser.fullName ||
+          parsedUser.name ||
+          parsedUser.username ||
+          parsedUser.displayName ||
+          parsedUser.email ||
+          "";
+
+        const customerId = parsedUser._id || parsedUser.id || parsedUser.userId || parsedUser.email || "";
+
+        if (customerName) {
+          return { id: String(customerId), name: customerName };
+        }
+      } catch (e) {
+        // Bỏ qua lỗi parse JSON
+      }
+    }
+
+    return { id: "", name: "" };
+  }, []);
+
+  // 2. Khởi tạo Session Info
+  const [sessionInfo, setSessionInfo] = useState(() => {
+    if (typeof window !== "undefined") {
+      const currentUser = getLoggedInCustomer();
+      if (currentUser.id) {
+        return {
+          id: `session_user_${currentUser.id}`,
+          name: currentUser.name,
+        };
+      }
+
+      let guestSession = sessionStorage.getItem("guest_chat_session");
+      let guestName = sessionStorage.getItem("guest_chat_name");
+      if (!guestSession) {
+        guestSession = `session_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        guestName = `Khách hàng ${Math.floor(1000 + Math.random() * 9000)}`;
+        sessionStorage.setItem("guest_chat_session", guestSession);
+        sessionStorage.setItem("guest_chat_name", guestName);
+      }
+      return { id: guestSession, name: guestName };
+    }
+    return { id: "session_guest", name: "Khách hàng" };
+  });
+
+  // 3. Lắng nghe thay đổi trạng thái đăng nhập
+  useEffect(() => {
+    const updateAuthStatus = () => {
+      const currentUser = getLoggedInCustomer();
+      if (currentUser.id) {
+        setSessionInfo({
+          id: `session_user_${currentUser.id}`,
+          name: currentUser.name,
+        });
+      }
+    };
+
+    updateAuthStatus();
+    window.addEventListener("storage", updateAuthStatus);
+    window.addEventListener("userLogin", updateAuthStatus);
+
+    return () => {
+      window.removeEventListener("storage", updateAuthStatus);
+      window.removeEventListener("userLogin", updateAuthStatus);
+    };
+  }, [getLoggedInCustomer]);
+
   // Tự động cuộn xuống tin nhắn mới nhất
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isLoading]);
 
-  // CƠ CHẾ POLLING + REFRESH TỨC THỜI: tải tin nhắn mới từ Admin/DB
+  // 4. Lấy danh sách tin nhắn định kỳ
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchMessagesFromAdmin = async () => {
       try {
-        const res = await fetch(`/api/messages?sessionId=${sessionId}`);
+        const res = await fetch(`/api/messages?sessionId=${sessionInfo.id}`);
         if (!res.ok) return;
 
         const dbMessages = await res.json();
 
-        if (dbMessages && Array.isArray(dbMessages)) {
+        if (Array.isArray(dbMessages)) {
           if (dbMessages.length > 0) {
             const formattedDbMsgs = dbMessages.map((msg) => ({
               role: msg.sender === "user" ? "user" : "bot",
@@ -71,26 +139,19 @@ export default function ProductChatbox({ products }) {
       }
     };
 
-    const handleRefresh = () => {
-      fetchMessagesFromAdmin();
-    };
-
     fetchMessagesFromAdmin();
-    const interval = setInterval(fetchMessagesFromAdmin, 1000);
+    const interval = setInterval(fetchMessagesFromAdmin, 2500);
+
+    const handleRefresh = () => fetchMessagesFromAdmin();
     window.addEventListener("chat-updated", handleRefresh);
-    window.addEventListener("storage", (event) => {
-      if (event.key === "chat_refresh") {
-        handleRefresh();
-      }
-    });
 
     return () => {
       clearInterval(interval);
       window.removeEventListener("chat-updated", handleRefresh);
     };
-  }, [isOpen, sessionId]);
+  }, [isOpen, sessionInfo.id]);
 
-  // XỬ LÝ GỬI TIN NHẮN
+  // 5. Gửi tin nhắn
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
@@ -107,40 +168,33 @@ export default function ProductChatbox({ products }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: sessionId,
-          user: "Khách hàng",
+          sessionId: sessionInfo.id,
+          user: sessionInfo.name,
           sender: "user",
           text: userText,
           mode: replyMode,
         }),
       });
+      window.dispatchEvent(new Event("chat-updated"));
     } catch (err) {
-      console.error("Lỗi đồng bộ tin nhắn lên Admin:", err);
+      console.error("Lỗi đồng bộ tin nhắn:", err);
     }
 
     if (replyMode === "admin") {
-      const confirmText = "Đã chuyển tin nhắn của bạn đến Admin. Admin sẽ phản hồi sớm nhất có thể! 👨‍💼";
+      const adminNotice = "Đã chuyển tin nhắn của bạn đến Admin. Admin sẽ phản hồi sớm nhất có thể! 👨‍💼";
+      setMessages((prev) => [...prev, { role: "bot", text: adminNotice }]);
 
-      setMessages((prev) => [
-        ...prev,
-        { role: "bot", text: confirmText },
-      ]);
-
-      try {
-        await fetch("/api/messages", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            sessionId: sessionId,
-            user: "Khách hàng",
-            sender: "admin",
-            text: confirmText,
-            mode: "admin",
-          }),
-        });
-      } catch (err) {
-        console.error("Lỗi gửi phản hồi tự động:", err);
-      }
+      await fetch("/api/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: sessionInfo.id,
+          user: sessionInfo.name,
+          sender: "bot",
+          text: adminNotice,
+          mode: "admin",
+        }),
+      });
 
       setIsLoading(false);
       return;
@@ -172,9 +226,9 @@ export default function ProductChatbox({ products }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sessionId: sessionId,
-          user: "Khách hàng",
-          sender: "admin",
+          sessionId: sessionInfo.id,
+          user: sessionInfo.name,
+          sender: "bot",
           text: data.reply,
           mode: "bot",
         }),
@@ -199,7 +253,6 @@ export default function ProductChatbox({ products }) {
 
   return (
     <div className="position-fixed bottom-0 end-0 m-4" style={{ zIndex: 1050 }}>
-      {/* Nút Bong Bóng Chat (Floating Button) */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -221,7 +274,6 @@ export default function ProductChatbox({ products }) {
         </button>
       )}
 
-      {/* Khung Chatbox Giao Diện Hiện Đại */}
       {isOpen && (
         <div
           className="card shadow-lg border-0 d-flex flex-column"
@@ -248,7 +300,11 @@ export default function ProductChatbox({ products }) {
               <div>
                 <h6 className="m-0 fw-bold fs-6">Nova Assistant</h6>
                 <div className="d-flex align-items-center gap-1 mt-0.5">
-                  <span className="spinner-grow spinner-grow-sm text-success" role="status" style={{ width: "7px", height: "7px", display: isLoading ? "inline-block" : "none" }}></span>
+                  <span
+                    className="spinner-grow spinner-grow-sm text-success"
+                    role="status"
+                    style={{ width: "7px", height: "7px", display: isLoading ? "inline-block" : "none" }}
+                  ></span>
                   <span className="text-success" style={{ fontSize: "0.75rem", fontWeight: "500" }}>
                     {isLoading ? "Đang trả lời..." : "● Sẵn sàng tư vấn"}
                   </span>
@@ -264,7 +320,7 @@ export default function ProductChatbox({ products }) {
             </button>
           </div>
 
-          {/* Thanh chuyển chế độ (Mode Switcher) */}
+          {/* Thanh chuyển chế độ */}
           <div className="bg-light px-3 py-2 border-bottom d-flex gap-2">
             <button
               type="button"
@@ -288,7 +344,7 @@ export default function ProductChatbox({ products }) {
             </button>
           </div>
 
-          {/* Khung chứa Nội dung Tin nhắn */}
+          {/* Khung tin nhắn */}
           <div
             className="card-body p-3 overflow-auto d-flex flex-column gap-3"
             style={{ flex: 1, backgroundColor: "#fcfcfc" }}
@@ -334,27 +390,25 @@ export default function ProductChatbox({ products }) {
                 >
                   AI
                 </div>
-                <div className="p-3 rounded-4 rounded-bottom-start-0 bg-white border border-light-subtle text-muted shadow-sm" style={{ fontSize: "0.85rem" }}>
+                <div
+                  className="p-3 rounded-4 rounded-bottom-start-0 bg-white border border-light-subtle text-muted shadow-sm"
+                  style={{ fontSize: "0.85rem" }}
+                >
                   <span className="spinner-border spinner-border-sm me-2 text-warning" role="status"></span>
-                  Đang tìm kiếm giày phù hợp...
+                  Đang xử lý...
                 </div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          {/* Ô Nhập Tin Nhắn & Nút Gửi */}
-          <form
-            onSubmit={handleSendMessage}
-            className="p-3 bg-white border-top d-flex align-items-center gap-2"
-          >
+          {/* Ô nhập tin nhắn */}
+          <form onSubmit={handleSendMessage} className="p-3 bg-white border-top d-flex align-items-center gap-2">
             <input
               type="text"
               className="form-control form-control-sm rounded-pill px-3 py-2 bg-light border-0"
               placeholder={
-                replyMode === "admin"
-                  ? "Nhập nội dung cần hỏi Admin..."
-                  : "Nhập gu giày của bạn (màu, giá...)..."
+                replyMode === "admin" ? "Nhập nội dung cần hỏi Admin..." : "Nhập gu giày của bạn (màu, giá...)..."
               }
               value={input}
               onChange={(e) => setInput(e.target.value)}
