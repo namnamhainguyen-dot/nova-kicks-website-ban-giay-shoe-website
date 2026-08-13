@@ -1,36 +1,46 @@
 "use client";
 import { useState, useEffect } from "react";
 
-export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_time" }) {
+export default function CountdownTimer() {
   const [mounted, setMounted] = useState(false);
   const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
     setMounted(true);
-    
-    const getTargetTime = () => {
-      let baseTime = endTime 
-        ? new Date(endTime).getTime() 
-        : Date.now() + (2 * 60 * 1000); // Mốc test 2 phút
 
-      const now = Date.now();
-      const cycleDuration = 2 * 60 * 1000; // Chu kỳ (Đổi thành 7 * 24 * 60 * 60 * 1000 khi chạy thật)
+    const calculateTimeLeft = () => {
+      const now = new Date();
+      
+      // Tính thời điểm bắt đầu của tuần hiện tại (ví dụ: Thứ Hai đầu tuần lúc 00:00:00)
+      // Hoặc tính mốc kết thúc tuần (Chủ Nhật lúc 23:59:59) để reset đúng hạn
+      const currentDay = now.getDay(); // 0 là Chủ Nhật, 1 là Thứ Hai,...
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() + distanceToMonday);
+      startOfWeek.setHours(0, 0, 0, 0);
 
-      while (baseTime <= now) {
-        baseTime += cycleDuration;
+      // Chu kỳ 1 tuần tính bằng mili-giây
+      const weekDuration = 7 * 24 * 60 * 60 * 1000;
+      
+      // Mốc kết thúc tuần này = Mốc đầu tuần + 7 ngày
+      let targetTime = startOfWeek.getTime() + weekDuration;
+
+      // Nếu vì lý do nào đó targetTime đã qua, dịch lên tuần tiếp theo
+      while (targetTime <= now.getTime()) {
+        targetTime += weekDuration;
       }
 
-      return baseTime;
+      return targetTime - now.getTime();
     };
 
-    let currentTargetTime = getTargetTime();
-    setTimeLeft(Math.max(0, currentTargetTime - Date.now()));
+    setTimeLeft(calculateTimeLeft());
 
     const timer = setInterval(() => {
-      let remaining = currentTargetTime - Date.now();
+      const remaining = calculateTimeLeft();
       
       if (remaining <= 0) {
-        // Khi hết giờ, tự động tải lại trang ở phía Client để lấy sản phẩm Flash Sale mới từ DB
+        // Hết tuần -> Reload lại trang để Server nhận diện số tuần mới (currentWeekNumber) và đổi sản phẩm Flash Sale
         window.location.reload();
       } else {
         setTimeLeft(remaining);
@@ -38,7 +48,7 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [endTime, storageKey]);
+  }, []);
 
   if (!mounted) {
     return (
