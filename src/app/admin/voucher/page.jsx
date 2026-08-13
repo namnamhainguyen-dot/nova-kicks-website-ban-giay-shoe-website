@@ -15,6 +15,8 @@ export default function VoucherManagement() {
       const data = await res.json();
       if (Array.isArray(data)) {
         setVouchers(data);
+      } else if (data.vouchers && Array.isArray(data.vouchers)) {
+        setVouchers(data.vouchers);
       } else {
         setVouchers([]);
       }
@@ -84,7 +86,7 @@ export default function VoucherManagement() {
       <div className="row align-items-center mb-4">
         <div className="col-md-6">
           <h3 className="fw-bold mb-1">Quản lý Voucher</h3>
-          <p className="text-muted small">Theo dõi trạng thái các mã giảm giá của cửa hàng.</p>
+          <p className="text-muted small">Theo dõi trạng thái và thời gian hiệu lực các mã giảm giá của cửa hàng.</p>
         </div>
         <div className="col-md-6 text-md-end">
           <Link href="/admin/voucher/add" className="btn btn-dark shadow-sm">
@@ -121,8 +123,8 @@ export default function VoucherManagement() {
                 <th>Mức Giảm Giá</th>
                 <th>Đơn Tối Thiểu</th>
                 <th>Đã dùng / Giới hạn</th>
-                <th>Ngày Hết Hạn</th>
-                <th>Trạng Thái</th>
+                <th>Thời Gian Hiệu Lực</th>
+                <th>Trạng Thái Hiện Thị</th>
               </tr>
             </thead>
             <tbody>
@@ -134,8 +136,14 @@ export default function VoucherManagement() {
                 </tr>
               ) : (
                 filteredVouchers.map((v) => {
-                  // Kiểm tra hạn sử dụng
-                  const isExpired = v.expiry_date && new Date(v.expiry_date) < new Date();
+                  const now = new Date();
+                  
+                  // Kiểm tra ngày bắt đầu & hết hạn
+                  const startDateKey = v.start_date || v.startDate;
+                  const endDateKey = v.end_date || v.endDate || v.expiry_date;
+
+                  const isNotStarted = startDateKey ? new Date(startDateKey) > now : false;
+                  const isExpired = endDateKey ? new Date(endDateKey) < now : false;
 
                   // Bắt fallback dữ liệu đa dạng (snake_case + camelCase)
                   const usedCount = Number(v.used_count ?? v.usedCount ?? 0);
@@ -187,25 +195,36 @@ export default function VoucherManagement() {
                           </span>
                         </div>
                         {isFull && (
-                          <span className="badge bg-danger-subtle text-danger mt-1 style-badge" style={{ fontSize: "10px" }}>
+                          <span className="badge bg-danger-subtle text-danger mt-1" style={{ fontSize: "10px" }}>
                             Hết lượt
                           </span>
                         )}
                       </td>
 
-                      {/* Cột Ngày Hết Hạn */}
+                      {/* Cột Thời Gian Hiệu Lực */}
                       <td>
-                        <span className={`small ${isExpired ? "text-danger fw-bold" : "text-dark"}`}>
-                          {v.expiry_date ? new Date(v.expiry_date).toLocaleDateString("vi-VN") : "Không thời hạn"}
-                        </span>
+                        <div className="small text-dark">
+                          <div>Từ: {startDateKey ? new Date(startDateKey).toLocaleDateString("vi-VN") : "Không giới hạn"}</div>
+                          <div>Đến: {endDateKey ? new Date(endDateKey).toLocaleDateString("vi-VN") : "Không giới hạn"}</div>
+                        </div>
+                        {isNotStarted && (
+                          <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 mt-1" style={{ fontSize: "10px" }}>
+                            Chưa kích hoạt (Chưa tới hạn)
+                          </span>
+                        )}
                         {isExpired && (
-                          <span className="badge bg-danger-subtle text-danger ms-1 px-2 py-1 small" style={{ fontSize: "10px" }}>
-                            Hết hạn
+                          <span className="badge bg-danger-subtle text-danger px-2 py-1 mt-1" style={{ fontSize: "10px" }}>
+                            Đã hết hạn
+                          </span>
+                        )}
+                        {!isNotStarted && !isExpired && (
+                          <span className="badge bg-success-subtle text-success px-2 py-1 mt-1" style={{ fontSize: "10px" }}>
+                            Đang hoạt động
                           </span>
                         )}
                       </td>
 
-                      {/* Cột Switch Trạng Thái */}
+                      {/* Cột Switch Trạng Thái (is_active) */}
                       <td>
                         <div className="form-check form-switch">
                           <input
@@ -220,7 +239,7 @@ export default function VoucherManagement() {
                             className={`form-check-label small ms-1 ${v.is_active ? "text-success" : "text-danger"}`}
                             htmlFor={`switch-${v._id}`}
                           >
-                            {v.is_active ? "Kích hoạt" : "Tạm ẩn"}
+                            {v.is_active ? "Bật" : "Tắt"}
                           </label>
                         </div>
                       </td>
