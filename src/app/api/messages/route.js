@@ -1,59 +1,94 @@
 import { NextResponse } from "next/server";
+import clientPromise, { dbName } from "@/lib/mongodb";
 
-// Giả sử đây là mảng lưu tin nhắn tạm thời hoặc kết nối MongoDB/Database
-let messagesDatabase = []; 
-
+// GET: Lấy tin nhắn theo sessionId (cho Client) hoặc lấy toàn bộ danh sách hội thoại (cho Admin)
 export async function GET(req) {
-  const { searchParams } = new URL(req.url);
-  const sessionId = searchParams.get("sessionId");
+  try {
+    const client = await clientPromise;
+    const db = client.db(dbName);
+    const collection = db.collection("messages");
 
-  // Nếu Client truyền sessionId, chỉ lọc tin nhắn của đúng Session đó
-  if (sessionId) {
-    const sessionMessages = messagesDatabase.filter((m) => m.sessionId === sessionId);
-    return NextResponse.json(sessionMessages);
+    const { searchParams } = new URL(req.url);
+    const sessionId = searchParams.get("sessionId");
+
+    // 1. Trường hợp Khách hàng lấy tin nhắn của chính mình
+    if (sessionId) {
+      const messages = await collection
+        .find({ sessionId })
+        .sort({ createdAt: 1 })
+        .toArray();
+
+      return NextResponse.json(messages);
+    }
+
+    // 2. Trường hợp Admin lấy tất cả danh sách cuộc hội thoại
+    const conversations = await collection
+      .aggregate([
+        { $sort: { createdAt: 1 } },
+        {
+          $group: {
+            _id: "$sessionId",
+            sessionId: { $first: "$sessionId" },
+            user: { $last: "$user" },
+            time: {
+              $last: {
+                $dateToString: {
+                  format: "%H:%M",
+                  date: "$createdAt",
+                  timezone: "Asia/Ho_Chi_Minh",
+                },
+              },
+            },
+            messages: {
+              $push: {
+                id: "$_id",
+                sender: "$sender",
+                text: "$text",
+                mode: "$mode",
+                createdAt: "$createdAt",
+              },
+            },
+            updatedAt: { $last: "$createdAt" },
+          },
+        },
+        { $sort: { updatedAt: -1 } },
+      ])
+      .toArray();
+
+    return NextResponse.json(conversations);
+  } catch (error) {
+    console.error("Lỗi GET /api/messages:", error);
+    return NextResponse.json({ error: "Lỗi kết nối CSDL" }, { status: 500 });
   }
-
-  // Phía Admin (không truyền sessionId): Nhóm tin nhắn theo sessionId để trả về danh sách hội thoại
-  const conversationsMap = {};
-
-  messagesDatabase.forEach((msg) => {
-    if (!conversationsMap[msg.sessionId]) {
-      conversationsMap[msg.sessionId] = {
-        sessionId: msg.sessionId,
-        user: msg.user || "Khách hàng",
-        time: msg.time || new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        messages: [],
-      };
-    }
-    // Cập nhật tên mới nhất nếu tin nhắn do 'user' gửi
-    if (msg.sender === "user" && msg.user) {
-      conversationsMap[msg.sessionId].user = msg.user;
-    }
-    conversationsMap[msg.sessionId].messages.push(msg);
-  });
-
-  return NextResponse.json(Object.values(conversationsMap));
 }
 
+// POST: Lưu tin nhắn mới vào MongoDB
 export async function POST(req) {
   try {
     const body = await req.json();
     const { sessionId, user, sender, text, mode } = body;
 
+    if (!sessionId || !text) {
+      return NextResponse.json({ error: "Thiếu dữ liệu bắt buộc" }, { status: 400 });
+    }
+
+    const client = await clientPromise;
+    const db = client.db(dbName);
+
     const newMessage = {
-      id: Date.now(),
       sessionId,
       user: user || "Khách hàng",
-      sender, // 'user', 'admin', hoặc 'bot'
+      sender: sender || "user", // "user" | "bot" | "admin"
       text,
-      mode,
-      time: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      mode: mode || "bot", // "bot" | "admin"
+      createdAt: new Date(),
     };
 
-    messagesDatabase.push(newMessage);
+    const result = await db.collection("messages").insertOne(newMessage);
 
-    return NextResponse.json({ success: true, message: newMessage }, { status: 201 });
+    return NextResponse.json({ success: true, id: result.insertedId, ...newMessage }, { status: 201 });
   } catch (error) {
-    return NextResponse.json({ error: "Lỗi lưu tin nhắn" }, { status: 500 });
+    console.error("Lỗi POST /api/messages:", error);
+    return NextResponse.json({ error: "Không thể lưu tin nhắn" }, { status: 500 });
   }
 }
