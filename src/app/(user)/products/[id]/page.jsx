@@ -56,7 +56,19 @@ export default function ProductDetailPage() {
             if (savedUser) {
                 const user = JSON.parse(savedUser);
                 setCurrentUser(user);
-                if (user?.role === 'admin') setIsAdmin(true);
+                
+                // Mở rộng điều kiện kiểm tra admin toàn diện hơn
+                const roleLower = (user?.role || '').toLowerCase();
+                const emailLower = (user?.email || '').toLowerCase();
+                
+                if (
+                    roleLower === 'admin' || 
+                    user?.isAdmin === true || 
+                    user?.isAdmin === 'true' || 
+                    emailLower.includes('admin')
+                ) {
+                    setIsAdmin(true);
+                }
             }
         } catch (e) {
             console.error("Lỗi đọc user từ localStorage:", e);
