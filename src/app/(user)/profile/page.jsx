@@ -74,23 +74,23 @@ export default function Profile() {
 
   // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình
   const statusBadges = {
-    pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
-    processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-arrow-repeat" },
+    pending: { text: "Đang chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
     preparing: { text: "Đang đóng gói", class: "bg-info-subtle text-info-emphasis fw-bold", icon: "bi bi-box-seam" },
+    shipping: { text: "Đang giao", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-truck" },
     completed: { text: "Hoàn thành", class: "bg-success-subtle text-success-emphasis fw-bold", icon: "bi bi-check-circle" },
     cancelled: { text: "Đã hủy", class: "bg-danger-subtle text-danger-emphasis fw-bold", icon: "bi bi-x-circle" },
   };
 
   const getStatusInfo = (statusKey) => {
     const key = (statusKey || "").toLowerCase().trim();
-    if (key === "pending" || key === "chờ xác nhận" || key === "chờ xử lý") {
+    if (key === "pending" || key === "đang chờ xác nhận" || key === "chờ xác nhận" || key === "chờ xử lý") {
       return statusBadges.pending;
-    }
-    if (key === "processing" || key === "đang xử lý") {
-      return statusBadges.processing;
     }
     if (key === "preparing" || key === "đang đóng gói") {
       return statusBadges.preparing;
+    }
+    if (key === "shipping" || key === "đang giao") {
+      return statusBadges.shipping;
     }
     if (key === "completed" || key === "hoàn thành" || key === "đã giao hàng") {
       return statusBadges.completed;
@@ -98,7 +98,7 @@ export default function Profile() {
     if (key === "cancelled" || key === "đã hủy") {
       return statusBadges.cancelled;
     }
-    return { text: statusKey || "Chờ xác nhận", class: "bg-secondary-subtle text-secondary-emphasis fw-bold", icon: "bi bi-question-circle" };
+    return { text: statusKey || "Đang chờ xác nhận", class: "bg-secondary-subtle text-secondary-emphasis fw-bold", icon: "bi bi-question-circle" };
   };
 
   // 2. Tải thông tin người dùng từ API Server & đơn hàng
@@ -626,13 +626,13 @@ export default function Profile() {
     if (orderFilter === "all") return true;
     const st = (order.status || "").toLowerCase().trim();
     if (orderFilter === "pending") {
-      return st === "pending" || st === "chờ xác nhận" || st === "chờ xử lý";
-    }
-    if (orderFilter === "processing") {
-      return st === "processing" || st === "đang xử lý";
+      return st === "pending" || st === "đang chờ xác nhận" || st === "chờ xác nhận" || st === "chờ xử lý";
     }
     if (orderFilter === "preparing") {
       return st === "preparing" || st === "đang đóng gói";
+    }
+    if (orderFilter === "shipping") {
+      return st === "shipping" || st === "đang giao";
     }
     if (orderFilter === "completed") {
       return st === "completed" || st === "hoàn thành" || st === "đã giao hàng";
@@ -945,9 +945,9 @@ export default function Profile() {
                 <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
                   {[
                     { key: "all", label: "Tất cả" },
-                    { key: "pending", label: "Chờ xác nhận" },
-                    { key: "processing", label: "Đang xử lý" },
+                    { key: "pending", label: "Đang chờ xác nhận" },
                     { key: "preparing", label: "Đang đóng gói" },
+                    { key: "shipping", label: "Đang giao" },
                     { key: "completed", label: "Hoàn thành" },
                     { key: "cancelled", label: "Đã hủy" },
                   ].map((tab) => (
