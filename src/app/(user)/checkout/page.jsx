@@ -657,85 +657,90 @@ export default function Checkout() {
                       )}
                     </div>
 
-                    {/* DROPDOWN POPUP VOUCHER */}
-{showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
-  <div 
-    className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
-    style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
-  >
-    <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
-    
-    {[...availableVouchers]
-      .filter((v) => {
-        // Kiểm tra nếu có ngày kích hoạt (start_date / startDate), nếu chưa tới ngày thì ẩn hoàn toàn
-        const startDateKey = v.start_date || v.startDate;
-        if (startDateKey) {
-          const startDate = new Date(startDateKey);
-          const now = new Date();
-          if (now < startDate) return false; // Không hiển thị mã chưa kích hoạt
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        const aEligible = total >= (a.min_order_value || 0);
-        const bEligible = total >= (b.min_order_value || 0);
-        return bEligible - aEligible;
-      })
-      .map((v) => {
-        const now = new Date();
-        const endDateKey = v.end_date || v.endDate || v.expiry_date;
-        const isExpired = endDateKey ? new Date(endDateKey) < now : false;
-        
-        const isEligible = !isExpired && total >= (v.min_order_value || 0);
+                    
+                {/* DROPDOWN POPUP VOUCHER */}
+                {showVoucherDropdown && !appliedVoucher && availableVouchers.length > 0 && (
+                  <div 
+                    className="position-absolute start-0 w-100 bg-white shadow-lg border rounded-3 p-2 mt-1 z-3"
+                    style={{ maxHeight: "250px", overflowY: "auto", top: "100%" }}
+                  >
+                    <div className="small fw-bold text-muted mb-2 px-1">💡 Voucher gợi ý cho bạn:</div>
+                    
+                    {[...availableVouchers]
+                      .filter((v) => {
+                        // 1. Kiểm tra trạng thái bật/tắt từ Admin (is_active). Nếu false thì ẩn.
+                        if (v.is_active === false) return false;
 
-        return (
-          <div
-            key={v._id || v.code}
-            className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
-              isExpired 
-                ? "bg-light text-muted border-secondary opacity-50" 
-                : isEligible 
-                  ? "bg-light border-success" 
-                  : "opacity-50 border-secondary"
-            }`}
-            style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
-            onClick={() => {
-              if (isEligible) {
-                handleSelectSuggestedVoucher(v.code);
-                setShowVoucherDropdown(false);
-              }
-            }}
-          >
-            <div>
-              <div className="fw-bold text-primary small d-flex align-items-center gap-1">
-                🏷️ {v.code}
-                {isExpired ? (
-                  <span className="badge bg-secondary" style={{ fontSize: "0.65rem" }}>Đã hết hạn</span>
-                ) : (
-                  isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>
+                        // 2. Kiểm tra nếu chưa tới ngày kích hoạt thì ẩn hoàn toàn
+                        const startDateKey = v.start_date || v.startDate;
+                        if (startDateKey) {
+                          const startDate = new Date(startDateKey);
+                          const now = new Date();
+                          if (now < startDate) return false;
+                        }
+
+                        return true;
+                      })
+                      .sort((a, b) => {
+                        const aEligible = total >= (a.min_order_value || 0);
+                        const bEligible = total >= (b.min_order_value || 0);
+                        return bEligible - aEligible;
+                      })
+                      .map((v) => {
+                        const now = new Date();
+                        const endDateKey = v.end_date || v.endDate || v.expiry_date;
+                        const isExpired = endDateKey ? new Date(endDateKey) < now : false;
+                        
+                        const isEligible = !isExpired && total >= (v.min_order_value || 0);
+
+                        return (
+                          <div
+                            key={v._id || v.code}
+                            className={`p-2 mb-1 rounded border d-flex align-items-center justify-content-between ${
+                              isExpired 
+                                ? "bg-light text-muted border-secondary opacity-50" 
+                                : isEligible 
+                                  ? "bg-light border-success" 
+                                  : "opacity-50 border-secondary"
+                            }`}
+                            style={{ cursor: isEligible ? "pointer" : "not-allowed" }}
+                            onClick={() => {
+                              if (isEligible) {
+                                handleSelectSuggestedVoucher(v.code);
+                                setShowVoucherDropdown(false);
+                              }
+                            }}
+                          >
+                            <div>
+                              <div className="fw-bold text-primary small d-flex align-items-center gap-1">
+                                🏷️ {v.code}
+                                {isExpired ? (
+                                  <span className="badge bg-secondary" style={{ fontSize: "0.65rem" }}>Đã hết hạn</span>
+                                ) : (
+                                  isEligible && <span className="badge bg-success" style={{ fontSize: "0.65rem" }}>Phù hợp</span>
+                                )}
+                              </div>
+                              <div className="text-muted" style={{ fontSize: "0.75rem" }}>
+                                {v.discount_type === "percentage" 
+                                  ? `Giảm ${v.discount_value}%` 
+                                  : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
+                                {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
+                              style={{ fontSize: "0.7rem", padding: "2px 8px" }}
+                              disabled={!isEligible}
+                            >
+                              {isExpired ? "Hết hạn" : isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                  </div>
                 )}
-              </div>
-              <div className="text-muted" style={{ fontSize: "0.75rem" }}>
-                {v.discount_type === "percentage" 
-                  ? `Giảm ${v.discount_value}%` 
-                  : `Giảm ${v.discount_value?.toLocaleString("vi-VN")}đ`}
-                {v.min_order_value > 0 && ` (Đơn từ ${v.min_order_value.toLocaleString("vi-VN")}đ)`}
-              </div>
-            </div>
-            <button
-              type="button"
-              className={`btn btn-sm ${isEligible ? "btn-outline-primary" : "btn-secondary"}`}
-              style={{ fontSize: "0.7rem", padding: "2px 8px" }}
-              disabled={!isEligible}
-            >
-              {isExpired ? "Hết hạn" : isEligible ? "Dùng ngay" : "Chưa đủ điều kiện"}
-            </button>
-          </div>
-        );
-      })}
-  </div>
-)}
-</div>
+                </div> 
 
                   {voucherError && <div className="text-danger small fw-medium mt-1">❌ {voucherError}</div>}
                   {voucherSuccess && <div className="text-success small fw-medium mt-1">✅ {voucherSuccess}</div>}

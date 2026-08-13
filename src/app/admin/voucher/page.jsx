@@ -123,8 +123,8 @@ export default function VoucherManagement() {
                 <th>Mức Giảm Giá</th>
                 <th>Đơn Tối Thiểu</th>
                 <th>Đã dùng / Giới hạn</th>
-                <th>Thời Gian Hiệu Lực</th>
-                <th>Trạng Thái Hiện Thị</th>
+                <th>Thời Gian</th>
+                <th>Trạng Thái</th>
               </tr>
             </thead>
             <tbody>
@@ -204,9 +204,20 @@ export default function VoucherManagement() {
                       {/* Cột Thời Gian Hiệu Lực */}
                       <td>
                         <div className="small text-dark">
-                          <div>Từ: {startDateKey ? new Date(startDateKey).toLocaleDateString("vi-VN") : "Không giới hạn"}</div>
-                          <div>Đến: {endDateKey ? new Date(endDateKey).toLocaleDateString("vi-VN") : "Không giới hạn"}</div>
+                          <div>
+                            <strong>Từ:</strong>{" "}
+                            {startDateKey 
+                              ? new Date(startDateKey).toLocaleDateString("vi-VN") 
+                              : <span className="text-muted fst-italic">Chưa thiết lập</span>}
+                          </div>
+                          <div>
+                            <strong>Đến:</strong>{" "}
+                            {endDateKey 
+                              ? new Date(endDateKey).toLocaleDateString("vi-VN") 
+                              : <span className="text-muted fst-italic">Chưa thiết lập</span>}
+                          </div>
                         </div>
+
                         {isNotStarted && (
                           <span className="badge bg-warning-subtle text-warning border border-warning-subtle px-2 py-1 mt-1" style={{ fontSize: "10px" }}>
                             Chưa kích hoạt (Chưa tới hạn)
