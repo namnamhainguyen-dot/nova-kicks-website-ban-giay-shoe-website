@@ -35,7 +35,7 @@ export default async function Menu() {
 
   // 2. Fetch riêng danh sách Flash Sale (hoặc lọc từ productList nếu API chung đã hỗ trợ)
   try {
-    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale`, { cache: 'no-store' });
+    const flashRes = await fetch(`${baseUrl}/api/products/flash-sale?batch=batch-2`, { cache: 'no-store' });
     if (flashRes.ok) {
       const flashJson = await flashRes.json();
       flashSaleData = Array.isArray(flashJson) ? flashJson.slice(0, 4) : (flashJson.products?.slice(0, 4) || []);
