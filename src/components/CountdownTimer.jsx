@@ -9,23 +9,12 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
     setMounted(true);
     
     const getTargetTime = () => {
-      // 1. Lấy mốc cơ sở ban đầu (từ props hoặc mốc cố định hệ thống)
-      let baseTime = endTime 
-        ? new Date(endTime).getTime() 
-        : Date.now() + (7 * 24 * 60 * 60 * 1000);
-
-      const now = Date.now();
-
-      // 2. Nếu mốc thời gian đã qua, tự động tịnh tiến sang chu kỳ Flash Sale mới 
-      // (Ví dụ: Chu kỳ lặp lại là mỗi 7 ngày = 7 * 24 * 60 * 60 * 1000 ms)
-      const cycleDuration = 7 * 24 * 60 * 60 * 1000; 
-
-      while (baseTime <= now) {
-        baseTime += cycleDuration;
-      }
-
-      return baseTime;
-    };
+    // Test: Chỉ định thời gian kết thúc là 2 phút tính từ lúc bạn load trang
+    const testEndTime = new Date(Date.now() + 2 * 60 * 1000); 
+    
+    // Tạm thời comment các dòng tính toán cũ lại để máy nó chỉ chạy 2 phút
+    return testEndTime.getTime();
+  };
 
     const targetTime = getTargetTime();
     setTimeLeft(Math.max(0, targetTime - Date.now()));
