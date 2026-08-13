@@ -382,7 +382,7 @@ export default function Checkout() {
       .join(", ");
   };
 
-  const handleOrder = async (e) => {
+ const handleOrder = async (e) => {
     if (e) e.preventDefault();
     if (!validateOrder()) return;
 
@@ -415,7 +415,6 @@ export default function Checkout() {
         updatedUserPhone = customerPhone;
       }
 
-      // Chuẩn hóa User ID giống bên Profile để gọi đúng endpoint PUT /api/users/[id]
       let rawId = currentUser._id || currentUser.id;
       if (typeof rawId === "object" && rawId !== null) {
         rawId = rawId.$oid || rawId.toString();
@@ -471,6 +470,20 @@ export default function Checkout() {
       paymentMethod: paymentMethod,
     };
 
+    // 🌟 PHÂN LUỒNG THANH TOÁN (COD vs CHUYỂN KHOẢN QR)
+    if (paymentMethod === "vnpay" || paymentMethod === "qr") {
+      // 1. Nếu là chuyển khoản QR: TUYỆT ĐỐI KHÔNG GỌI API TẠO ĐƠN
+      // Lưu payload vào sessionStorage để trang quét mã lấy dùng sau khi thanh toán thành công
+      sessionStorage.setItem("pending_order", JSON.stringify(orderData));
+      
+      setIsOrdering(false);
+      
+      // Chuyển hướng sang trang hiển thị mã QR thanh toán kèm số tiền
+      router.push(`/checkout/payment?amount=${finalTotal}`);
+      return;
+    }
+
+    // 2. Nếu là COD (Thanh toán khi nhận hàng): Tiến hành tạo đơn luôn như bình thường
     try {
       const res = await fetch("/api/orders", {
         method: "POST",
@@ -483,11 +496,6 @@ export default function Checkout() {
       }
 
       const result = await res.json();
-
-      if (result.paymentUrl) {
-        window.location.href = result.paymentUrl;
-        return;
-      }
 
       if (result.code === "success" || result.success || result._id || result.id) {
         const orderId = result._id || result.id || (result.data && result.data._id);
@@ -515,7 +523,7 @@ export default function Checkout() {
       }
     } catch (err) {
       console.error("Order error:", err);
-      alert("Không thể kết nối tới server! Vui lòng thử lại sau.\n" + err.message);
+      alert("Không thể kết nối tới server! Vuint lòng thử lại sau.\n" + err.message);
     } finally {
       setIsOrdering(false);
     }

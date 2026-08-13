@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -8,24 +8,95 @@ function PaymentContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const orderId = searchParams.get("orderId");
-  const totalAmount = parseInt(searchParams.get("total") || "0", 10);
+  const totalAmount = parseInt(searchParams.get("amount") || "0", 10);
 
+  const [orderId, setOrderId] = useState(null);
   const [countdown, setCountdown] = useState(300); // 5 phút đếm ngược
   const [isPaid, setIsPaid] = useState(false);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // 1. Đếm ngược thời gian chờ thanh toán
+  const hasCreatedOrder = useRef(false);
+
+  // 1. Vừa vào trang QR: Lấy thông tin pending_order từ sessionStorage và gọi API tạo đơn hàng (isPaid: false)
   useEffect(() => {
-    if (countdown > 0 && !isPaid) {
+    if (hasCreatedOrder.current) return;
+    hasCreatedOrder.current = true;
+
+    const createPendingOrderOnServer = async () => {
+      const rawPending = sessionStorage.getItem("pending_order");
+      if (!rawPending) {
+        setErrorMessage("Không tìm thấy thông tin đơn hàng tạm.");
+        setIsCreatingOrder(false);
+        return;
+      }
+
+      try {
+        const orderPayload = JSON.parse(rawPending);
+
+        // Gọi API tạo đơn hàng vào cơ sở dữ liệu với trạng thái chưa thanh toán
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(orderPayload),
+        });
+
+        if (!res.ok) {
+          throw new Error(`Lỗi server: ${res.status}`);
+        }
+
+        const result = await res.json();
+        const createdId = result._id || result.id || (result.data && result.data._id);
+
+        if (createdId) {
+          setOrderId(createdId);
+          
+          // Xóa pending_order sau khi đã tạo thành công bản ghi trong DB để tránh tạo trùng
+          sessionStorage.removeItem("pending_order");
+
+          // Xóa các sản phẩm đã thanh toán ra khỏi giỏ hàng trong localStorage / Context
+          const checkoutItems = orderPayload.order_items || [];
+          if (checkoutItems.length > 0) {
+            const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
+            const remainingCart = localCart.filter(
+              (cartItem) =>
+                !checkoutItems.some(
+                  (checkoutItem) =>
+                    checkoutItem.product_id === cartItem._id &&
+                    checkoutItem.color === cartItem.selectedColor &&
+                    checkoutItem.size === cartItem.selectedSize
+                )
+            );
+            localStorage.setItem("cart", JSON.stringify(remainingCart));
+          }
+        } else {
+          setErrorMessage("Không thể lấy mã đơn hàng từ hệ thống.");
+        }
+      } catch (err) {
+        console.error("Lỗi khi tạo đơn hàng ngầm:", err);
+        setErrorMessage("Không thể kết nối đến server để tạo đơn hàng.");
+      } finally {
+        setIsCreatingOrder(false);
+      }
+    };
+
+    createPendingOrderOnServer();
+  }, []);
+
+  // 2. Đếm ngược thời gian chờ thanh toán (chỉ chạy khi đã có orderId)
+  useEffect(() => {
+    if (!orderId || isPaid) return;
+
+    if (countdown > 0) {
       const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (countdown === 0 && !isPaid) {
+    } else {
       alert("Đã hết thời gian chờ thanh toán. Vui lòng tạo lại đơn hàng.");
       router.push("/checkout");
     }
-  }, [countdown, isPaid, router]);
+  }, [countdown, orderId, isPaid, router]);
 
-  // 2. Polling: Cứ 3 giây gọi API kiểm tra trạng thái đơn hàng xem SePay đã webhook về chưa
+  // 3. Polling: Cứ 3 giây gọi API kiểm tra trạng thái xem SePay đã webhook về chưa
   useEffect(() => {
     if (!orderId || isPaid) return;
 
@@ -34,10 +105,8 @@ function PaymentContent() {
         const res = await fetch(`/api/orders/${orderId}`);
         if (res.ok) {
           const data = await res.json();
-          // Nếu backend nhận được webhook từ SePay và đổi isPaid thành true trong Database
           if (data.isPaid) {
             setIsPaid(true);
-            sessionStorage.setItem("last_completed_order", orderId);
             router.push(`/orders/${orderId}?success=true`);
           }
         }
@@ -50,18 +119,46 @@ function PaymentContent() {
     return () => clearInterval(interval);
   }, [orderId, isPaid, router]);
 
-  // Thông tin tài khoản nhận tiền chính thức của công ty
+  // Xử lý khi nhấn nút "Hủy bỏ / Quay lại": Xóa sạch dữ liệu tạm
+  const handleCancel = () => {
+    sessionStorage.removeItem("pending_order");
+  };
+
+  // Thông tin tài khoản nhận tiền
   const bankId = "MB";
   const accountNo = "0768696887";
   const accountName = "CONG TY TNHH NOVA KICKS";
-  
-  // Nội dung chuyển khoản CHÍNH LÀ orderId để hệ thống tự khớp lệnh
-  const description = `${orderId}`;
+  const description = orderId ? `${orderId}` : "DANG_TAI_DON...";
 
-  // Link VietQR chính thống
   const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-qr_only.png?amount=${totalAmount}&addInfo=${encodeURIComponent(
     description
   )}&accountName=${encodeURIComponent(accountName)}`;
+
+  if (isCreatingOrder) {
+    return (
+      <main className="container d-flex justify-content-center align-items-center min-vh-100 py-5 bg-light">
+        <div className="text-center p-5 card shadow-sm border-0 rounded-4">
+          <div className="spinner-border text-danger mb-3" role="status"></div>
+          <h5 className="fw-bold">Đang khởi tạo mã giao dịch...</h5>
+          <p className="text-muted small mb-0">Vui lòng đợi trong giây lát.</p>
+        </div>
+      </main>
+    );
+  }
+
+  if (errorMessage) {
+    return (
+      <main className="container d-flex justify-content-center align-items-center min-vh-100 py-5 bg-light">
+        <div className="text-center p-5 card shadow-sm border-0 rounded-4" style={{ maxWidth: "450px" }}>
+          <h4 className="text-danger fw-bold mb-3">⚠️ Có lỗi xảy ra</h4>
+          <p className="text-muted mb-4">{errorMessage}</p>
+          <Link href="/checkout" className="btn btn-dark rounded-pill px-4">
+            Quay lại trang thanh toán
+          </Link>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="container d-flex justify-content-center align-items-center min-vh-100 py-5 bg-light">
@@ -116,7 +213,7 @@ function PaymentContent() {
           <span>Đang chờ thanh toán thực tế... ({Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, "0")})</span>
         </div>
 
-        <Link href="/checkout" className="text-muted small text-decoration-none">
+        <Link href="/checkout" onClick={handleCancel} className="text-muted small text-decoration-none">
           ← Quay lại trang thanh toán / Hủy bỏ
         </Link>
       </div>
