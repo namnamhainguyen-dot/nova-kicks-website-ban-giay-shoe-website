@@ -57,8 +57,7 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
   }
 }
 
-// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale
-// Hàm chuẩn hóa dữ liệu cho trang danh sách (Giữ nguyên giá gốc, không kích hoạt hiển thị flash sale ở đây)
+// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale cho trang danh sách
 function formatProducts(rawList) {
   return (rawList || []).map((product) => {
     const availableColors =
@@ -69,7 +68,18 @@ function formatProducts(rawList) {
 
     const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
 
+    // --- XỬ LÝ GIÁ FLASH SALE ---
     const originalPrice = product.price || 0;
+    // Kiểm tra xem sản phẩm có cấu hình giá flash sale hay không
+    const flashSalePrice = product.flashSalePrice || product.salePrice || null;
+    
+    // Nếu có flashSalePrice và nhỏ hơn giá gốc, đồng thời sản phẩm đang bật cờ flash sale
+    const isFlashSale = flashSalePrice && flashSalePrice < originalPrice;
+    
+    // Tính phần trăm giảm giá nếu có
+    const discountPercent = isFlashSale 
+      ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
+      : 0;
 
     return {
       ...product,
@@ -77,10 +87,14 @@ function formatProducts(rawList) {
       availableColors,
       availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này.",
-      // Ở trang danh sách sản phẩm chung, ta chỉ quan tâm đến giá gốc (price) 
-      // để các card sản phẩm hiển thị giá niêm yết bình thường không bị gạch ngang.
-      price: originalPrice,
-      isFlashSale: false, // Tắt cờ flash sale ở trang danh sách chung để card không bị đổi giao diện giá
+      
+      // QUAN TRỌNG: Nếu có flash sale, ta đổi giá hiển thị chính (price) thành giá giảm để card sản phẩm nhận diện, 
+      // đồng thời giữ lại giá gốc để làm gạch ngang.
+      price: isFlashSale ? flashSalePrice : originalPrice,
+      originalPrice: originalPrice, // Giá gốc để hiển thị gạch ngang
+      flashSalePrice: flashSalePrice,
+      isFlashSale: isFlashSale,
+      discountPercent: discountPercent,
     };
   });
 }

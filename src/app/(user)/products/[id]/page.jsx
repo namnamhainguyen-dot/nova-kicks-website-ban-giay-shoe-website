@@ -57,7 +57,6 @@ export default function ProductDetailPage() {
                 const user = JSON.parse(savedUser);
                 setCurrentUser(user);
                 
-                // Mở rộng điều kiện kiểm tra admin toàn diện hơn
                 const roleLower = (user?.role || '').toLowerCase();
                 const emailLower = (user?.email || '').toLowerCase();
                 
@@ -118,7 +117,6 @@ export default function ProductDetailPage() {
         }
     }, []);
 
-    // Helper trích xuất giá trị size an toàn dù ở dạng chuỗi/số hay object
     const getNormalizedSizeValue = (s) => {
         if (typeof s === 'object' && s !== null) {
             return s.size !== undefined ? s.size : '';
@@ -126,7 +124,6 @@ export default function ProductDetailPage() {
         return s;
     };
 
-    // Hàm tính toán và cập nhật số lượng tồn kho chuẩn xác kết hợp Màu và Size
     const updateStock = useCallback((colorName, sizeValue, productData) => {
         const targetProduct = productData || product;
         if (!targetProduct || !targetProduct.variants) return;
@@ -139,7 +136,6 @@ export default function ProductDetailPage() {
 
         const normalizedTargetSize = getNormalizedSizeValue(sizeValue);
 
-        // Nếu variant có danh sách sizes chi tiết
         if (Array.isArray(currentVariant.sizes) && currentVariant.sizes.length > 0) {
             const foundSize = currentVariant.sizes.find(s => {
                 const sVal = getNormalizedSizeValue(s);
@@ -162,7 +158,7 @@ export default function ProductDetailPage() {
         setStockAvailable(currentVariant.quantity ?? 0);
     }, [product]);
 
-    // Fetch product data
+    // Fetch product data & chuẩn hóa thông tin Flash Sale
     useEffect(() => {
         if (!id) return;
 
@@ -177,12 +173,24 @@ export default function ProductDetailPage() {
                 const productData = await resProduct.json();
 
                 if (isMounted) {
-                    setProduct(productData);
-                    const defaultImg = productData.image || productData.images?.[0] || '/placeholder.png';
+                    // Chuẩn hóa dữ liệu giá và flash sale ngay khi nhận từ API
+                    const originalPrice = productData.price || 0;
+                    const flashSalePrice = productData.flashSalePrice || productData.salePrice || null;
+                    const isFlashSale = productData.isFlashSale ?? (flashSalePrice && flashSalePrice < originalPrice);
+
+                    const formattedProduct = {
+                        ...productData,
+                        price: originalPrice,
+                        flashSalePrice: flashSalePrice,
+                        isFlashSale: isFlashSale
+                    };
+
+                    setProduct(formattedProduct);
+                    const defaultImg = formattedProduct.image || formattedProduct.images?.[0] || '/placeholder.png';
                     setCurrentImage(defaultImg);
 
-                    if (productData.variants && productData.variants.length > 0) {
-                        const firstVariant = productData.variants[0];
+                    if (formattedProduct.variants && formattedProduct.variants.length > 0) {
+                        const firstVariant = formattedProduct.variants[0];
                         const initialColor = firstVariant.color || '';
                         setSelectedColor(initialColor);
                         
@@ -194,7 +202,7 @@ export default function ProductDetailPage() {
                             setSelectedSize('');
                         }
 
-                        const currentVariant = productData.variants.find(v => v.color === initialColor);
+                        const currentVariant = formattedProduct.variants.find(v => v.color === initialColor);
                         if (currentVariant) {
                             const normalizedTargetSize = getNormalizedSizeValue(initialSize);
                             if (Array.isArray(currentVariant.sizes) && currentVariant.sizes.length > 0) {
@@ -216,8 +224,8 @@ export default function ProductDetailPage() {
                             setCurrentImage(firstVariant.image);
                         }
                     } else {
-                        setStockAvailable(productData.quantity ?? 0);
-                        if (productData.sizes?.length > 0) setSelectedSize(productData.sizes[0]);
+                        setStockAvailable(formattedProduct.quantity ?? 0);
+                        if (formattedProduct.sizes?.length > 0) setSelectedSize(formattedProduct.sizes[0]);
                     }
 
                     try {
@@ -244,7 +252,6 @@ export default function ProductDetailPage() {
         return () => { isMounted = false; };
     }, [id, fetchReviews, checkUserEligibility]); 
 
-    // Image handlers
     const changeImageSmoothly = useCallback((newImageSrc) => {
         if (!newImageSrc || newImageSrc === currentImage) return;
         setIsImageChanging(true);
@@ -305,16 +312,14 @@ export default function ProductDetailPage() {
         return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
     }, [product, selectedColor]);
 
-    // Lấy giá hiển thị (Chỉ ưu tiên giá giảm/flash sale nếu thực sự bật cờ isFlashSale hoặc giá giảm lớn hơn 0)
+    // Xử lý giá hiển thị dựa trên Flash Sale hoặc giảm giá
     const displayPrice = useMemo(() => {
         if (!product) return 0;
         
-        // Nếu sản phẩm bật Flash sale và có flashSalePrice hợp lệ (> 0)
         if (product.isFlashSale && Number(product.flashSalePrice) > 0) {
             return Number(product.flashSalePrice);
         }
         
-        // Hoặc kiểm tra các giá sale khác nếu có (> 0)
         const sale = Number(product.salePrice ?? product.discountPrice ?? 0);
         if (sale > 0 && sale < Number(product.price)) {
             return sale;
@@ -328,7 +333,6 @@ export default function ProductDetailPage() {
         return Number(displayPrice) < Number(product.price);
     }, [product, displayPrice]);
 
-    // Quantity handlers
     const handleIncreaseQuantity = () => {
         if (quantity < stockAvailable) setQuantity(prev => prev + 1);
     };
@@ -377,7 +381,7 @@ export default function ProductDetailPage() {
             newCart.push({
                 _id: product._id,
                 name: product.name,
-                price: displayPrice, // Lưu giá đã giảm vào giỏ hàng
+                price: displayPrice, 
                 image: currentImage,
                 selectedSize: finalSizeStr,
                 selectedColor,
@@ -403,7 +407,7 @@ export default function ProductDetailPage() {
         const checkoutItem = {
             _id: product._id,
             name: product.name,
-            price: displayPrice, // Lấy giá đã giảm khi mua ngay
+            price: displayPrice, 
             image: currentImage,
             selectedSize: finalSizeStr,
             selectedColor: selectedColor,
