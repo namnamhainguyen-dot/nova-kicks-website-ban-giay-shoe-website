@@ -12,7 +12,7 @@ export default function CountdownTimer({ endTime, storageKey = "flash_sale_end_t
       // 1. Lấy mốc cơ sở ban đầu (từ props hoặc mốc cố định hệ thống)
       let baseTime = endTime 
         ? new Date(endTime).getTime() 
-        : new Date("2026-09-01T00:00:00").getTime();
+        : Date.now() + (7 * 24 * 60 * 60 * 1000);
 
       const now = Date.now();
 
