@@ -18,6 +18,20 @@ function PaymentContent() {
 
   const hasCreatedOrder = useRef(false);
 
+  // Hàm gọi API hủy đơn hàng và hoàn kho
+  const cancelOrderOnServer = async (idToCancel) => {
+    if (!idToCancel) return;
+    try {
+      await fetch("/api/orders/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderId: idToCancel }),
+      });
+    } catch (err) {
+      console.error("Lỗi khi gọi API hủy đơn rác:", err);
+    }
+  };
+
   // 1. Vừa vào trang QR: Lấy thông tin pending_order từ sessionStorage và gọi API tạo đơn hàng (isPaid: false)
   useEffect(() => {
     if (hasCreatedOrder.current) return;
@@ -34,7 +48,6 @@ function PaymentContent() {
       try {
         const orderPayload = JSON.parse(rawPending);
 
-        // Gọi API tạo đơn hàng vào cơ sở dữ liệu với trạng thái chưa thanh toán
         const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -51,10 +64,8 @@ function PaymentContent() {
         if (createdId) {
           setOrderId(createdId);
           
-          // Xóa pending_order sau khi đã tạo thành công bản ghi trong DB để tránh tạo trùng
           sessionStorage.removeItem("pending_order");
 
-          // Xóa các sản phẩm đã thanh toán ra khỏi giỏ hàng trong localStorage / Context
           const checkoutItems = orderPayload.order_items || [];
           if (checkoutItems.length > 0) {
             const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -83,7 +94,7 @@ function PaymentContent() {
     createPendingOrderOnServer();
   }, []);
 
-  // 2. Đếm ngược thời gian chờ thanh toán (chỉ chạy khi đã có orderId)
+  // 2. Đếm ngược thời gian chờ thanh toán
   useEffect(() => {
     if (!orderId || isPaid) return;
 
@@ -91,7 +102,9 @@ function PaymentContent() {
       const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      alert("Đã hết thời gian chờ thanh toán. Vui lòng tạo lại đơn hàng.");
+      // Hết giờ -> Tự động hủy đơn, hoàn kho và quay về trang checkout
+      alert("Đã hết thời gian chờ thanh toán. Đơn hàng đã bị hủy.");
+      cancelOrderOnServer(orderId);
       router.push("/checkout");
     }
   }, [countdown, orderId, isPaid, router]);
@@ -119,8 +132,11 @@ function PaymentContent() {
     return () => clearInterval(interval);
   }, [orderId, isPaid, router]);
 
-  // Xử lý khi nhấn nút "Hủy bỏ / Quay lại": Xóa sạch dữ liệu tạm
+  // Xử lý khi nhấn nút "Hủy bỏ / Quay lại": Hủy đơn và trả lại kho ngay lập tức
   const handleCancel = () => {
+    if (orderId && !isPaid) {
+      cancelOrderOnServer(orderId);
+    }
     sessionStorage.removeItem("pending_order");
   };
 
