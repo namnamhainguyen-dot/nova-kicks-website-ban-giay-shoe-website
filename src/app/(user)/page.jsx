@@ -182,7 +182,11 @@ export default async function Menu() {
           <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 pb-2 border-bottom border-light border-opacity-25">
             <div className="d-flex align-items-center gap-3 flex-wrap">
               <h3 className="text-uppercase fw-black tracking-wide m-0 fs-3 text-warning">⚡ FLASH SALE</h3>
-              <CountdownTimer /> 
+              <CountdownTimer 
+                onExpire={() => {
+                  window.location.reload();
+                }} 
+              />
             </div>
           <Link href="/products" className="text-decoration-none small text-uppercase tracking-wider mt-2 mt-md-0 text-light opacity-75">Xem tất cả &rarr;</Link>
           </div>
