@@ -5,8 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WishlistContext } from "@/components/WishlistContext";
 
-const ITEMS_PER_PAGE = 9;
-
 // 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
 function FilterPanel({
   priceRange,
@@ -452,7 +450,7 @@ function ProductCard({ product, isFavorite, toggleWishlist }) {
   );
 }
 
-export default function ProductFilter({ products }) {
+export default function ProductFilter({ products, allProducts }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -471,7 +469,6 @@ export default function ProductFilter({ products }) {
 
   const showFavoritesOnly = searchParams.get("favorites") === "true";
   const sortBy = searchParams.get("sort") || "default";
-  const currentPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
 
   const updateQueryParam = useCallback((key, value) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -526,8 +523,11 @@ export default function ProductFilter({ products }) {
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
+  // Sử dụng allProducts nếu có, hoặc fallback về products
+  const sourceProducts = allProducts || products;
+
   const processedProducts = useMemo(() => {
-    return (products || []).map((p) => {
+    return (sourceProducts || []).map((p) => {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
@@ -547,7 +547,6 @@ export default function ProductFilter({ products }) {
         })
         .filter(Boolean);
 
-      // Sửa logic Flash Sale trực tiếp dựa vào cờ dữ liệu, loại bỏ lỗi lệch tuần
       const hasFlashSale = Boolean(
         p.isFlashSale && 
         p.flashSalePrice !== null && 
@@ -565,13 +564,12 @@ export default function ProductFilter({ products }) {
         effectivePrice,
       };
     });
-  }, [products]);
+  }, [sourceProducts]);
 
   const allSizes = useMemo(() => {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
     const uniqueSizes = [...new Set(sizes)];
     
-    // Sắp xếp kích thước (size) tăng dần chuẩn theo dạng số hoặc chữ
     return uniqueSizes.sort((a, b) => {
       const numA = Number(a);
       const numB = Number(b);
@@ -582,7 +580,8 @@ export default function ProductFilter({ products }) {
     });
   }, [processedProducts]);
 
-  const filtered = useMemo(() => {
+  // Lọc và sắp xếp trực tiếp trên danh sách sản phẩm nhận được từ props (hoặc hiển thị trực tiếp `products` nếu phân trang xử lý ngoài)
+  const displayedProducts = useMemo(() => {
     const result = processedProducts.filter((p) => {
       const productId = String(p._id?.$oid || p._id);
       if (showFavoritesOnly && !isFavorite(productId)) return false;
@@ -602,17 +601,6 @@ export default function ProductFilter({ products }) {
       return 0;
     });
   }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy]);
-
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
-  const validPage = Math.min(currentPage, totalPages);
-  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
-  const displayedProducts = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-
-  const createPageUrl = (pageNumber) => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("page", pageNumber.toString());
-    return `?${params.toString()}`;
-  };
 
   const activeCount = useMemo(() => {
     let count = selectedSizes.length;
@@ -657,7 +645,7 @@ export default function ProductFilter({ products }) {
           Bộ lọc{activeCount > 0 ? ` (${activeCount})` : ""}
         </button>
         <span style={{ fontSize: "13px", color: "#6b7280" }}>
-          {filtered.length} / {products?.length || 0} sản phẩm
+          {displayedProducts.length} sản phẩm
         </span>
       </div>
 
@@ -691,7 +679,7 @@ export default function ProductFilter({ products }) {
           <div className="d-flex justify-content-between align-items-center mb-3">
             <div className="d-none d-md-flex align-items-center" style={{ fontSize: "13px", color: "#6b7280", gap: "8px" }}>
               <span>
-                Hiển thị <strong style={{ color: "#111" }}>{displayedProducts.length}</strong> / tổng số {filtered.length} sản phẩm phù hợp
+                Hiển thị <strong style={{ color: "#111" }}>{displayedProducts.length}</strong> sản phẩm phù hợp
               </span>
               {activeCount > 0 && (
                 <button
@@ -730,7 +718,7 @@ export default function ProductFilter({ products }) {
             </div>
           </div>
 
-          {filtered.length === 0 ? (
+          {displayedProducts.length === 0 ? (
             <div style={{ textAlign: "center", padding: "60px 20px", color: "#9ca3af" }}>
               {showFavoritesOnly ? (
                 <>
@@ -751,45 +739,16 @@ export default function ProductFilter({ products }) {
               </button>
             </div>
           ) : (
-            <>
-              <div className="row g-4">
-                {displayedProducts.map((product) => (
-                  <ProductCard
-                    key={String(product._id?.$oid || product._id)}
-                    product={product}
-                    isFavorite={isFavorite}
-                    toggleWishlist={toggleWishlist}
-                  />
-                ))}
-              </div>
-
-              {/* 🌟 PHÂN TRANG GIAO DIỆN (Đã giữ lại 1 bộ duy nhất, xóa bản sao bị lặp) */}
-              {totalPages > 1 && (
-                <nav className="d-flex justify-content-center mt-5 pt-3">
-                  <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
-                    <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
-                      <Link className="page-link" href={createPageUrl(validPage - 1)}>
-                        <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
-                      </Link>
-                    </li>
-
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                      <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
-                        <Link className="page-link" href={createPageUrl(pageNum)}>
-                          {pageNum}
-                        </Link>
-                      </li>
-                    ))}
-
-                    <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
-                      <Link className="page-link" href={createPageUrl(validPage + 1)}>
-                        Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
-                      </Link>
-                    </li>
-                  </ul>
-                </nav>
-              )}
-            </>
+            <div className="row g-4">
+              {displayedProducts.map((product) => (
+                <ProductCard
+                  key={String(product._id?.$oid || product._id)}
+                  product={product}
+                  isFavorite={isFavorite}
+                  toggleWishlist={toggleWishlist}
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

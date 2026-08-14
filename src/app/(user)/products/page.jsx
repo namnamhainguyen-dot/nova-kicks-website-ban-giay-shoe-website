@@ -5,7 +5,7 @@ import clientPromise from "@/libs/mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
-const ITEMS_PER_PAGE = 9; // 🌟 Phân trang 9 sản phẩm mỗi trang ở Server
+const ITEMS_PER_PAGE = 9; // 🌟 Đã sửa lại mỗi trang hiển thị 9 sản phẩm
 
 // Hàm Query kết hợp lấy sản phẩm và thông tin Flash Sale (nếu có)
 async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery) {
@@ -41,7 +41,7 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
       .sort({ _id: -1 })
       .toArray();
 
-    const rawAll = await db
+    const allRawProducts = await db
       .collection(COLLECTION_NAME)
       .find({})
       .sort({ _id: -1 })
@@ -49,7 +49,7 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
 
     return {
       filtered: JSON.parse(JSON.stringify(rawProducts)),
-      all: JSON.parse(JSON.stringify(rawAll)),
+      all: JSON.parse(JSON.stringify(allRawProducts)),
     };
   } catch (error) {
     console.error("[MongoDB Query Error] Lỗi kết nối hoặc lấy dữ liệu:", error);
@@ -57,76 +57,62 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
   }
 }
 
-// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần"
-function formatProducts(rawList) {
-  const currentMonth = new Date().getMonth() + 1; 
-  
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
-  
-  const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
-
-  return (rawList || []).map((product) => {
-    const availableColors =
-      product.variants?.map((v) => ({
-        color: v.color,
-        quantity: v.quantity ?? 0,
-      })) || [];
-
-    // Vét cạn toàn diện dữ liệu size từ nhiều định dạng và sắp xếp tăng dần theo dạng số
-    const rawVariantSizes = product.variants?.flatMap((v) => v.sizes || v.size || []) || [];
-    const availableSizes = [...new Set([...(product.sizes || []), ...rawVariantSizes])]
-      .filter((size) => size !== null && size !== undefined && size !== "")
-      .map((size) => {
-        if (typeof size === "object") {
-          return String(size.size || size.name || size.value || "").trim();
-        }
-        return String(size).trim();
-      })
-      .filter(Boolean)
-      .sort((a, b) => {
-        const numA = Number(a);
-        const numB = Number(b);
-        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-        return a.localeCompare(b);
-      });
-
-    const originalPrice = product.price || 0;
-    const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
+  // Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần"
+  function formatProducts(rawList) {
+    const currentMonth = new Date().getMonth() + 1; 
     
-    const productBatch = product.flashSaleBatch ? String(product.flashSaleBatch).trim() : null;
-    const isBatchValid = productBatch ? productBatch === currentBatchString : false;
-
-    const isFlashSale = Boolean(
-      (product.isFlashSale === true || product.isFlashSale === "true") && 
-      isBatchValid && 
-      rawFlashSalePrice && 
-      Number(rawFlashSalePrice) < Number(originalPrice)
-    );
-
-    const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
     
-    const discountPercent = isFlashSale 
-      ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
-      : 0;
+    const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
 
-    return {
-      ...product,
-      _id: String(product._id),
-      availableColors,
-      availableSizes,
-      sizes: availableSizes,
-      description: product.description || "Chưa có mô tả cho sản phẩm này.",
+    return (rawList || []).map((product) => {
+      const availableColors =
+        product.variants?.map((v) => ({
+          color: v.color,
+          quantity: v.quantity ?? 0,
+        })) || [];
+
+      // 🌟 Vét cạn toàn diện dữ liệu size từ nhiều định dạng lưu trữ trong DB (p.sizes, p.variants.sizes, p.variants.size,...)
+      const rawVariantSizes = product.variants?.flatMap((v) => v.sizes || v.size || []) || [];
+      const availableSizes = [...new Set([...(product.sizes || []), ...rawVariantSizes])].filter(Boolean);
+
+      const originalPrice = product.price || 0;
+      const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
       
-      price: isFlashSale ? flashSalePrice : originalPrice,
-      originalPrice: originalPrice, 
-      flashSalePrice: flashSalePrice,
-      isFlashSale: isFlashSale, 
-      discountPercent: discountPercent,
-    };
-  });
-}
+      const productBatch = product.flashSaleBatch ? String(product.flashSaleBatch).trim() : null;
+      const isBatchValid = productBatch ? productBatch === currentBatchString : false;
+
+      const isFlashSale = Boolean(
+        (product.isFlashSale === true || product.isFlashSale === "true") && 
+        isBatchValid && 
+        rawFlashSalePrice && 
+        Number(rawFlashSalePrice) < Number(originalPrice)
+      );
+
+      const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
+      
+      const discountPercent = isFlashSale 
+        ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
+        : 0;
+
+      return {
+        ...product,
+        _id: String(product._id),
+        availableColors,
+        availableSizes,
+        sizes: availableSizes,
+        description: product.description || "Chưa có mô tả cho sản phẩm này.",
+        
+        price: isFlashSale ? flashSalePrice : originalPrice,
+        originalPrice: originalPrice, 
+        flashSalePrice: flashSalePrice,
+        isFlashSale: isFlashSale, 
+        discountPercent: discountPercent,
+      };
+    });
+  }
 
 export default async function ProductsPage({ searchParams }) {
   const params = await searchParams;
@@ -295,10 +281,11 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* LƯỚI HIỂN THỊ SẢN PHẨM */}
+      {/* LƯỚI HIỂN THỊ SẢN PHẨM (Truyền cả danh sách đã phân trang/lọc lẫn danh sách toàn bộ để ProductFilter xử lý giao diện tối ưu) */}
       <ProductFilter
         key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
-        products={filteredProducts}
+        products={displayedProducts}
+        allProducts={products}
       />
 
       {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM */}
