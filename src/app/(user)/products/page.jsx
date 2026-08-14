@@ -5,7 +5,7 @@ import clientPromise from "@/libs/mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 9; // 🌟 Đã sửa lại mỗi trang hiển thị 9 sản phẩm
 
 // Hàm Query kết hợp lấy sản phẩm và thông tin Flash Sale (nếu có)
 async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery) {
@@ -57,7 +57,7 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
   }
 }
 
-  // Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần" (VD: "8-3")
+  // Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần"
   function formatProducts(rawList) {
     const currentMonth = new Date().getMonth() + 1; 
     
@@ -67,14 +67,16 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
     
     const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
 
-    return (rawList || []).map((product) => { // Sửa lại thành return chuẩn ở đây
+    return (rawList || []).map((product) => {
       const availableColors =
         product.variants?.map((v) => ({
           color: v.color,
           quantity: v.quantity ?? 0,
         })) || [];
 
-      const availableSizes = product.sizes || product.variants?.flatMap((v) => v.sizes || []) || [];
+      // 🌟 Vét cạn toàn diện dữ liệu size từ nhiều định dạng lưu trữ trong DB (p.sizes, p.variants.sizes, p.variants.size,...)
+      const rawVariantSizes = product.variants?.flatMap((v) => v.sizes || v.size || []) || [];
+      const availableSizes = [...new Set([...(product.sizes || []), ...rawVariantSizes])].filter(Boolean);
 
       const originalPrice = product.price || 0;
       const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
