@@ -315,7 +315,7 @@ function FilterPanel({
 
 // 🏷️ Product Card riêng biệt để tối ưu render
 function ProductCard({ product, isFavorite, toggleWishlist }) {
-  const productId = product._id?.$oid || product._id;
+  const productId = String(product._id?.$oid || product._id);
   const isFav = isFavorite(productId);
 
   return (
@@ -379,7 +379,7 @@ function ProductCard({ product, isFavorite, toggleWishlist }) {
                 borderRadius: "4px",
                 zIndex: 5
               }}>
-                FLASH SALE TUẦN NÀY
+                FLASH SALE
               </span>
             )}
             <img
@@ -527,15 +527,10 @@ export default function ProductFilter({ products }) {
   }, [router, searchParams]);
 
   const processedProducts = useMemo(() => {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-    const currentWeekNumber = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
-
     return (products || []).map((p) => {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
-      // 🌟 SỬA LỖI SIZE [object Object]: Xử lý trích xuất chuỗi/số từ mảng size hoặc variant linh hoạt
       const rawSizes = p.sizes || p.variants?.flatMap((v) => {
         if (Array.isArray(v.sizes)) return v.sizes;
         if (v.size !== undefined && v.size !== null) return [v.size];
@@ -545,7 +540,6 @@ export default function ProductFilter({ products }) {
       const uniqueSizes = [...new Set(rawSizes)]
         .filter((size) => size !== null && size !== undefined && size !== "")
         .map((size) => {
-          // Nếu size là một object (ví dụ: {name: '39'} hoặc tương tự), cố gắng lấy giá trị phù hợp
           if (typeof size === "object") {
             return String(size.size || size.name || size.value || "").trim();
           }
@@ -553,10 +547,9 @@ export default function ProductFilter({ products }) {
         })
         .filter(Boolean);
 
-      const isWeekValid = p.flashSaleWeek ? p.flashSaleWeek === currentWeekNumber : true;
+      // Sửa logic Flash Sale trực tiếp dựa vào cờ dữ liệu, loại bỏ lỗi lệch tuần
       const hasFlashSale = Boolean(
         p.isFlashSale && 
-        isWeekValid && 
         p.flashSalePrice !== null && 
         p.flashSalePrice !== undefined && 
         Number(p.flashSalePrice) > 0
@@ -576,12 +569,22 @@ export default function ProductFilter({ products }) {
 
   const allSizes = useMemo(() => {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
-    return [...new Set(sizes)];
+    const uniqueSizes = [...new Set(sizes)];
+    
+    // Sắp xếp kích thước (size) tăng dần chuẩn theo dạng số hoặc chữ
+    return uniqueSizes.sort((a, b) => {
+      const numA = Number(a);
+      const numB = Number(b);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return String(a).localeCompare(String(b));
+    });
   }, [processedProducts]);
 
   const filtered = useMemo(() => {
     const result = processedProducts.filter((p) => {
-      const productId = p._id?.$oid || p._id;
+      const productId = String(p._id?.$oid || p._id);
       if (showFavoritesOnly && !isFavorite(productId)) return false;
 
       const minOk = priceRange.min === "" || p.effectivePrice >= Number(priceRange.min);
@@ -752,7 +755,7 @@ export default function ProductFilter({ products }) {
               <div className="row g-4">
                 {displayedProducts.map((product) => (
                   <ProductCard
-                    key={product._id?.$oid || product._id}
+                    key={String(product._id?.$oid || product._id)}
                     product={product}
                     isFavorite={isFavorite}
                     toggleWishlist={toggleWishlist}
@@ -760,7 +763,7 @@ export default function ProductFilter({ products }) {
                 ))}
               </div>
 
-              {/* 🌟 PHÂN TRANG GIAO DIỆN (Đã fix lỗi bị lặp) */}
+              {/* 🌟 PHÂN TRANG GIAO DIỆN (Đã giữ lại 1 bộ duy nhất, xóa bản sao bị lặp) */}
               {totalPages > 1 && (
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
