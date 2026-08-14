@@ -59,16 +59,13 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
 
 // Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần" (VD: "8-3")
 function formatProducts(rawList) {
-  // Xác định chính xác đợt hiện tại theo tháng và tuần hiện tại của bạn
-  // Hoặc bạn có thể định nghĩa cứng đợt đang chạy hiện tại ở đây để test (VD: "8-3")
-  const currentMonth = new Date().getMonth() + 1; // Tháng hiện tại (8)
+  const currentMonth = new Date().getMonth() + 1; 
   
-  // Tính tuần hiện tại trong tháng (hoặc dùng logic tuần của bạn)
   const now = new Date();
   const dayOfMonth = now.getDate();
   const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
   
-  const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`; // Ví dụ: "8-3"
+  const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
 
   return (rawList || []).map((product) => {
     const availableColors =
@@ -82,13 +79,9 @@ function formatProducts(rawList) {
     const originalPrice = product.price || 0;
     const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
     
-    // So sánh trực tiếp chuỗi đợt Flash Sale từ DB (VD: "8-3") với đợt hiện tại
     const productBatch = product.flashSaleBatch ? String(product.flashSaleBatch).trim() : null;
-    
-    // Chỉ coi là hợp lệ nếu đúng đợt tuần hiện tại mà bạn đã chọn trong Admin
     const isBatchValid = productBatch ? productBatch === currentBatchString : false;
 
-    // Điều kiện chuẩn: Có cờ flash sale, đúng đợt tuần hiện tại, VÀ giá sale phải nhỏ hơn giá gốc
     const isFlashSale = Boolean(
       (product.isFlashSale === true || product.isFlashSale === "true") && 
       isBatchValid && 
@@ -285,10 +278,10 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* LƯỚI HIỂN THỊ SẢN PHẨM (Truyền danh sách đã gán thông tin Flash Sale vào ProductFilter) */}
+      {/* LƯỚI HIỂN THỊ SẢN PHẨM (Truyền toàn bộ filteredProducts vào ProductFilter để lấy đủ size và danh mục lọc) */}
       <ProductFilter
-        key={`${categoryID || "all"}-${filterIdsParam || "none"}-page-${validPage}`}
-        products={displayedProducts}
+        key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
+        products={filteredProducts}
       />
 
       {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM */}
