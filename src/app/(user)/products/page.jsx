@@ -5,9 +5,10 @@ import clientPromise from "@/libs/mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
+const ITEMS_PER_PAGE = 9; // 🌟 Phân trang 9 sản phẩm mỗi trang ở Server
 
-// Hàm Query lấy toàn bộ hoặc theo danh mục/từ khóa từ MongoDB
-async function getProductsFromDB(categoryID, filterIdsParam, searchQuery) {
+// Hàm Query kết hợp lấy sản phẩm và thông tin Flash Sale (nếu có)
+async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery) {
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
@@ -34,14 +35,12 @@ async function getProductsFromDB(categoryID, filterIdsParam, searchQuery) {
       filter.name = { $regex: searchQuery, $options: "i" };
     }
 
-    // Lấy danh sách lọc theo query hiện tại
-    const rawFiltered = await db
+    const rawProducts = await db
       .collection(COLLECTION_NAME)
       .find(filter)
       .sort({ _id: -1 })
       .toArray();
 
-    // Lấy toàn bộ sản phẩm để phục vụ việc hiển thị toàn cục cho bộ lọc (Filter Sidebar)
     const rawAll = await db
       .collection(COLLECTION_NAME)
       .find({})
@@ -49,7 +48,7 @@ async function getProductsFromDB(categoryID, filterIdsParam, searchQuery) {
       .toArray();
 
     return {
-      filtered: JSON.parse(JSON.stringify(rawFiltered)),
+      filtered: JSON.parse(JSON.stringify(rawProducts)),
       all: JSON.parse(JSON.stringify(rawAll)),
     };
   } catch (error) {
@@ -61,9 +60,11 @@ async function getProductsFromDB(categoryID, filterIdsParam, searchQuery) {
 // Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần"
 function formatProducts(rawList) {
   const currentMonth = new Date().getMonth() + 1; 
+  
   const now = new Date();
   const dayOfMonth = now.getDate();
   const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
+  
   const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
 
   return (rawList || []).map((product) => {
@@ -73,8 +74,23 @@ function formatProducts(rawList) {
         quantity: v.quantity ?? 0,
       })) || [];
 
+    // Vét cạn toàn diện dữ liệu size từ nhiều định dạng và sắp xếp tăng dần theo dạng số
     const rawVariantSizes = product.variants?.flatMap((v) => v.sizes || v.size || []) || [];
-    const availableSizes = [...new Set([...(product.sizes || []), ...rawVariantSizes])].filter(Boolean);
+    const availableSizes = [...new Set([...(product.sizes || []), ...rawVariantSizes])]
+      .filter((size) => size !== null && size !== undefined && size !== "")
+      .map((size) => {
+        if (typeof size === "object") {
+          return String(size.size || size.name || size.value || "").trim();
+        }
+        return String(size).trim();
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const numA = Number(a);
+        const numB = Number(b);
+        if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+        return a.localeCompare(b);
+      });
 
     const originalPrice = product.price || 0;
     const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
@@ -90,6 +106,7 @@ function formatProducts(rawList) {
     );
 
     const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
+    
     const discountPercent = isFlashSale 
       ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
       : 0;
@@ -101,6 +118,7 @@ function formatProducts(rawList) {
       availableSizes,
       sizes: availableSizes,
       description: product.description || "Chưa có mô tả cho sản phẩm này.",
+      
       price: isFlashSale ? flashSalePrice : originalPrice,
       originalPrice: originalPrice, 
       flashSalePrice: flashSalePrice,
@@ -115,16 +133,36 @@ export default async function ProductsPage({ searchParams }) {
   const categoryID = params?.categoryID;
   const filterIdsParam = params?.filterIds;
   const searchQuery = params?.search;
+  
+  const currentPage = Math.max(1, parseInt(params?.page || "1", 10));
 
-  const { filtered: rawFiltered, all: rawAll } = await getProductsFromDB(
+  const { filtered: rawFiltered, all: rawAll } = await getFilteredProductsFromDB(
     categoryID,
     filterIdsParam,
     searchQuery
   );
 
-  // Chuẩn hóa toàn bộ danh sách để ProductFilter lấy đủ dữ liệu làm bộ lọc sidebar
-  const allProductsFormatted = formatProducts(rawAll);
-  const filteredProductsFormatted = formatProducts(rawFiltered);
+  const products = formatProducts(rawAll);
+  const filteredProducts = formatProducts(rawFiltered);
+
+  const totalItems = filteredProducts.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  const validPage = Math.min(currentPage, totalPages);
+
+  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  
+  const displayedProducts = filteredProducts.slice(startIndex, endIndex);
+
+  const createPageUrl = (pageNumber) => {
+    const query = new URLSearchParams();
+    if (categoryID) query.set("categoryID", categoryID);
+    if (filterIdsParam) query.set("filterIds", filterIdsParam);
+    if (searchQuery) query.set("search", searchQuery);
+    query.set("page", pageNumber.toString());
+
+    return `/products?${query.toString()}`;
+  };
 
   return (
     <main
@@ -132,6 +170,46 @@ export default async function ProductsPage({ searchParams }) {
       style={{ paddingTop: "110px", minHeight: "100vh" }}
     >
       <style>{`
+        .nk-card, .card-product, [class*="card"] {
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+                      box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          position: relative;
+          overflow: hidden;
+          border-radius: 12px;
+          border: 1px solid rgba(0, 0, 0, 0.05);
+          background-color: #ffffff !important;
+        }
+        
+        .nk-card:hover, .card-product:hover, [class*="card"]:hover {
+          transform: translateY(-6px);
+          box-shadow: 0 16px 32px rgba(0,0,0,0.08) !important;
+        }
+
+        .product-image-container, [class*="card"] .ratio, [class*="card"] .img-wrapper {
+          background-color: #ffffff !important;
+          border-radius: 12px 12px 0 0;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 16px;
+          position: relative;
+        }
+
+        .img-hover-scale, [class*="card"] img {
+          transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+          width: 100%;
+          height: 190px;
+          object-fit: contain;
+          mix-blend-mode: multiply;
+        }
+
+        .nk-card:hover .img-hover-scale, 
+        .card-product:hover [class*="card"] img,
+        [class*="card"]:hover img {
+          transform: scale(1.06);
+        }
+
         .products-header-title {
           position: relative;
           display: inline-block;
@@ -145,6 +223,28 @@ export default async function ProductsPage({ searchParams }) {
           height: 3px;
           background-color: var(--accent, #d87c3c);
           border-radius: 2px;
+        }
+        .pagination .page-link {
+          color: #212529;
+          border-radius: 10px;
+          margin: 0 4px;
+          border: 1px solid #dee2e6;
+          font-weight: 600;
+          font-size: 0.9rem;
+          padding: 8px 14px;
+          transition: all 0.2s ease;
+        }
+        .pagination .page-item.active .page-link {
+          background-color: var(--accent, #d87c3c);
+          border-color: var(--accent, #d87c3c);
+          color: #fff;
+          box-shadow: 0 4px 12px rgba(216, 124, 60, 0.25);
+        }
+        .pagination .page-link:hover {
+          background-color: #f8f9fa;
+          color: var(--accent, #d87c3c);
+          border-color: var(--accent, #d87c3c);
+          border-radius: 10px;
         }
       `}</style>
 
@@ -164,7 +264,7 @@ export default async function ProductsPage({ searchParams }) {
         <div className="bg-light px-3 py-2 rounded-pill border d-flex align-items-center gap-2">
           <i className="fas fa-box-open text-warning fs-7"></i>
           <span className="text-secondary fw-semibold" style={{ fontSize: "0.85rem" }}>
-            Tổng số <strong className="text-dark">{filteredProductsFormatted.length}</strong> sản phẩm phù hợp
+            Hiển thị <strong className="text-dark">{displayedProducts.length}</strong> trên tổng số <strong className="text-dark">{totalItems}</strong> sản phẩm
           </span>
         </div>
       </div>
@@ -182,7 +282,7 @@ export default async function ProductsPage({ searchParams }) {
             <div>
               <h6 className="mb-0 fw-bold text-dark">Trợ lý AI đã tìm kiếm thông minh</h6>
               <p className="mb-0 text-secondary" style={{ fontSize: "0.85rem" }}>
-                Tìm thấy <strong>{filteredProductsFormatted.length}</strong> sản phẩm phù hợp hoàn hảo với yêu cầu của bạn.
+                Tìm thấy <strong>{filteredProducts.length}</strong> sản phẩm phù hợp hoàn hảo với yêu cầu của bạn.
               </p>
             </div>
           </div>
@@ -195,13 +295,54 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* 🌟 TRUYỀN TOÀN BỘ DANH SÁCH VÀO PRODUCT FILTER ĐỂ HỆ THỐNG LỌC ĐA NĂNG HOẠT ĐỘNG CHUẨN XÁC */}
+      {/* LƯỚI HIỂN THỊ SẢN PHẨM */}
       <ProductFilter
         key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
-        products={filteredProductsFormatted.length > 0 ? filteredProductsFormatted : allProductsFormatted}
+        products={filteredProducts}
       />
 
-      <ProductChatbox products={allProductsFormatted} />
+      {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM */}
+      {displayedProducts.length === 0 && (
+        <div className="text-center py-5 my-5 bg-light rounded-4 border border-dashed">
+          <div className="mb-3 text-muted opacity-50" style={{ fontSize: "3rem" }}>
+            <i className="fas fa-search"></i>
+          </div>
+          <h5 className="fw-bold text-dark mb-1">Không tìm thấy sản phẩm nào</h5>
+          <p className="text-secondary small mb-4">Rất tiếc, không có sản phẩm nào khớp với tiêu chí tìm kiếm hiện tại của bạn.</p>
+          <Link href="/products" className="btn btn-dark btn-sm rounded-pill px-4 fw-semibold">
+            Xem tất cả sản phẩm
+          </Link>
+        </div>
+      )}
+
+      {/* PHÂN TRANG */}
+      {totalPages > 1 && (
+        <nav className="d-flex justify-content-center mt-5 pt-3">
+          <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
+            <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
+              <Link className="page-link" href={createPageUrl(validPage - 1)}>
+                <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
+              </Link>
+            </li>
+
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+              <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
+                <Link className="page-link" href={createPageUrl(pageNum)}>
+                  {pageNum}
+                </Link>
+              </li>
+            ))}
+
+            <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
+              <Link className="page-link" href={createPageUrl(validPage + 1)}>
+                Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      )}
+
+      <ProductChatbox products={products} />
     </main>
   );
 }
