@@ -70,11 +70,15 @@ export async function POST(req) {
 
       Khách hàng vừa nhắn: ${JSON.stringify(userMessage)}
 
-      Nhiệm vụ:
-      - Dựa vào lịch sử và tin nhắn mới nhất, lọc ra danh sách các product ID phù hợp.
-      - Trả về JSON theo đúng cấu trúc sau (không kèm ký tự markdown như \`\`\`json):
+      Nhiệm vụ và Quy tắc tư vấn:
+      1. Dựa vào lịch sử và tin nhắn mới nhất, phân tích nhu cầu của khách hàng:
+         - Nếu khách hỏi đi tiệc, ăn cưới, sự kiện: Chọn các mẫu giày sang trọng, giày tây, giày da bóng hoặc giày cao gót.
+         - Nếu khách hỏi đi leo núi, dã ngoại, phượt: Chọn giày thể thao chuyên dụng, giày sneaker có độ bám, chống trượt.
+         - Nếu khách hỏi đi học, đi chơi hàng ngày: Chọn giày sneaker năng động, thoải mái, dễ phối đồ.
+      2. Lọc ra danh sách các product ID thực sự phù hợp từ kho.
+      3. Trả về JSON theo đúng cấu trúc sau (không kèm ký tự markdown như \`\`\`json):
       {
-        "reply": "Câu trả lời tư vấn ngắn gọn (2-3 câu), xưng 'mình' gọi 'bạn'.",
+        "reply": "Câu trả lời tư vấn ngắn gọn (2-3 câu), xưng 'mình' gọi 'bạn', gợi ý đúng loại giày phù hợp với mục đích của khách.",
         "matchedIds": ["id1", "id2"]
       }
     `;
