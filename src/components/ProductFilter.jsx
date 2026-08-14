@@ -68,11 +68,6 @@ function FilterPanel({
     }
   }, [localMin, localMax, setPriceParam]);
 
-  const formatPrice = useCallback((value) => {
-    if (!value && value !== 0) return '';
-    return Number(value).toLocaleString('vi-VN');
-  }, []);
-
   const isPresetActive = useCallback((min, max) => {
     const currentMin = localMin !== '' ? Number(localMin) : '';
     const currentMax = localMax !== '' ? Number(localMax) : '';
@@ -319,7 +314,6 @@ function FilterPanel({
 // 🏷️ Product Card riêng biệt để tối ưu render
 function ProductCard({ product, isFavorite, toggleWishlist }) {
   const stockQty = product.quantity ?? 12;
-  const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
   const productId = product._id?.$oid || product._id;
   const isFav = isFavorite(productId);
 
@@ -520,10 +514,9 @@ export default function ProductFilter({ products }) {
     router.push(window.location.pathname, { scroll: false });
   }, [router]);
 
-  // 🌟 Logic xử lý Flash Sale theo tuần (có thể check khoảng thời gian hoặc dựa trên cờ tuần)
+  // 🌟 Đã cập nhật quét toàn diện từ p.sizes, p.variants, p.availableSizes
   const processedProducts = useMemo(() => {
     const now = new Date();
-    // Ví dụ tính tuần hiện tại trong năm để check Flash Sale theo tuần
     const startOfYear = new Date(now.getFullYear(), 0, 1);
     const currentWeekNumber = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
 
@@ -531,14 +524,15 @@ export default function ProductFilter({ products }) {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
-      const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
-      const uniqueSizes = [...new Set(mappedSizes)]
+      // Quét từ mọi nguồn cấu trúc size có thể có trong DB
+      const rawSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || v.size || []) || p.availableSizes || [];
+      const uniqueSizes = [...new Set(rawSizes)]
         .filter((size) => size !== null && size !== undefined && size !== "")
+        .map((size) => (typeof size === "string" ? size.trim() : size))
         .map(Number)
         .filter((size) => !isNaN(size))
         .sort((a, b) => a - b);
 
-      // Kiểm tra Flash Sale theo tuần (Giả sử sản phẩm có thuộc tính flashSaleWeek hoặc mặc định active)
       const isWeekValid = p.flashSaleWeek ? p.flashSaleWeek === currentWeekNumber : true;
       const hasFlashSale = Boolean(
         p.isFlashSale && 
@@ -577,13 +571,12 @@ export default function ProductFilter({ products }) {
       return minOk && maxOk && sizeOk;
     });
 
-    // 🌟 Sắp xếp sản phẩm theo tùy chọn sort
     return result.sort((a, b) => {
       if (sortBy === "price-asc") return a.effectivePrice - b.effectivePrice;
       if (sortBy === "price-desc") return b.effectivePrice - a.effectivePrice;
       if (sortBy === "name-asc") return a.name.localeCompare(b.name);
       if (sortBy === "name-desc") return b.name.localeCompare(a.name);
-      return 0; // Mặc định
+      return 0;
     });
   }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy]);
 
@@ -685,7 +678,7 @@ export default function ProductFilter({ products }) {
               )}
             </div>
 
-            {/* 🌟 Dropdown Sắp xếp */}
+            {/* Dropdown Sắp xếp */}
             <div className="d-flex align-items-center gap-2">
               <span style={{ fontSize: "13px", color: "#6b7280", whiteSpace: "nowrap" }}>Sắp xếp:</span>
               <select
