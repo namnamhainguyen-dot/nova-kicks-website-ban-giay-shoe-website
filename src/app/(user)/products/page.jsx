@@ -57,61 +57,60 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
   }
 }
 
-// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần" (VD: "8-3")
-function formatProducts(rawList) {
-  const currentMonth = new Date().getMonth() + 1; 
-  
-  const now = new Date();
-  const dayOfMonth = now.getDate();
-  const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
-  
-  const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
-
-  rreturn (rawList || []).map((product) => {
-    const availableColors =
-      product.variants?.map((v) => ({
-        color: v.color,
-        quantity: v.quantity ?? 0,
-      })) || [];
-
-    // Lấy chuẩn danh sách sizes từ nhiều nguồn cấu trúc database khác nhau
-    const availableSizes = product.sizes || product.variants?.flatMap((v) => v.sizes || []) || [];
-
-    const originalPrice = product.price || 0;
-    const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
+  // Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần" (VD: "8-3")
+  function formatProducts(rawList) {
+    const currentMonth = new Date().getMonth() + 1; 
     
-    const productBatch = product.flashSaleBatch ? String(product.flashSaleBatch).trim() : null;
-    const isBatchValid = productBatch ? productBatch === currentBatchString : false;
-
-    const isFlashSale = Boolean(
-      (product.isFlashSale === true || product.isFlashSale === "true") && 
-      isBatchValid && 
-      rawFlashSalePrice && 
-      Number(rawFlashSalePrice) < Number(originalPrice)
-    );
-
-    const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
+    const now = new Date();
+    const dayOfMonth = now.getDate();
+    const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
     
-    const discountPercent = isFlashSale 
-      ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
-      : 0;
+    const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
 
-    return {
-      ...product,
-      _id: String(product._id),
-      availableColors,
-      availableSizes,
-      sizes: availableSizes, // 🔥 Bổ sung thêm dòng này để ProductFilter nhận diện được danh sách size
-      description: product.description || "Chưa có mô tả cho sản phẩm này.",
+    return (rawList || []).map((product) => { // Sửa lại thành return chuẩn ở đây
+      const availableColors =
+        product.variants?.map((v) => ({
+          color: v.color,
+          quantity: v.quantity ?? 0,
+        })) || [];
+
+      const availableSizes = product.sizes || product.variants?.flatMap((v) => v.sizes || []) || [];
+
+      const originalPrice = product.price || 0;
+      const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
       
-      price: isFlashSale ? flashSalePrice : originalPrice,
-      originalPrice: originalPrice, 
-      flashSalePrice: flashSalePrice,
-      isFlashSale: isFlashSale, 
-      discountPercent: discountPercent,
-    };
-  });
-}
+      const productBatch = product.flashSaleBatch ? String(product.flashSaleBatch).trim() : null;
+      const isBatchValid = productBatch ? productBatch === currentBatchString : false;
+
+      const isFlashSale = Boolean(
+        (product.isFlashSale === true || product.isFlashSale === "true") && 
+        isBatchValid && 
+        rawFlashSalePrice && 
+        Number(rawFlashSalePrice) < Number(originalPrice)
+      );
+
+      const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
+      
+      const discountPercent = isFlashSale 
+        ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
+        : 0;
+
+      return {
+        ...product,
+        _id: String(product._id),
+        availableColors,
+        availableSizes,
+        sizes: availableSizes,
+        description: product.description || "Chưa có mô tả cho sản phẩm này.",
+        
+        price: isFlashSale ? flashSalePrice : originalPrice,
+        originalPrice: originalPrice, 
+        flashSalePrice: flashSalePrice,
+        isFlashSale: isFlashSale, 
+        discountPercent: discountPercent,
+      };
+    });
+  }
 
 export default async function ProductsPage({ searchParams }) {
   const params = await searchParams;
