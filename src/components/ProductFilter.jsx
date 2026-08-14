@@ -547,7 +547,6 @@ export default function ProductFilter({ products }) {
         })
         .filter(Boolean);
 
-      // Sửa logic Flash Sale trực tiếp dựa vào cờ dữ liệu, loại bỏ lỗi lệch tuần
       const hasFlashSale = Boolean(
         p.isFlashSale && 
         p.flashSalePrice !== null && 
@@ -571,7 +570,6 @@ export default function ProductFilter({ products }) {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
     const uniqueSizes = [...new Set(sizes)];
     
-    // Sắp xếp kích thước (size) tăng dần chuẩn theo dạng số hoặc chữ
     return uniqueSizes.sort((a, b) => {
       const numA = Number(a);
       const numB = Number(b);
@@ -636,6 +634,22 @@ export default function ProductFilter({ products }) {
 
   return (
     <div>
+      {/* 🌟 ĐOẠN CSS ĐỔI MÀU CAM NHẸ CHO PHÂN TRANG */}
+      <style>{`
+        .pagination .page-item.active .page-link {
+          background-color: #f97316 !important;
+          border-color: #f97316 !important;
+          color: #fff !important;
+          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+        }
+        .pagination .page-link {
+          color: #374151;
+        }
+        .pagination .page-link:hover {
+          color: #f97316 !important;
+        }
+      `}</style>
+
       {/* Mobile toggle */}
       <div className="d-flex d-md-none justify-content-between align-items-center mb-3">
         <button
@@ -763,7 +777,7 @@ export default function ProductFilter({ products }) {
                 ))}
               </div>
 
-              {/* 🌟 PHÂN TRANG GIAO DIỆN (Đã giữ lại 1 bộ duy nhất, xóa bản sao bị lặp) */}
+              {/* PHÂN TRANG */}
               {totalPages > 1 && (
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
