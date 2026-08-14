@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { WishlistContext } from "@/components/WishlistContext";
 
+const ITEMS_PER_PAGE = 9;
+
 // 🌟 Component FilterPanel nhận giá trị và hàm cập nhật URL thông qua props
 function FilterPanel({
   priceRange,
@@ -284,11 +286,11 @@ function FilterPanel({
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
             {allSizes.map((size) => {
-              const active = selectedSizes?.includes(size);
+              const active = selectedSizes?.includes(String(size));
               return (
                 <button
                   key={size}
-                  onClick={() => toggleSizeParam(size)}
+                  onClick={() => toggleSizeParam(String(size))}
                   style={{
                     padding: "5px 12px",
                     borderRadius: "8px",
@@ -313,7 +315,6 @@ function FilterPanel({
 
 // 🏷️ Product Card riêng biệt để tối ưu render
 function ProductCard({ product, isFavorite, toggleWishlist }) {
-  const stockQty = product.quantity ?? 12;
   const productId = product._id?.$oid || product._id;
   const isFav = isFavorite(productId);
 
@@ -463,13 +464,15 @@ export default function ProductFilter({ products }) {
     max: searchParams.get("maxPrice") ?? "",
   }), [searchParams]);
 
+  // 🌟 Đọc size dưới dạng mảng chuỗi để hỗ trợ tốt cả size số và size chữ (S, M, L, XL...)
   const selectedSizes = useMemo(() => {
     const sizesParam = searchParams.get("sizes");
-    return sizesParam ? sizesParam.split(",").map(Number) : [];
+    return sizesParam ? sizesParam.split(",") : [];
   }, [searchParams]);
 
   const showFavoritesOnly = searchParams.get("favorites") === "true";
   const sortBy = searchParams.get("sort") || "default";
+  const currentPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
 
   const updateQueryParam = useCallback((key, value) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -478,6 +481,8 @@ export default function ProductFilter({ products }) {
     } else {
       params.delete(key);
     }
+    // Khi thay đổi bộ lọc, reset lại trang về 1
+    if (key !== "page") params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
@@ -485,6 +490,7 @@ export default function ProductFilter({ products }) {
     const params = new URLSearchParams(searchParams.toString());
     if (minVal !== "") params.set("minPrice", minVal); else params.delete("minPrice");
     if (maxVal !== "") params.set("maxPrice", maxVal); else params.delete("maxPrice");
+    params.set("page", "1");
     router.replace(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
@@ -499,6 +505,7 @@ export default function ProductFilter({ products }) {
     } else {
       params.delete("sizes");
     }
+    params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams, selectedSizes]);
 
@@ -511,10 +518,16 @@ export default function ProductFilter({ products }) {
   }, [updateQueryParam]);
 
   const clearAll = useCallback(() => {
-    router.push(window.location.pathname, { scroll: false });
-  }, [router]);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("minPrice");
+    params.delete("maxPrice");
+    params.delete("sizes");
+    params.delete("favorites");
+    params.delete("sort");
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
 
-  // 🌟 Đã cập nhật quét toàn diện từ p.sizes, p.variants, p.availableSizes
   const processedProducts = useMemo(() => {
     const now = new Date();
     const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -524,14 +537,11 @@ export default function ProductFilter({ products }) {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
-      // Quét từ mọi nguồn cấu trúc size có thể có trong DB
+      // 🌟 Quét linh hoạt mọi nguồn chứa size (hỗ trợ cả chuỗi và số)
       const rawSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || v.size || []) || p.availableSizes || [];
       const uniqueSizes = [...new Set(rawSizes)]
         .filter((size) => size !== null && size !== undefined && size !== "")
-        .map((size) => (typeof size === "string" ? size.trim() : size))
-        .map(Number)
-        .filter((size) => !isNaN(size))
-        .sort((a, b) => a - b);
+        .map((size) => String(size).trim());
 
       const isWeekValid = p.flashSaleWeek ? p.flashSaleWeek === currentWeekNumber : true;
       const hasFlashSale = Boolean(
@@ -556,9 +566,10 @@ export default function ProductFilter({ products }) {
 
   const allSizes = useMemo(() => {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
-    return [...new Set(sizes)].sort((a, b) => a - b);
+    return [...new Set(sizes)];
   }, [processedProducts]);
 
+  // Danh sách sau khi lọc và sắp xếp
   const filtered = useMemo(() => {
     const result = processedProducts.filter((p) => {
       const productId = p._id?.$oid || p._id;
@@ -566,7 +577,7 @@ export default function ProductFilter({ products }) {
 
       const minOk = priceRange.min === "" || p.effectivePrice >= Number(priceRange.min);
       const maxOk = priceRange.max === "" || p.effectivePrice <= Number(priceRange.max);
-      const sizeOk = selectedSizes.length === 0 || selectedSizes.some((s) => (p.displaySizes || []).includes(Number(s)));
+      const sizeOk = selectedSizes.length === 0 || selectedSizes.some((s) => (p.displaySizes || []).includes(s));
       
       return minOk && maxOk && sizeOk;
     });
@@ -579,6 +590,18 @@ export default function ProductFilter({ products }) {
       return 0;
     });
   }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy]);
+
+  // 🌟 Logic Phân trang độc lập bên trong component
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+  const validPage = Math.min(currentPage, totalPages);
+  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
+  const displayedProducts = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const createPageUrl = (pageNumber) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", pageNumber.toString());
+    return `?${params.toString()}`;
+  };
 
   const activeCount = useMemo(() => {
     let count = selectedSizes.length;
@@ -657,7 +680,7 @@ export default function ProductFilter({ products }) {
           <div className="d-flex justify-content-between align-items-center mb-3">
             <div className="d-none d-md-flex align-items-center" style={{ fontSize: "13px", color: "#6b7280", gap: "8px" }}>
               <span>
-                Hiển thị <strong style={{ color: "#111" }}>{filtered.length}</strong> / {products?.length || 0} sản phẩm
+                Hiển thị <strong style={{ color: "#111" }}>{displayedProducts.length}</strong> / tổng số {filtered.length} sản phẩm phù hợp
               </span>
               {activeCount > 0 && (
                 <button
@@ -717,16 +740,45 @@ export default function ProductFilter({ products }) {
               </button>
             </div>
           ) : (
-            <div className="row g-4">
-              {filtered.map((product) => (
-                <ProductCard
-                  key={product._id?.$oid || product._id}
-                  product={product}
-                  isFavorite={isFavorite}
-                  toggleWishlist={toggleWishlist}
-                />
-              ))}
-            </div>
+            <>
+              <div className="row g-4">
+                {displayedProducts.map((product) => (
+                  <ProductCard
+                    key={product._id?.$oid || product._id}
+                    product={product}
+                    isFavorite={isFavorite}
+                    toggleWishlist={toggleWishlist}
+                  />
+                ))}
+              </div>
+
+              {/* 🌟 PHÂN TRANG GIAO DIỆN */}
+              {totalPages > 1 && (
+                <nav className="d-flex justify-content-center mt-5 pt-3">
+                  <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
+                    <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
+                      <Link className="page-link" href={createPageUrl(validPage - 1)}>
+                        <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
+                      </Link>
+                    </li>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
+                        <Link className="page-link" href={createPageUrl(pageNum)}>
+                          {pageNum}
+                        </Link>
+                      </li>
+                    ))}
+
+                    <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
+                      <Link className="page-link" href={createPageUrl(validPage + 1)}>
+                        Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
+                      </Link>
+                    </li>
+                  </ul>
+                </nav>
+              )}
+            </>
           )}
         </div>
       </div>
