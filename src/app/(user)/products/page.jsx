@@ -73,7 +73,6 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
           quantity: v.quantity ?? 0,
         })) || [];
 
-      // 🌟 Vét cạn toàn diện dữ liệu size từ nhiều định dạng lưu trữ trong DB (p.sizes, p.variants.sizes, p.variants.size,...)
       const rawVariantSizes = product.variants?.flatMap((v) => v.sizes || v.size || []) || [];
       const availableSizes = [...new Set([...(product.sizes || []), ...rawVariantSizes])].filter(Boolean);
 
@@ -118,8 +117,6 @@ export default async function ProductsPage({ searchParams }) {
   const categoryID = params?.categoryID;
   const filterIdsParam = params?.filterIds;
   const searchQuery = params?.search;
-  
-  const currentPage = Math.max(1, parseInt(params?.page || "1", 10));
 
   const { filtered: rawFiltered, all: rawAll } = await getFilteredProductsFromDB(
     categoryID,
@@ -131,23 +128,6 @@ export default async function ProductsPage({ searchParams }) {
   const filteredProducts = formatProducts(rawFiltered);
 
   const totalItems = filteredProducts.length;
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-  const validPage = Math.min(currentPage, totalPages);
-
-  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  
-  const displayedProducts = filteredProducts.slice(startIndex, endIndex);
-
-  const createPageUrl = (pageNumber) => {
-    const query = new URLSearchParams();
-    if (categoryID) query.set("categoryID", categoryID);
-    if (filterIdsParam) query.set("filterIds", filterIdsParam);
-    if (searchQuery) query.set("search", searchQuery);
-    query.set("page", pageNumber.toString());
-
-    return `/products?${query.toString()}`;
-  };
 
   return (
     <main
@@ -209,28 +189,6 @@ export default async function ProductsPage({ searchParams }) {
           background-color: var(--accent, #d87c3c);
           border-radius: 2px;
         }
-        .pagination .page-link {
-          color: #212529;
-          border-radius: 10px;
-          margin: 0 4px;
-          border: 1px solid #dee2e6;
-          font-weight: 600;
-          font-size: 0.9rem;
-          padding: 8px 14px;
-          transition: all 0.2s ease;
-        }
-        .pagination .page-item.active .page-link {
-          background-color: var(--accent, #d87c3c);
-          border-color: var(--accent, #d87c3c);
-          color: #fff;
-          box-shadow: 0 4px 12px rgba(216, 124, 60, 0.25);
-        }
-        .pagination .page-link:hover {
-          background-color: #f8f9fa;
-          color: var(--accent, #d87c3c);
-          border-color: var(--accent, #d87c3c);
-          border-radius: 10px;
-        }
       `}</style>
 
       {/* HEADER TIÊU ĐỀ */}
@@ -249,7 +207,7 @@ export default async function ProductsPage({ searchParams }) {
         <div className="bg-light px-3 py-2 rounded-pill border d-flex align-items-center gap-2">
           <i className="fas fa-box-open text-warning fs-7"></i>
           <span className="text-secondary fw-semibold" style={{ fontSize: "0.85rem" }}>
-            Hiển thị <strong className="text-dark">{displayedProducts.length}</strong> trên tổng số <strong className="text-dark">{totalItems}</strong> sản phẩm
+            Tổng số <strong className="text-dark">{totalItems}</strong> sản phẩm
           </span>
         </div>
       </div>
@@ -280,26 +238,12 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* LƯỚI HIỂN THỊ SẢN PHẨM (Truyền cả danh sách đã phân trang/lọc lẫn danh sách toàn bộ để ProductFilter xử lý giao diện tối ưu) */}
+      {/* LƯỚI HIỂN THỊ SẢN PHẨM & BỘ LỌC */}
       <ProductFilter
         key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
-        products={displayedProducts}
+        products={filteredProducts}
         allProducts={products}
       />
-
-      {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM */}
-      {displayedProducts.length === 0 && (
-        <div className="text-center py-5 my-5 bg-light rounded-4 border border-dashed">
-          <div className="mb-3 text-muted opacity-50" style={{ fontSize: "3rem" }}>
-            <i className="fas fa-search"></i>
-          </div>
-          <h5 className="fw-bold text-dark mb-1">Không tìm thấy sản phẩm nào</h5>
-          <p className="text-secondary small mb-4">Rất tiếc, không có sản phẩm nào khớp với tiêu chí tìm kiếm hiện tại của bạn.</p>
-          <Link href="/products" className="btn btn-dark btn-sm rounded-pill px-4 fw-semibold">
-            Xem tất cả sản phẩm
-          </Link>
-        </div>
-      )}
 
       <ProductChatbox products={products} />
     </main>
