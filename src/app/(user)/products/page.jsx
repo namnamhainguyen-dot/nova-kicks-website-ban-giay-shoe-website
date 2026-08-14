@@ -57,12 +57,18 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
   }
 }
 
-// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale theo tuần
+// Hàm chuẩn hóa dữ liệu, tính toán giá Flash Sale khớp với định dạng "Tháng-Tuần" (VD: "8-3")
 function formatProducts(rawList) {
-  // Tính số tuần hiện tại trong năm (giống như logic ở trang chủ hoặc bộ lọc)
+  // Xác định chính xác đợt hiện tại theo tháng và tuần hiện tại của bạn
+  // Hoặc bạn có thể định nghĩa cứng đợt đang chạy hiện tại ở đây để test (VD: "8-3")
+  const currentMonth = new Date().getMonth() + 1; // Tháng hiện tại (8)
+  
+  // Tính tuần hiện tại trong tháng (hoặc dùng logic tuần của bạn)
   const now = new Date();
-  const startOfYear = new Date(now.getFullYear(), 0, 1);
-  const currentWeekNumber = Math.ceil(((now - startOfYear) / 86400000 + startOfYear.getDay() + 1) / 7);
+  const dayOfMonth = now.getDate();
+  const currentWeekOfMonth = Math.ceil(dayOfMonth / 7); 
+  
+  const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`; // Ví dụ: "8-3"
 
   return (rawList || []).map((product) => {
     const availableColors =
@@ -73,28 +79,25 @@ function formatProducts(rawList) {
 
     const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
 
-    // --- XỬ LÝ GIÁ FLASH SALE THEO TUẦN ---
     const originalPrice = product.price || 0;
     const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
     
-    // Kiểm tra xem sản phẩm có được cấu hình đúng tuần hiện tại hay không
-    // (Giả sử trường lưu tuần flash sale trong DB của bạn là `flashSaleWeek` hoặc `weekNumber`)
-    const productWeek = product.flashSaleBatch ? Number(product.flashSaleBatch) : null;
+    // So sánh trực tiếp chuỗi đợt Flash Sale từ DB (VD: "8-3") với đợt hiện tại
+    const productBatch = product.flashSaleBatch ? String(product.flashSaleBatch).trim() : null;
     
-    // Nếu admin set tuần, phải khớp với tuần hiện tại. Nếu không set trường tuần, mặc định cho phép hoặc bỏ qua tùy ý bạn.
-    const isWeekValid = productWeek ? productWeek === currentWeekNumber : true;
+    // Chỉ coi là hợp lệ nếu đúng đợt tuần hiện tại mà bạn đã chọn trong Admin
+    const isBatchValid = productBatch ? productBatch === currentBatchString : false;
 
-    // Điều kiện chuẩn: Có cờ flash sale, đúng tuần, VÀ giá sale phải nhỏ hơn giá gốc
+    // Điều kiện chuẩn: Có cờ flash sale, đúng đợt tuần hiện tại, VÀ giá sale phải nhỏ hơn giá gốc
     const isFlashSale = Boolean(
       (product.isFlashSale === true || product.isFlashSale === "true") && 
-      isWeekValid && 
+      isBatchValid && 
       rawFlashSalePrice && 
       Number(rawFlashSalePrice) < Number(originalPrice)
     );
 
     const flashSalePrice = isFlashSale ? Number(rawFlashSalePrice) : null;
     
-    // Tính phần trăm giảm giá nếu có
     const discountPercent = isFlashSale 
       ? Math.round(((originalPrice - flashSalePrice) / originalPrice) * 100) 
       : 0;
