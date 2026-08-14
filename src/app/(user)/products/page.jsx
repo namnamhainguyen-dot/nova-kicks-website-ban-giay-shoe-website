@@ -5,7 +5,6 @@ import clientPromise from "@/libs/mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
-const ITEMS_PER_PAGE = 9; // 🌟 Đã sửa lại mỗi trang hiển thị 9 sản phẩm
 
 // Hàm Query kết hợp lấy sản phẩm và thông tin Flash Sale (nếu có)
 async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery) {
@@ -300,33 +299,6 @@ export default async function ProductsPage({ searchParams }) {
             Xem tất cả sản phẩm
           </Link>
         </div>
-      )}
-
-      {/* PHÂN TRANG */}
-      {totalPages > 1 && (
-        <nav className="d-flex justify-content-center mt-5 pt-3">
-          <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
-            <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
-              <Link className="page-link" href={createPageUrl(validPage - 1)}>
-                <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
-              </Link>
-            </li>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
-                <Link className="page-link" href={createPageUrl(pageNum)}>
-                  {pageNum}
-                </Link>
-              </li>
-            ))}
-
-            <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
-              <Link className="page-link" href={createPageUrl(validPage + 1)}>
-                Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
-              </Link>
-            </li>
-          </ul>
-        </nav>
       )}
 
       <ProductChatbox products={products} />
