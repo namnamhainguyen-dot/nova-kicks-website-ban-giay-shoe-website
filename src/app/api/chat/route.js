@@ -13,8 +13,8 @@ function buildFallbackResponse(userMessage, products = []) {
 
   const reply =
     productNames.length > 0
-      ? `Mình đang ở chế độ dự phòng vì khóa Gemini chưa được cấu hình hoặc bị giới hạn. Bạn có thể xem các sản phẩm phù hợp như: ${productNames.join(", ")}.`
-      : `Mình đang ở chế độ dự phòng. Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
+      ? `Bạn có thể xem các sản phẩm phù hợp như: ${productNames.join(", ")}.`
+      : `Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
 
   return {
     reply,
