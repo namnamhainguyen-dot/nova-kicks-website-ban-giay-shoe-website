@@ -151,12 +151,11 @@ export default function ProductChatbox({ products }) {
     };
   }, [isOpen, sessionInfo.id]);
 
-  // 5. Gửi tin nhắn
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
+  // Hàm xử lý gửi tin nhắn chung (dùng cho cả ô input và dải gợi ý)
+  const submitMessage = async (textToSend) => {
+    if (!textToSend.trim() || isLoading) return;
 
-    const userText = input.trim();
+    const userText = textToSend.trim();
     const updatedMessages = [...messages, { role: "user", text: userText, mode: replyMode }];
 
     setMessages(updatedMessages);
@@ -251,6 +250,12 @@ export default function ProductChatbox({ products }) {
     }
   };
 
+  // 5. Gửi tin nhắn từ form
+  const handleSendMessage = (e) => {
+    e.preventDefault();
+    submitMessage(input);
+  };
+
   return (
     <div className="position-fixed bottom-0 end-0 m-4" style={{ zIndex: 1050 }}>
       {!isOpen && (
@@ -279,7 +284,7 @@ export default function ProductChatbox({ products }) {
           className="card shadow-lg border-0 d-flex flex-column"
           style={{
             width: "380px",
-            height: "540px",
+            height: "580px", // Tăng nhẹ chiều cao để chứa dải gợi ý thoải mái hơn
             borderRadius: "20px",
             overflow: "hidden",
             backgroundColor: "#ffffff",
@@ -400,6 +405,37 @@ export default function ProductChatbox({ products }) {
               </div>
             )}
             <div ref={chatEndRef} />
+          </div>
+
+          {/* Dải gợi ý nhanh (Chip Suggestions) */}
+          <div className="px-3 py-2 bg-white border-top d-flex gap-1.5 overflow-x-auto" style={{ whiteSpace: "nowrap" }}>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 flex-shrink-0"
+              style={{ fontSize: "0.75rem", borderColor: "#dee2e6", color: "#495057" }}
+              disabled={isLoading}
+              onClick={() => submitMessage("giày để đi ăn cưới, ăn tiệc")}
+            >
+              🎉 Đi ăn cưới, ăn tiệc
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 flex-shrink-0"
+              style={{ fontSize: "0.75rem", borderColor: "#dee2e6", color: "#495057" }}
+              disabled={isLoading}
+              onClick={() => submitMessage("giày để đi leo núi")}
+            >
+              ⛰️ Đi leo núi
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 flex-shrink-0"
+              style={{ fontSize: "0.75rem", borderColor: "#dee2e6", color: "#495057" }}
+              disabled={isLoading}
+              onClick={() => submitMessage("giày để đi học")}
+            >
+              📚 Đi học
+            </button>
           </div>
 
           {/* Ô nhập tin nhắn */}
