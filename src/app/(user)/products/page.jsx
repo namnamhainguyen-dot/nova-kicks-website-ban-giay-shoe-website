@@ -67,14 +67,15 @@ function formatProducts(rawList) {
   
   const currentBatchString = `${currentMonth}-${currentWeekOfMonth}`;
 
-  return (rawList || []).map((product) => {
+  rreturn (rawList || []).map((product) => {
     const availableColors =
       product.variants?.map((v) => ({
         color: v.color,
         quantity: v.quantity ?? 0,
       })) || [];
 
-    const availableSizes = product.variants?.[0]?.sizes || product.sizes || [];
+    // Lấy chuẩn danh sách sizes từ nhiều nguồn cấu trúc database khác nhau
+    const availableSizes = product.sizes || product.variants?.flatMap((v) => v.sizes || []) || [];
 
     const originalPrice = product.price || 0;
     const rawFlashSalePrice = product.flashSalePrice || product.salePrice || null;
@@ -100,6 +101,7 @@ function formatProducts(rawList) {
       _id: String(product._id),
       availableColors,
       availableSizes,
+      sizes: availableSizes, // 🔥 Bổ sung thêm dòng này để ProductFilter nhận diện được danh sách size
       description: product.description || "Chưa có mô tả cho sản phẩm này.",
       
       price: isFlashSale ? flashSalePrice : originalPrice,
