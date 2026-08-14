@@ -464,7 +464,6 @@ export default function ProductFilter({ products }) {
     max: searchParams.get("maxPrice") ?? "",
   }), [searchParams]);
 
-  // 🌟 Đọc size dưới dạng mảng chuỗi để hỗ trợ tốt cả size số và size chữ (S, M, L, XL...)
   const selectedSizes = useMemo(() => {
     const sizesParam = searchParams.get("sizes");
     return sizesParam ? sizesParam.split(",") : [];
@@ -481,7 +480,6 @@ export default function ProductFilter({ products }) {
     } else {
       params.delete(key);
     }
-    // Khi thay đổi bộ lọc, reset lại trang về 1
     if (key !== "page") params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
@@ -537,11 +535,23 @@ export default function ProductFilter({ products }) {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
-      // 🌟 Quét linh hoạt mọi nguồn chứa size (hỗ trợ cả chuỗi và số)
-      const rawSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || v.size || []) || p.availableSizes || [];
+      // 🌟 SỬA LỖI SIZE [object Object]: Xử lý trích xuất chuỗi/số từ mảng size hoặc variant linh hoạt
+      const rawSizes = p.sizes || p.variants?.flatMap((v) => {
+        if (Array.isArray(v.sizes)) return v.sizes;
+        if (v.size !== undefined && v.size !== null) return [v.size];
+        return [];
+      }) || p.availableSizes || [];
+
       const uniqueSizes = [...new Set(rawSizes)]
         .filter((size) => size !== null && size !== undefined && size !== "")
-        .map((size) => String(size).trim());
+        .map((size) => {
+          // Nếu size là một object (ví dụ: {name: '39'} hoặc tương tự), cố gắng lấy giá trị phù hợp
+          if (typeof size === "object") {
+            return String(size.size || size.name || size.value || "").trim();
+          }
+          return String(size).trim();
+        })
+        .filter(Boolean);
 
       const isWeekValid = p.flashSaleWeek ? p.flashSaleWeek === currentWeekNumber : true;
       const hasFlashSale = Boolean(
@@ -569,7 +579,6 @@ export default function ProductFilter({ products }) {
     return [...new Set(sizes)];
   }, [processedProducts]);
 
-  // Danh sách sau khi lọc và sắp xếp
   const filtered = useMemo(() => {
     const result = processedProducts.filter((p) => {
       const productId = p._id?.$oid || p._id;
@@ -591,7 +600,6 @@ export default function ProductFilter({ products }) {
     });
   }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy]);
 
-  // 🌟 Logic Phân trang độc lập bên trong component
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   const validPage = Math.min(currentPage, totalPages);
   const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
@@ -752,7 +760,7 @@ export default function ProductFilter({ products }) {
                 ))}
               </div>
 
-              {/* 🌟 PHÂN TRANG GIAO DIỆN */}
+              {/* 🌟 PHÂN TRANG GIAO DIỆN (Đã fix lỗi bị lặp) */}
               {totalPages > 1 && (
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
