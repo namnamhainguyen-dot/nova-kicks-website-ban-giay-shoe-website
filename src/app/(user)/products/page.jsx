@@ -129,15 +129,7 @@ export default async function ProductsPage({ searchParams }) {
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const displayedProducts = filteredProducts.slice(startIndex, endIndex);
 
-  const createPageUrl = (pageNumber) => {
-    const query = new URLSearchParams();
-    if (categoryID) query.set("categoryID", categoryID);
-    if (filterIdsParam) query.set("filterIds", filterIdsParam);
-    if (searchQuery) query.set("search", searchQuery);
-    query.set("page", pageNumber.toString());
-
-    return `/products?${query.toString()}`;
-  };
+  // ⚠️ KHÔNG CẦN createPageUrl NỮA VÌ ProductFilter TỰ XỬ LÝ PHÂN TRANG
 
   return (
     <main
@@ -299,32 +291,7 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* PHÂN TRANG */}
-      {totalPages > 1 && (
-        <nav className="d-flex justify-content-center mt-5 pt-3">
-          <ul className="pagination shadow-xs rounded-4 bg-white p-2 border border-light">
-            <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
-              <Link className="page-link" href={createPageUrl(validPage - 1)}>
-                <i className="fas fa-chevron-left me-1" style={{ fontSize: "0.75rem" }}></i> Trước
-              </Link>
-            </li>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-              <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
-                <Link className="page-link" href={createPageUrl(pageNum)}>
-                  {pageNum}
-                </Link>
-              </li>
-            ))}
-
-            <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
-              <Link className="page-link" href={createPageUrl(validPage + 1)}>
-                Sau <i className="fas fa-chevron-right ms-1" style={{ fontSize: "0.75rem" }}></i>
-              </Link>
-            </li>
-          </ul>
-        </nav>
-      )}
+      {/* ✅ ĐÃ XÓA PHÂN TRANG Ở ĐÂY - CHỈ GIỮ LẠI TRONG PRODUCTFILTER */}
 
       <ProductChatbox products={products} />
     </main>
