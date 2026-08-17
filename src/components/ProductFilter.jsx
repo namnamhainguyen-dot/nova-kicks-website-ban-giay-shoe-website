@@ -28,7 +28,6 @@ function FilterPanel({
   }, [priceRange.min, priceRange.max]);
 
   const handleInputChange = useCallback((type, e) => {
-    // Cho phép nhập số và dấu chấm hoặc phẩy, sau đó lọc lại
     const value = e.target.value.replace(/[,.]/g, '');
     if (value === '' || /^\d*$/.test(value)) {
       if (type === 'min') {
@@ -47,7 +46,7 @@ function FilterPanel({
 
   const handleKeyDown = useCallback((e) => {
     if (e.key === 'Enter') {
-      e.currentTarget.blur(); 
+      e.currentTarget.blur();
       handleApplyPrice();
     }
   }, [handleApplyPrice]);
@@ -56,10 +55,10 @@ function FilterPanel({
     const presetMinStr = preset.min !== '' && preset.min !== undefined ? String(preset.min) : '';
     const presetMaxStr = preset.max !== '' && preset.max !== undefined ? String(preset.max) : '';
 
-    const isActive = 
-      Number(localMin || 0) === Number(presetMinStr || 0) && 
+    const isActive =
+      Number(localMin || 0) === Number(presetMinStr || 0) &&
       Number(localMax || 0) === Number(presetMaxStr || 0);
-    
+
     if (isActive) {
       setLocalMin('');
       setLocalMax('');
@@ -186,7 +185,7 @@ function FilterPanel({
         >
           Giá (VND)
         </p>
-        
+
         <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
           <div style={{ flex: 1, position: "relative" }}>
             <input
@@ -481,7 +480,6 @@ export default function ProductFilter({ products }) {
     } else {
       params.delete(key);
     }
-    // Đảm bảo luôn reset về trang 1 khi đổi bộ lọc
     params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
@@ -550,12 +548,12 @@ export default function ProductFilter({ products }) {
         .filter(Boolean);
 
       const hasFlashSale = Boolean(
-        p.isFlashSale && 
-        p.flashSalePrice !== null && 
-        p.flashSalePrice !== undefined && 
+        p.isFlashSale &&
+        p.flashSalePrice !== null &&
+        p.flashSalePrice !== undefined &&
         Number(p.flashSalePrice) > 0
       );
-      
+
       const effectivePrice = hasFlashSale ? Number(p.flashSalePrice) : (Number(p.price) || 0);
 
       return {
@@ -571,7 +569,7 @@ export default function ProductFilter({ products }) {
   const allSizes = useMemo(() => {
     const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
     const uniqueSizes = [...new Set(sizes)];
-    
+
     return uniqueSizes.sort((a, b) => {
       const numA = Number(a);
       const numB = Number(b);
@@ -590,7 +588,7 @@ export default function ProductFilter({ products }) {
       const minOk = priceRange.min === "" || p.effectivePrice >= Number(priceRange.min);
       const maxOk = priceRange.max === "" || p.effectivePrice <= Number(priceRange.max);
       const sizeOk = selectedSizes.length === 0 || selectedSizes.some((s) => (p.displaySizes || []).includes(s));
-      
+
       return minOk && maxOk && sizeOk;
     });
 
@@ -781,13 +779,13 @@ export default function ProductFilter({ products }) {
                 ))}
               </div>
 
-              {/* PHÂN TRANG */}
+              {/* ✅ PHÂN TRANG DUY NHẤT */}
               {totalPages > 1 && (
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
                     <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
-                      <button 
-                        className="page-link border-0" 
+                      <button
+                        className="page-link border-0"
                         onClick={(e) => handlePageChange(e, validPage - 1)}
                         disabled={validPage <= 1}
                       >
@@ -797,8 +795,8 @@ export default function ProductFilter({ products }) {
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                       <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
-                        <button 
-                          className="page-link border-0" 
+                        <button
+                          className="page-link border-0"
                           onClick={(e) => handlePageChange(e, pageNum)}
                         >
                           {pageNum}
@@ -807,8 +805,8 @@ export default function ProductFilter({ products }) {
                     ))}
 
                     <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
-                      <button 
-                        className="page-link border-0" 
+                      <button
+                        className="page-link border-0"
                         onClick={(e) => handlePageChange(e, validPage + 1)}
                         disabled={validPage >= totalPages}
                       >
