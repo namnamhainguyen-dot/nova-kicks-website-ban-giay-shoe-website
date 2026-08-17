@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+// Import động React Quill để tránh lỗi SSR (Server-Side Rendering) trong Next.js
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+import "react-quill/dist/quill.snow.css"; // Import giao diện CSS chuẩn của Quill
 
 export default function EditNewsPage() {
   const params = useParams();
@@ -27,7 +32,6 @@ export default function EditNewsPage() {
         const res = await fetch(`/api/news?id=${params.id}`);
         const data = await res.json();
         if (data.success && data.data) {
-          // Format lại ngày tháng cho thẻ input type="date" (YYYY-MM-DD) nếu có
           let formattedDate = "";
           if (data.data.createdAt) {
             formattedDate = new Date(data.data.createdAt).toISOString().split("T")[0];
@@ -53,6 +57,11 @@ export default function EditNewsPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  // Hàm riêng để nhận dữ liệu khi soạn thảo văn bản phong phú
+  const handleContentChange = (value) => {
+    setFormData({ ...formData, content: value });
   };
 
   const handleSubmit = async (e) => {
@@ -82,12 +91,24 @@ export default function EditNewsPage() {
     return <div className="container py-5 text-center">Đang tải dữ liệu bài viết...</div>;
   }
 
+  // Cấu hình các nút bấm trên thanh công cụ (giống Word)
+  const modules = {
+    toolbar: [
+      [{ header: [1, 2, 3, false] }],
+      ["bold", "italic", "underline", "strike"],
+      [{ color: [] }, { background: [] }],
+      [{ list: "ordered" }, { list: "bullet" }],
+      ["link", "image"],
+      ["clean"],
+    ],
+  };
+
   return (
     <div className="container-fluid p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold">Chỉnh sửa bài viết</h2>
-          <p className="text-muted">Cập nhật nội dung chi tiết, định dạng văn bản và thông tin hiển thị.</p>
+          <p className="text-muted">Cập nhật nội dung chi tiết với định dạng văn bản trực quan.</p>
         </div>
         <Link href="/admin/news" className="btn btn-outline-secondary">
           ← Quay lại quản lý
@@ -95,7 +116,7 @@ export default function EditNewsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="card shadow-sm border-0 p-4">
-        {/* Tiêu đề bài viết */}
+        {/* Tiêu đề */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Tiêu đề bài viết</label>
           <input
@@ -108,7 +129,7 @@ export default function EditNewsPage() {
           />
         </div>
 
-        {/* Nhóm thông tin: Tác giả, Danh mục, Ngày đăng */}
+        {/* Tác giả, Danh mục, Ngày đăng */}
         <div className="row mb-3">
           <div className="col-md-4">
             <label className="form-label fw-semibold">Tác giả</label>
@@ -129,7 +150,6 @@ export default function EditNewsPage() {
               className="form-control"
               value={formData.category}
               onChange={handleChange}
-              placeholder="Ví dụ: Xu hướng, Thể thao..."
               required
             />
           </div>
@@ -155,7 +175,6 @@ export default function EditNewsPage() {
             className="form-control"
             value={formData.image || ""}
             onChange={handleChange}
-            placeholder="Dán đường dẫn hình ảnh vào đây..."
           />
         </div>
 
@@ -168,24 +187,21 @@ export default function EditNewsPage() {
             rows="3"
             value={formData.summary || ""}
             onChange={handleChange}
-            placeholder="Viết đoạn mở đầu ngắn gọn cho bài viết..."
           ></textarea>
         </div>
 
-        {/* Nội dung chi tiết (Hỗ trợ định dạng kiểu Word / HTML) */}
-        <div className="mb-4">
-          <label className="form-label fw-semibold">
-            Nội dung chi tiết <span className="text-muted fw-normal">(Hỗ trợ mã HTML hoặc tích hợp CKEditor/Quill để đổi màu chữ, cỡ chữ, chèn ảnh)</span>
-          </label>
-          <textarea
-            name="content"
-            className="form-control font-monospace"
-            rows="10"
-            value={formData.content || ""}
-            onChange={handleChange}
-            placeholder="<p>Nhập nội dung bài viết...</p>"
-            required
-          ></textarea>
+        {/* Nội dung chi tiết - Thay thế bằng React Quill */}
+        <div className="mb-4" style={{ minHeight: "350px" }}>
+          <label className="form-label fw-semibold mb-2">Nội dung chi tiết (Soạn thảo trực quan)</label>
+          <div style={{ height: "300px", marginBottom: "50px" }}>
+            <ReactQuill
+              theme="snow"
+              value={formData.content || ""}
+              onChange={handleContentChange}
+              modules={modules}
+              style={{ height: "250px" }}
+            />
+          </div>
         </div>
 
         {/* Nút hành động */}
