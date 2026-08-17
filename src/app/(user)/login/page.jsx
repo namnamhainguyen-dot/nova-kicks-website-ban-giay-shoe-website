@@ -196,15 +196,6 @@ export default function Login() {
         {error && <div className="alert alert-danger rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{error}</div>}
         {success && <div className="alert alert-success rounded-0 small py-2 text-uppercase tracking-wider fw-bold">{success}</div>}
 
-        <div className="w-100 mb-4 d-flex justify-content-center">
-          <div ref={googleBtnRef} className="w-100 d-flex justify-content-center" style={{ minHeight: "44px" }}></div>
-        </div>
-
-        <div className="position-relative text-center my-4">
-          <hr className="border-secondary opacity-25" />
-          <span className="position-absolute top-50 start-50 translate-middle bg-transparent px-3 text-secondary small fw-bold tracking-widest">OR EMAIL</span>
-        </div>
-
         <form onSubmit={handleSubmit}>
           <div className="mb-3">
             <label htmlFor="identifier" className="form-label text-uppercase small fw-bold tracking-wider m-0 mb-1">
@@ -260,6 +251,16 @@ export default function Login() {
             {loading ? "Đang xác thực..." : "Đăng nhập vào tài khoản"}
           </button>
         </form>
+
+        {/* Thanh phân cách và nút Google chuyển xuống đây */}
+        <div className="position-relative text-center my-4">
+          <hr className="border-secondary opacity-25" />
+          <span className="position-absolute top-50 start-50 translate-middle bg-transparent px-3 text-secondary small fw-bold tracking-widest">HOẶC TIẾP TỤC VỚI</span>
+        </div>
+
+        <div className="w-100 mb-4 d-flex justify-content-center">
+          <div ref={googleBtnRef} className="w-100 d-flex justify-content-center" style={{ minHeight: "44px" }}></div>
+        </div>
 
         <p className="text-center mt-4 small text-secondary text-uppercase tracking-wider">
           Bạn là người mới?{" "}
