@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Link from "next/link";
+import Link from "link";
 
 export default function EditNewsPage() {
   const params = useParams();
   const router = useRouter();
-  
+
   const [formData, setFormData] = useState({
     title: "",
     author: "",
@@ -17,15 +17,19 @@ export default function EditNewsPage() {
     image: "",
     content: "",
   });
-  
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`/api/news?id=${params.id}`);
+        const resolvedParams = await params;
+        if (!resolvedParams?.id) return;
+
+        const res = await fetch(`/api/news?id=${resolvedParams.id}`);
         const data = await res.json();
+
         if (data.success && data.data) {
           let formattedDate = "";
           if (data.data.createdAt) {
@@ -45,29 +49,25 @@ export default function EditNewsPage() {
       }
     };
 
-    if (params?.id) {
-      fetchArticle();
-    }
-  }, [params?.id]);
+    fetchArticle();
+  }, [params]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Hàm hỗ trợ chèn thẻ định dạng giống Word vào vị trí con trỏ chuột
   const insertFormatting = (openTag, closeTag) => {
     const textarea = document.getElementById("newsContentArea");
     if (!textarea) return;
-    
+
     const start = textarea.selectionStart;
     const end = textarea.selectionEnd;
     const text = formData.content || "";
     const selectedText = text.substring(start, end);
-    
+
     const newText = text.substring(0, start) + openTag + selectedText + closeTag + text.substring(end);
     setFormData({ ...formData, content: newText });
-    
-    // Đặt lại vị trí con trỏ sau khi chèn
+
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + openTag.length, end + openTag.length);
@@ -78,7 +78,8 @@ export default function EditNewsPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/news?id=${params.id}`, {
+      const resolvedParams = await params;
+      const res = await fetch(`/api/news?id=${resolvedParams.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -114,7 +115,6 @@ export default function EditNewsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="card shadow-sm border-0 p-4">
-        {/* Tiêu đề bài viết */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Tiêu đề bài viết</label>
           <input
@@ -127,7 +127,6 @@ export default function EditNewsPage() {
           />
         </div>
 
-        {/* Tác giả, Danh mục, Ngày đăng */}
         <div className="row mb-3">
           <div className="col-md-4">
             <label className="form-label fw-semibold">Tác giả</label>
@@ -165,7 +164,6 @@ export default function EditNewsPage() {
           </div>
         </div>
 
-        {/* Ảnh đại diện */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Ảnh đại diện (URL)</label>
           <input
@@ -178,7 +176,6 @@ export default function EditNewsPage() {
           />
         </div>
 
-        {/* Tóm tắt ngắn */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Tóm tắt ngắn</label>
           <textarea
@@ -191,13 +188,11 @@ export default function EditNewsPage() {
           ></textarea>
         </div>
 
-        {/* Nội dung chi tiết kèm thanh công cụ định dạng nhanh */}
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
-          
-          {/* Thanh công cụ định dạng kiểu Word */}
+
           <div className="d-flex flex-wrap gap-2 mb-2 p-2 bg-light border rounded">
-            <button type="button" className="btn btn-sm btn-white border fw-bold" onClick={() => insertFormatting("<strong>", "🥣")} title="In đậm">B</button>
+            <button type="button" className="btn btn-sm btn-white border fw-bold" onClick={() => insertFormatting("<strong>", "</strong>")} title="In đậm">B</button>
             <button type="button" className="btn btn-sm btn-white border fst-italic" onClick={() => insertFormatting("<em>", "</em>")} title="In nghiêng">I</button>
             <button type="button" className="btn btn-sm btn-white border text-decoration-underline" onClick={() => insertFormatting("<u>", "</u>")} title="Gạch chân">U</button>
             <span className="vr"></span>
@@ -207,7 +202,7 @@ export default function EditNewsPage() {
             <button type="button" className="btn btn-sm btn-white border text-danger fw-bold" onClick={() => insertFormatting('<span style="color: red;">', "</span>")} title="Chữ đỏ">Chữ đỏ</button>
             <button type="button" className="btn btn-sm btn-white border text-primary fw-bold" onClick={() => insertFormatting('<span style="color: blue;">', "</span>")} title="Chữ xanh">Chữ xanh</button>
             <span className="vr"></span>
-            <button type="button" className="btn btn-sm btn-white border" onClick={() => insertFormatting('<img src="ĐƯỜNG_DẪN_ẢNH" alt="" class="img-fluid rounded my-3" />', "")} title="Chèn ảnh">🖼️ Chèn ảnh</button>
+            <button type="button" className="btn btn-sm btn-white border" onClick={() => insertFormatting('<img src="', '" alt="" class="img-fluid rounded my-3" />')} title="Chèn ảnh">🖼️ Chèn ảnh</button>
           </div>
 
           <textarea
@@ -222,7 +217,6 @@ export default function EditNewsPage() {
           ></textarea>
         </div>
 
-        {/* Nút hành động */}
         <div className="d-flex justify-content-end gap-2">
           <Link href="/admin/news" className="btn btn-light px-4">
             Hủy

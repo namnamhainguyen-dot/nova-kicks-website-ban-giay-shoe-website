@@ -10,6 +10,9 @@ export async function GET(req) {
     const db = client.db("Nova-kicks");
 
     if (id) {
+      if (!ObjectId.isValid(id)) {
+        return NextResponse.json({ success: false, error: "ID không hợp lệ" }, { status: 400 });
+      }
       const article = await db.collection("news").findOne({ _id: new ObjectId(id) });
       return NextResponse.json({ success: true, data: article });
     }
@@ -37,7 +40,7 @@ export async function POST(req) {
       ...body,
       likes: 0,
       comments: [],
-      createdAt: new Date().toISOString(),
+      createdAt: body.createdAt ? new Date(body.createdAt).toISOString() : new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
@@ -55,8 +58,8 @@ export async function PUT(req) {
     const id = searchParams.get("id");
     const body = await req.json();
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: "Thiếu ID bài viết" }, { status: 400 });
+    if (!id || !ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, error: "ID bài viết không hợp lệ" }, { status: 400 });
     }
 
     const client = await clientPromise;
@@ -70,8 +73,8 @@ export async function PUT(req) {
         { $inc: { likes: 1 } },
         { returnDocument: "after" }
       );
-      
-      const updatedDoc = result.value || result; // Tương thích với các phiên bản driver MongoDB khác nhau
+
+      const updatedDoc = result.value || result;
       return NextResponse.json({ success: true, likes: updatedDoc?.likes });
     }
 
@@ -79,23 +82,29 @@ export async function PUT(req) {
     if (body.action === "comment") {
       const newComment = {
         _id: new ObjectId(),
-        name: body.name,
+        name: body.name || "Ẩn danh",
         content: body.content,
         createdAt: new Date().toISOString(),
       };
-      
+
       await collection.updateOne(
         { _id: new ObjectId(id) },
         { $push: { comments: newComment } }
       );
-      
+
       return NextResponse.json({ success: true, comment: newComment });
     }
 
     // XỬ LÝ UPDATE BÀI VIẾT THÔNG THƯỜNG
+    const { _id, action, likes, comments, ...updateData } = body;
+
+    if (updateData.createdAt) {
+      updateData.createdAt = new Date(updateData.createdAt).toISOString();
+    }
+
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
-      { $set: { ...body, updatedAt: new Date().toISOString() } }
+      { $set: { ...updateData, updatedAt: new Date().toISOString() } }
     );
 
     if (result.matchedCount === 0) {
@@ -114,8 +123,8 @@ export async function DELETE(req) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: "Thiếu id bài viết" }, { status: 400 });
+    if (!id || !ObjectId.isValid(id)) {
+      return NextResponse.json({ success: false, error: "ID bài viết không hợp lệ" }, { status: 400 });
     }
 
     const client = await clientPromise;
