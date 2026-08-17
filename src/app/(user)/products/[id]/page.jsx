@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation'; // Thêm useSearchParams
 import { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { CartContext } from "@/components/CartContext";
@@ -8,6 +8,7 @@ import { CartContext } from "@/components/CartContext";
 export default function ProductDetailPage() {
     const { cart, setCart } = useContext(CartContext);
     const params = useParams();
+    const searchParams = useSearchParams(); // Lấy query params từ URL
     const router = useRouter();
     const id = params?.id;
 
@@ -173,7 +174,6 @@ export default function ProductDetailPage() {
                 const productData = await resProduct.json();
 
                 if (isMounted) {
-                    // Chuẩn hóa dữ liệu giá và flash sale ngay khi nhận từ API
                     const originalPrice = productData.price || 0;
                     const flashSalePrice = productData.flashSalePrice || productData.salePrice || null;
                     const isFlashSale = productData.isFlashSale ?? (flashSalePrice && flashSalePrice < originalPrice);
@@ -312,21 +312,43 @@ export default function ProductDetailPage() {
         return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
     }, [product, selectedColor]);
 
-    // Xử lý giá hiển thị dựa trên Flash Sale hoặc giảm giá
+    // 🎯 LOGIC MỚI: Kiểm tra xem sản phẩm có đang đúng Flash Sale của tuần hiện tại hay không
+    const isCurrentWeekFlashSale = useMemo(() => {
+        if (!product || !product.isFlashSale) return false;
+
+        // Lấy batch từ URL (ví dụ: ?batch=8-3), nếu không có thì tự tính theo ngày hiện tại giống bên API
+        const batchParam = searchParams.get("batch");
+        let currentBatch = batchParam;
+        if (!currentBatch) {
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentDay = now.getDate();
+            const currentWeekOfMonth = Math.ceil(currentDay / 7);
+            currentBatch = `${currentMonth}-${currentWeekOfMonth}`;
+        }
+
+        // Nếu sản phẩm không có trường flashSaleBatch hoặc trùng khớp với batch hiện tại thì tính là đúng tuần
+        if (!product.flashSaleBatch) return true; 
+        return product.flashSaleBatch === currentBatch;
+    }, [product, searchParams]);
+
+    // 🎯 Xử lý giá hiển thị: Chỉ giảm giá Flash Sale khi đúng tuần, ngược lại trả về giá gốc
     const displayPrice = useMemo(() => {
         if (!product) return 0;
         
-        if (product.isFlashSale && Number(product.flashSalePrice) > 0) {
+        // Nếu bật flash sale và ĐÚNG TUẦN hiện tại mới áp dụng flashSalePrice
+        if (product.isFlashSale && isCurrentWeekFlashSale && Number(product.flashSalePrice) > 0) {
             return Number(product.flashSalePrice);
         }
         
+        // Kiểm tra giảm giá thường (nếu có trường salePrice thông thường ngoài flash sale)
         const sale = Number(product.salePrice ?? product.discountPrice ?? 0);
         if (sale > 0 && sale < Number(product.price)) {
             return sale;
         }
         
         return Number(product.price ?? 0);
-    }, [product]);
+    }, [product, isCurrentWeekFlashSale]);
 
     const hasDiscount = useMemo(() => {
         if (!product) return false;
@@ -566,7 +588,7 @@ export default function ProductDetailPage() {
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>({reviews.length} đánh giá)</span>
                     </div>
 
-                    {/* Hiển thị giá (Giá Flash Sale / Giá giảm + Giá gốc gạch ngang) */}
+                    {/* Hiển thị giá (Chỉ giảm giá nếu đúng flash sale tuần hiện tại) */}
                     <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
                         <p style={{ fontSize: '30px', fontWeight: '900', color: '#e11d48', margin: 0 }}>
                             {formatPrice(displayPrice)}

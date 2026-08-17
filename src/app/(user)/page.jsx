@@ -35,14 +35,13 @@ export default async function Menu() {
 
   // Tính toán Tháng và Tuần trong tháng hiện tại
   const now = new Date();
-  const currentMonth = now.getMonth() + 1; // Tháng hiện tại (1 - 12)
-  
-  // Tính tuần thứ mấy trong tháng (Tuần 1, 2, 3, 4...)
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const dayOfWeekOffset = (firstDayOfMonth.getDay() + 6) % 7; // Chuẩn hóa Thứ 2 là đầu tuần
-  const currentWeekOfMonth = Math.ceil((now.getDate() + dayOfWeekOffset) / 7);
+  const currentMonth = now.getMonth() + 1; 
 
-  // Tạo mã batch theo định dạng "Tháng-Tuần" (Ví dụ: Tháng 8 tuần 2 -> batch = "8-2")
+  // Cách đơn giản và phổ biến để chia tuần trong tháng theo ngày (1-7: T1, 8-14: T2, 15-21: T3, 22+: T4)
+  const currentDay = now.getDate();
+  const currentWeekOfMonth = Math.ceil(currentDay / 7);
+
+  // Tạo mã batch theo định dạng "Tháng-Tuần" (Ví dụ: "8-3")
   const currentBatch = `${currentMonth}-${currentWeekOfMonth}`;
 
   // 2. Fetch riêng danh sách Flash Sale theo đúng batch tháng-tuần này
