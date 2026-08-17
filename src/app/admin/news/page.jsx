@@ -1,102 +1,103 @@
-import clientPromise from "@/libs/mongodb";
-import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
+"use client";
 
-export async function GET(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
+import { useState, useEffect } from "react";
+import Link from "next/link";
 
-    if (id) {
-      const article = await db.collection("news").findOne({ _id: new ObjectId(id) });
-      return NextResponse.json({ success: true, data: article });
-    }
+export default function AdminNewsPage() {
+  const [newsList, setNewsList] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    const newsList = await db
-      .collection("news")
-      .find({})
-      .sort({ createdAt: -1 })
-      .toArray();
+  const fetchNews = async () => {
+    try {
+      const res = await fetch("/api/news");
+      const data = await res.json();
+      if (data.success) {
+        setNewsList(data.data);
+      }
+    } catch (error) {
+      console.error("Lỗi tải danh sách tin tức:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return NextResponse.json({ success: true, data: newsList });
-  } catch (error) {
-    console.error("Lỗi API GET news:", error);
-    return NextResponse.json({ success: false, error: "Lỗi kết nối máy chủ" }, { status: 500 });
-  }
-}
+  useEffect(() => {
+    fetchNews();
+  }, []);
 
-export async function POST(req) {
-  try {
-    const body = await req.json();
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
+  const handleDelete = async (id) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
+    try {
+      const res = await fetch(`/api/news?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        fetchNews();
+      } else {
+        alert(data.error);
+      }
+    } catch (error) {
+      console.error("Lỗi xóa bài viết:", error);
+    }
+  };
 
-    const article = {
-      ...body,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  if (loading) {
+    return <div className="container py-5 text-center">Đang tải danh sách tin tức...</div>;
+  }
 
-    const result = await db.collection("news").insertOne(article);
-    return NextResponse.json({ success: true, data: { ...article, _id: result.insertedId } });
-  } catch (error) {
-    console.error("Lỗi API POST news:", error);
-    return NextResponse.json({ success: false, error: "Không thể tạo bài viết" }, { status: 500 });
-  }
-}
+  return (
+    <div className="container py-5">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h1 className="fw-bold">Quản lý Tin tức</h1>
+        <Link href="/admin/news/create" className="btn btn-primary">
+          + Thêm bài viết mới
+        </Link>
+      </div>
 
-export async function PUT(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-    const body = await req.json();
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: "Thiếu id bài viết" }, { status: 400 });
-    }
-
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
-    const result = await db.collection("news").updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { ...body, updatedAt: new Date().toISOString() } }
-    );
-
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ success: false, error: "Không tìm thấy bài viết" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Lỗi API PUT news:", error);
-    return NextResponse.json({ success: false, error: "Không thể cập nhật bài viết" }, { status: 500 });
-  }
-}
-
-export async function DELETE(req) {
-  try {
-    const { searchParams } = new URL(req.url);
-    const id = searchParams.get("id");
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: "Thiếu id bài viết" }, { status: 400 });
-    }
-
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
-    const result = await db.collection("news").deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ success: false, error: "Không tìm thấy bài viết" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Lỗi API DELETE news:", error);
-    return NextResponse.json({ success: false, error: "Không thể xóa bài viết" }, { status: 500 });
-  }
+      <div className="card shadow-sm">
+        <div className="card-body">
+          <div className="table-responsive">
+            <table className="table table-hover align-middle">
+              <thead className="table-dark">
+                <tr>
+                  <th>Tiêu đề</th>
+                  <th>Tác giả</th>
+                  <th>Danh mục</th>
+                  <th>Ngày tạo</th>
+                  <th className="text-end">Hành động</th>
+                </tr>
+              </thead>
+              <tbody>
+                {newsList.length === 0 ? (
+                  <tr>
+                    <td colSpan="5" className="text-center py-4 text-muted">
+                      Chưa có bài viết nào.
+                    </td>
+                  </tr>
+                ) : (
+                  newsList.map((item) => (
+                    <tr key={item._id}>
+                      <td className="fw-semibold">{item.title}</td>
+                      <td>{item.author}</td>
+                      <td>
+                        <span className="badge bg-secondary">{item.category}</span>
+                      </td>
+                      <td>{new Date(item.createdAt || Date.now()).toLocaleDateString("vi-VN")}</td>
+                      <td className="text-end">
+                        <Link href={`/admin/news/edit/${item._id}`} className="btn btn-sm btn-warning me-2">
+                          Sửa
+                        </Link>
+                        <button onClick={() => handleDelete(item._id)} className="btn btn-sm btn-danger">
+                          Xóa
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
