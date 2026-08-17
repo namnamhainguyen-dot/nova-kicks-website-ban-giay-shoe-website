@@ -20,6 +20,7 @@ export default function ProductFilter({ products }) {
       const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
       const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
 
+<<<<<<< Updated upstream
       const mappedSizes = p.sizes || p.variants?.flatMap((v) => v.sizes || []) || [];
       const uniqueSizes = [...new Set(mappedSizes)].map(Number).sort((a, b) => a - b);
 
@@ -45,6 +46,15 @@ export default function ProductFilter({ products }) {
       // Lọc theo trạng thái yêu thích nếu được bật
       if (showFavoritesOnly && !isFavorite(productId)) {
         return false;
+=======
+  const handleInputChange = useCallback((type, e) => {
+    const value = e.target.value.replace(/,/g, '');
+    if (value === '' || /^\d*$/.test(value)) {
+      if (type === 'min') {
+        setLocalMin(value);
+      } else {
+        setLocalMax(value);
+>>>>>>> Stashed changes
       }
 
       const price = Number(p.price) || 0;
@@ -295,9 +305,351 @@ export default function ProductFilter({ products }) {
       )}
     </div>
   );
+<<<<<<< Updated upstream
 
   return (
     <div>
+=======
+}
+
+// 🏷️ Product Card riêng biệt để tối ưu render
+function ProductCard({ product, isFavorite, toggleWishlist }) {
+  const productId = String(product._id?.$oid || product._id);
+  const isFav = isFavorite(productId);
+
+  return (
+    <div className="col-sm-6 col-lg-4">
+      <div
+        className="card h-100 border-0 shadow-sm card-product nk-card"
+        style={{ backgroundColor: "var(--surface-card)", borderRadius: "12px", overflow: "hidden", position: "relative" }}
+      >
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            toggleWishlist(product);
+          }}
+          style={{
+            position: "absolute",
+            top: "12px",
+            right: "12px",
+            zIndex: 10,
+            background: "rgba(255, 255, 255, 0.8)",
+            backdropFilter: "blur(4px)",
+            border: "none",
+            borderRadius: "50%",
+            width: "36px",
+            height: "36px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          }}
+          title={isFav ? "Xóa khỏi danh sách yêu thích" : "Thêm vào danh sách yêu thích"}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            fill={isFav ? "var(--danger, #c73a2b)" : "none"}
+            stroke={isFav ? "var(--danger, #c73a2b)" : "#555"}
+            strokeWidth="2.5"
+            viewBox="0 0 24 24"
+          >
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+          </svg>
+        </button>
+
+        <Link href={`/products/${productId}`} style={{ textDecoration: "none", color: "inherit" }}>
+          <div
+            className="d-flex align-items-center justify-content-center overflow-hidden"
+            style={{ height: "250px", backgroundColor: "#f9f9f9", position: "relative" }}
+          >
+            {product.hasFlashSale && (
+              <span style={{
+                position: "absolute",
+                top: "12px",
+                left: "12px",
+                backgroundColor: "#ef4444",
+                color: "#fff",
+                fontSize: "11px",
+                fontWeight: "700",
+                padding: "3px 8px",
+                borderRadius: "4px",
+                zIndex: 5
+              }}>
+                FLASH SALE
+              </span>
+            )}
+            <img
+              src={product.image || "/img/no-image.png"}
+              alt={product.name}
+              className="img-fluid img-hover-scale"
+              style={{ maxHeight: "100%", objectFit: "contain" }}
+            />
+          </div>
+
+          <div className="card-body pb-0">
+            <h5 className="fw-bold text-truncate card-title" title={product.name}>
+              {product.name}
+            </h5>
+
+            {product.displaySizes?.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginBottom: "8px" }}>
+                {product.displaySizes.slice(0, 4).map((size) => (
+                  <span
+                    key={size}
+                    style={{
+                      fontSize: "11px",
+                      fontWeight: "600",
+                      padding: "2px 7px",
+                      borderRadius: "6px",
+                      border: "1px solid #d1d5db",
+                      backgroundColor: "#f9fafb",
+                      color: "#374151",
+                    }}
+                  >
+                    {size}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            <p
+              className="small text-secondary mb-2 custom-scrollbar"
+              style={{ height: "72px", overflowY: "auto", fontSize: "13px", lineHeight: "1.4" }}
+            >
+              {product.description}
+            </p>
+
+            <div className="fw-bold fs-5 mb-3">
+              {product.hasFlashSale && product.flashSalePrice ? (
+                <div className="d-flex align-items-center gap-2">
+                  <span className="text-danger">
+                    {Number(product.flashSalePrice).toLocaleString("vi-VN")} VND
+                  </span>
+                  <span className="text-muted text-decoration-line-through small" style={{ fontSize: "14px" }}>
+                    {Number(product.originalPrice || product.price).toLocaleString("vi-VN")} VND
+                  </span>
+                </div>
+              ) : (
+                <span className="text-danger">
+                  {Number(product.originalPrice || product.price || 0).toLocaleString("vi-VN")} VND
+                </span>
+              )}
+            </div>
+          </div>
+        </Link>
+
+        <div className="card-body pt-0">
+          <Link href={`/products/${productId}`} style={{ textDecoration: "none" }}>
+            <button className="btn btn-dark w-100">Xem chi tiết</button>
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function ProductFilter({ products }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const { toggleWishlist, isFavorite } = useContext(WishlistContext);
+
+  const priceRange = useMemo(() => ({
+    min: searchParams.get("minPrice") ?? "",
+    max: searchParams.get("maxPrice") ?? "",
+  }), [searchParams]);
+
+  const selectedSizes = useMemo(() => {
+    const sizesParam = searchParams.get("sizes");
+    return sizesParam ? sizesParam.split(",") : [];
+  }, [searchParams]);
+
+  const showFavoritesOnly = searchParams.get("favorites") === "true";
+  const sortBy = searchParams.get("sort") || "default";
+  const currentPage = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+
+  const updateQueryParam = useCallback((key, value) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value !== "" && value !== null && value !== undefined && value !== false) {
+      params.set(key, value);
+    } else {
+      params.delete(key);
+    }
+    if (key !== "page") params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  const setPriceParam = useCallback((minVal, maxVal) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (minVal !== "") params.set("minPrice", minVal); else params.delete("minPrice");
+    if (maxVal !== "") params.set("maxPrice", maxVal); else params.delete("maxPrice");
+    params.set("page", "1");
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  const toggleSizeParam = useCallback((size) => {
+    const params = new URLSearchParams(searchParams.toString());
+    let currentSizes = selectedSizes.includes(size)
+      ? selectedSizes.filter((s) => s !== size)
+      : [...selectedSizes, size];
+
+    if (currentSizes.length > 0) {
+      params.set("sizes", currentSizes.join(","));
+    } else {
+      params.delete("sizes");
+    }
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams, selectedSizes]);
+
+  const toggleFavoriteParam = useCallback(() => {
+    updateQueryParam("favorites", !showFavoritesOnly ? "true" : "");
+  }, [updateQueryParam, showFavoritesOnly]);
+
+  const handleSortChange = useCallback((e) => {
+    updateQueryParam("sort", e.target.value);
+  }, [updateQueryParam]);
+
+  const clearAll = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("minPrice");
+    params.delete("maxPrice");
+    params.delete("sizes");
+    params.delete("favorites");
+    params.delete("sort");
+    params.set("page", "1");
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [router, searchParams]);
+
+  const processedProducts = useMemo(() => {
+    return (products || []).map((p) => {
+      const mappedColors = p.colors || p.variants?.map((v) => v.color) || [];
+      const uniqueColors = [...new Set(mappedColors)].filter(Boolean);
+
+      const rawSizes = p.sizes || p.variants?.flatMap((v) => {
+        if (Array.isArray(v.sizes)) return v.sizes;
+        if (v.size !== undefined && v.size !== null) return [v.size];
+        return [];
+      }) || p.availableSizes || [];
+
+      const uniqueSizes = [...new Set(rawSizes)]
+        .filter((size) => size !== null && size !== undefined && size !== "")
+        .map((size) => {
+          if (typeof size === "object") {
+            return String(size.size || size.name || size.value || "").trim();
+          }
+          return String(size).trim();
+        })
+        .filter(Boolean);
+
+      const hasFlashSale = Boolean(
+        p.isFlashSale && 
+        p.flashSalePrice !== null && 
+        p.flashSalePrice !== undefined && 
+        Number(p.flashSalePrice) > 0
+      );
+      
+      const effectivePrice = hasFlashSale ? Number(p.flashSalePrice) : (Number(p.price) || 0);
+
+      return {
+        ...p,
+        displayColors: uniqueColors,
+        displaySizes: uniqueSizes,
+        hasFlashSale,
+        effectivePrice,
+      };
+    });
+  }, [products]);
+
+  const allSizes = useMemo(() => {
+    const sizes = processedProducts.flatMap((p) => p.displaySizes || []);
+    const uniqueSizes = [...new Set(sizes)];
+    
+    return uniqueSizes.sort((a, b) => {
+      const numA = Number(a);
+      const numB = Number(b);
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return numA - numB;
+      }
+      return String(a).localeCompare(String(b));
+    });
+  }, [processedProducts]);
+
+  const filtered = useMemo(() => {
+    const result = processedProducts.filter((p) => {
+      const productId = String(p._id?.$oid || p._id);
+      if (showFavoritesOnly && !isFavorite(productId)) return false;
+
+      const minOk = priceRange.min === "" || p.effectivePrice >= Number(priceRange.min);
+      const maxOk = priceRange.max === "" || p.effectivePrice <= Number(priceRange.max);
+      const sizeOk = selectedSizes.length === 0 || selectedSizes.some((s) => (p.displaySizes || []).includes(s));
+      
+      return minOk && maxOk && sizeOk;
+    });
+
+    return result.sort((a, b) => {
+      if (sortBy === "price-asc") return a.effectivePrice - b.effectivePrice;
+      if (sortBy === "price-desc") return b.effectivePrice - a.effectivePrice;
+      if (sortBy === "name-asc") return a.name.localeCompare(b.name);
+      if (sortBy === "name-desc") return b.name.localeCompare(a.name);
+      return 0;
+    });
+  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
+  const validPage = Math.min(currentPage, totalPages);
+  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
+  const displayedProducts = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  const createPageUrl = (pageNumber) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", pageNumber.toString());
+    return `?${params.toString()}`;
+  };
+
+  const activeCount = useMemo(() => {
+    let count = selectedSizes.length;
+    if (priceRange.min !== "" || priceRange.max !== "") count++;
+    if (showFavoritesOnly) count++;
+    if (sortBy && sortBy !== "default") count++;
+    return count;
+  }, [selectedSizes.length, priceRange.min, priceRange.max, showFavoritesOnly, sortBy]);
+
+  const filterPanelProps = useMemo(() => ({
+    priceRange,
+    setPriceParam,
+    selectedSizes,
+    toggleSizeParam,
+    allSizes,
+    showFavoritesOnly,
+    toggleFavoriteParam,
+    activeCount,
+    clearAll,
+  }), [priceRange, setPriceParam, selectedSizes, toggleSizeParam, allSizes, showFavoritesOnly, toggleFavoriteParam, activeCount, clearAll]);
+
+  return (
+    <div>
+      {/* 🌟 ĐOẠN CSS ĐỔI MÀU CAM NHẸ CHO PHÂN TRANG */}
+      <style>{`
+        .pagination .page-item.active .page-link {
+          background-color: #f97316 !important;
+          border-color: #f97316 !important;
+          color: #fff !important;
+          box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);
+        }
+        .pagination .page-link {
+          color: #374151;
+        }
+        .pagination .page-link:hover {
+          color: #f97316 !important;
+        }
+      `}</style>
+
+>>>>>>> Stashed changes
       {/* Mobile toggle */}
       <div className="d-flex d-md-none justify-content-between align-items-center mb-3">
         <button
@@ -432,6 +784,7 @@ export default function ProductFilter({ products }) {
                 const progressWidth = Math.min(100, Math.round((stockQty / 100) * 100));
                 const isFav = isFavorite(p._id?.$oid || p._id);
 
+<<<<<<< Updated upstream
                 return (
                   <div key={p._id?.$oid || p._id} className="col-sm-6 col-lg-4">
                     <div
@@ -601,6 +954,35 @@ export default function ProductFilter({ products }) {
                 );
               })}
             </div>
+=======
+              {/* PHÂN TRANG */}
+              {totalPages > 1 && (
+                <nav className="d-flex justify-content-center mt-5 pt-3">
+                  <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
+                    <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
+                      <Link className="page-link" href={createPageUrl(validPage - 1)}>
+                        <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
+                      </Link>
+                    </li>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                      <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
+                        <Link className="page-link" href={createPageUrl(pageNum)}>
+                          {pageNum}
+                        </Link>
+                      </li>
+                    ))}
+
+                    <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
+                      <Link className="page-link" href={createPageUrl(validPage + 1)}>
+                        Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
+                      </Link>
+                    </li>
+                  </ul>
+                </nav>
+              )}
+            </>
+>>>>>>> Stashed changes
           )}
         </div>
       </div>
