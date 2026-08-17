@@ -26,6 +26,7 @@ export default function EditNewsPage() {
       try {
         const res = await fetch(`/api/news?id=${params.id}`);
         const data = await res.json();
+        
         if (data.success && data.data) {
           let formattedDate = "";
           if (data.data.createdAt) {
@@ -36,25 +37,27 @@ export default function EditNewsPage() {
             createdAt: formattedDate,
           });
         } else {
-          alert("Không tìm thấy bài viết!");
+          alert(data.error || "Không tìm thấy bài viết!");
+          router.push("/admin/news");
         }
       } catch (error) {
         console.error("Lỗi tải bài viết:", error);
+        alert("Lỗi tải dữ liệu bài viết");
       } finally {
         setLoading(false);
       }
     };
 
-    // CHỈ CHẠY KHI PARAMS.ID HỢP LỆ VÀ KHÔNG PHẢI LÀ "CREATE"
+    // Chỉ thực thi fetch khi ID tồn tại và không phải route 'create'
     if (params?.id && params.id !== "create") {
       fetchArticle();
     } else {
       setLoading(false);
     }
-  }, [params?.id]);
+  }, [params?.id, router]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const insertFormatting = (openTag, closeTag) => {
@@ -67,7 +70,7 @@ export default function EditNewsPage() {
     const selectedText = text.substring(start, end);
 
     const newText = text.substring(0, start) + openTag + selectedText + closeTag + text.substring(end);
-    setFormData({ ...formData, content: newText });
+    setFormData((prev) => ({ ...prev, content: newText }));
 
     setTimeout(() => {
       textarea.focus();
@@ -77,6 +80,12 @@ export default function EditNewsPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!params?.id || params.id === "create") {
+      alert("ID bài viết không hợp lệ!");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`/api/news?id=${params.id}`, {
@@ -85,21 +94,28 @@ export default function EditNewsPage() {
         body: JSON.stringify(formData),
       });
       const data = await res.json();
+      
       if (data.success) {
         alert("Cập nhật bài viết thành công!");
         router.push("/admin/news");
       } else {
-        alert(data.error || "Có lỗi xảy ra");
+        alert(data.error || "Có lỗi xảy ra khi cập nhật");
       }
     } catch (error) {
       console.error("Lỗi cập nhật:", error);
+      alert("Không thể kết nối tới máy chủ");
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="container py-5 text-center">Đang tải dữ liệu bài viết...</div>;
+    return (
+      <div className="container py-5 text-center">
+        <div className="spinner-border text-primary me-2" role="status"></div>
+        <span>Đang tải dữ liệu bài viết...</span>
+      </div>
+    );
   }
 
   return (
@@ -121,7 +137,7 @@ export default function EditNewsPage() {
             type="text"
             name="title"
             className="form-control"
-            value={formData.title}
+            value={formData.title || ""}
             onChange={handleChange}
             required
           />
@@ -134,7 +150,7 @@ export default function EditNewsPage() {
               type="text"
               name="author"
               className="form-control"
-              value={formData.author}
+              value={formData.author || ""}
               onChange={handleChange}
               required
             />
@@ -145,7 +161,7 @@ export default function EditNewsPage() {
               type="text"
               name="category"
               className="form-control"
-              value={formData.category}
+              value={formData.category || ""}
               onChange={handleChange}
               placeholder="Ví dụ: Xu hướng, Thể thao..."
               required
@@ -157,7 +173,7 @@ export default function EditNewsPage() {
               type="date"
               name="createdAt"
               className="form-control"
-              value={formData.createdAt}
+              value={formData.createdAt || ""}
               onChange={handleChange}
               required
             />
