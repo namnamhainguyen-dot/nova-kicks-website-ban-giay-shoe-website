@@ -18,25 +18,36 @@ function PaymentContent() {
 
   const hasCreatedOrder = useRef(false);
 
-  // Hàm gọi API hủy đơn hàng và hoàn kho
-// Hàm gọi API hủy/xóa đơn hàng rác
-const cancelOrderOnServer = async (idToCancel) => {
-  if (!idToCancel) return;
-  try {
-    // Gọi thẳng vào API [id] method DELETE hoặc PATCH
-    await fetch(`/api/orders/${idToCancel}`, {
-      method: "DELETE", // Hoặc dùng method: "PATCH" với body: JSON.stringify({ status: "cancelled" })
-    });
-  } catch (err) {
-    console.error("Lỗi khi hủy đơn hàng rác:", err);
-  }
-};
-  // 1. Vừa vào trang QR: Lấy thông tin pending_order từ sessionStorage và gọi API tạo đơn hàng (isPaid: false)
+  // Hàm gọi API hủy/xóa đơn hàng rác
+  const cancelOrderOnServer = async (idToCancel) => {
+    if (!idToCancel) return;
+    try {
+      await fetch(`/api/orders/${idToCancel}`, {
+        method: "DELETE",
+      });
+    } catch (err) {
+      console.error("Lỗi khi hủy đơn hàng rác:", err);
+    }
+  };
+
+  // 1. Kiểm tra sessionStorage xem đã có orderId từ trước chưa (trường hợp vừa F5 trang), 
+  // nếu chưa có thì mới gọi API tạo đơn mới từ "pending_order".
   useEffect(() => {
     if (hasCreatedOrder.current) return;
     hasCreatedOrder.current = true;
 
-    const createPendingOrderOnServer = async () => {
+    const initOrder = async () => {
+      // Kiểm tra xem đã lưu orderId trong session trước đó chưa (phòng khi F5)
+      const existingOrderId = sessionStorage.getItem("current_order_id");
+      
+      if (existingOrderId) {
+        // Nếu đã có sẵn orderId (do F5), dùng lại luôn, không tạo đơn mới nữa
+        setOrderId(existingOrderId);
+        setIsCreatingOrder(false);
+        return;
+      }
+
+      // Nếu chưa có, tiến hành lấy pending_order để tạo mới lần đầu
       const rawPending = sessionStorage.getItem("pending_order");
       if (!rawPending) {
         setErrorMessage("Không tìm thấy thông tin đơn hàng tạm.");
@@ -63,8 +74,11 @@ const cancelOrderOnServer = async (idToCancel) => {
         if (createdId) {
           setOrderId(createdId);
           
-          sessionStorage.removeItem("pending_order");
+          // Lưu lại orderId vào sessionStorage để nếu người dùng F5 thì vẫn giữ nguyên mã cũ
+          sessionStorage.setItem("current_order_id", createdId);
+          sessionStorage.removeItem("pending_order"); // Xóa pending để tránh tạo lại
 
+          // Trừ giỏ hàng ở client như logic ban đầu của bạn
           const checkoutItems = orderPayload.order_items || [];
           if (checkoutItems.length > 0) {
             const localCart = JSON.parse(localStorage.getItem("cart") || "[]");
@@ -90,7 +104,7 @@ const cancelOrderOnServer = async (idToCancel) => {
       }
     };
 
-    createPendingOrderOnServer();
+    initOrder();
   }, []);
 
   // 2. Đếm ngược thời gian chờ thanh toán
@@ -101,14 +115,15 @@ const cancelOrderOnServer = async (idToCancel) => {
       const timer = setTimeout(() => setCountdown((prev) => prev - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      // Hết giờ -> Tự động hủy đơn, hoàn kho và quay về trang checkout
+      // Hết giờ -> Xóa cache orderId, hủy đơn và về checkout
       alert("Đã hết thời gian chờ thanh toán. Đơn hàng đã bị hủy.");
+      sessionStorage.removeItem("current_order_id");
       cancelOrderOnServer(orderId);
       router.push("/checkout");
     }
   }, [countdown, orderId, isPaid, router]);
 
-  // 3. Polling: Cứ 3 giây gọi API kiểm tra trạng thái xem SePay đã webhook về chưa
+  // 3. Polling kiểm tra trạng thái thanh toán từ SePay/Webhook
   useEffect(() => {
     if (!orderId || isPaid) return;
 
@@ -119,6 +134,7 @@ const cancelOrderOnServer = async (idToCancel) => {
           const data = await res.json();
           if (data.isPaid) {
             setIsPaid(true);
+            sessionStorage.removeItem("current_order_id"); // Thanh toán xong thì xóa cache
             router.push(`/orders/${orderId}?success=true`);
           }
         }
@@ -131,16 +147,16 @@ const cancelOrderOnServer = async (idToCancel) => {
     return () => clearInterval(interval);
   }, [orderId, isPaid, router]);
 
-  // Xử lý khi nhấn nút "Hủy bỏ / Quay lại": Hủy đơn và trả lại kho ngay lập tức
-// Thay vì dùng Link thuần túy, dùng hàm xử lý async
-const handleCancel = async (e) => {
-  e.preventDefault();
-  if (orderId && !isPaid) {
-    await cancelOrderOnServer(orderId); // Chờ xóa/hủy đơn trên DB xong
-  }
-  sessionStorage.removeItem("pending_order");
-  router.push("/checkout"); // Sau đó mới đẩy về trang checkout
-};
+  // Xử lý khi nhấn nút "Hủy bỏ / Quay lại"
+  const handleCancel = async (e) => {
+    e.preventDefault();
+    if (orderId && !isPaid) {
+      await cancelOrderOnServer(orderId);
+    }
+    sessionStorage.removeItem("current_order_id");
+    sessionStorage.removeItem("pending_order");
+    router.push("/checkout");
+  };
 
   // Thông tin tài khoản nhận tiền
   const bankId = "MB";
