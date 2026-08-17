@@ -25,22 +25,29 @@ export default function AdminNewsPage() {
     fetchNews();
   }, []);
 
-  const handleDelete = async (id) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa bài viết này không?")) return;
+  // Thay thế hàm xóa bằng hàm chuyển đổi trạng thái Ẩn/Hiện
+  const handleToggleHide = async (id, currentStatus) => {
+    const actionText = currentStatus ? "hiển thị lại" : "ẩn";
+    if (!confirm(`Bạn có chắc chắn muốn ${actionText} bài viết này không?`)) return;
+
     try {
-      const res = await fetch(`/api/news?id=${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/news?id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isHidden: !currentStatus }),
+      });
       const data = await res.json();
       if (data.success) {
         fetchNews();
       } else {
-        alert(data.error);
+        alert(data.error || "Có lỗi xảy ra");
       }
     } catch (error) {
-      console.error("Lỗi xóa bài viết:", error);
+      console.error("Lỗi cập nhật trạng thái bài viết:", error);
     }
   };
 
-  // Tính toán số liệu thống kê từ API mới
+  // Tính toán số liệu thống kê
   const totalLikes = newsList.reduce((acc, item) => acc + (item.likes || 0), 0);
   const totalComments = newsList.reduce((acc, item) => acc + (item.comments?.length || 0), 0);
 
@@ -68,13 +75,13 @@ export default function AdminNewsPage() {
         <div className="col-md-4">
           <div className="card p-3 border-0 shadow-sm">
             <small className="text-muted fw-bold">TỔNG LƯỢT THÍCH</small>
-            <h3 className="fw-bold mt-2 text-primary">{totalLikes}</h3>
+            <h3 className="fw-bold mt-2 text-danger">{totalLikes}</h3>
           </div>
         </div>
         <div className="col-md-4">
           <div className="card p-3 border-0 shadow-sm">
             <small className="text-muted fw-bold">TỔNG BÌNH LUẬN</small>
-            <h3 className="fw-bold mt-2 text-success">{totalComments}</h3>
+            <h3 className="fw-bold mt-2 text-primary">{totalComments}</h3>
           </div>
         </div>
       </div>
@@ -109,8 +116,13 @@ export default function AdminNewsPage() {
                   </tr>
                 ) : (
                   newsList.map((item) => (
-                    <tr key={item._id}>
-                      <td className="fw-semibold">{item.title}</td>
+                    <tr key={item._id} className={item.isHidden ? "table-light text-muted opacity-75" : ""}>
+                      <td>
+                        <div className="fw-semibold text-dark">
+                          {item.title} 
+                          {item.isHidden && <span className="badge bg-secondary ms-2">Đang ẩn</span>}
+                        </div>
+                      </td>
                       <td>{item.author}</td>
                       <td>
                         <span className="badge bg-light text-dark border">{item.category}</span>
@@ -124,8 +136,11 @@ export default function AdminNewsPage() {
                         <Link href={`/admin/news/edit/${item._id}`} className="btn btn-sm btn-outline-secondary me-2">
                           Sửa
                         </Link>
-                        <button onClick={() => handleDelete(item._id)} className="btn btn-sm btn-outline-danger">
-                          Xóa
+                        <button
+                          onClick={() => handleToggleHide(item._id, item.isHidden)}
+                          className={`btn btn-sm ${item.isHidden ? "btn-outline-success" : "btn-outline-warning"}`}
+                        >
+                          {item.isHidden ? "Hiện" : "Ẩn"}
                         </button>
                       </td>
                     </tr>
