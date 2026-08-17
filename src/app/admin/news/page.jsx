@@ -12,7 +12,7 @@ export default function AdminNewsPage() {
       const res = await fetch("/api/news");
       const data = await res.json();
       if (data.success) {
-        setNewsList(data.data || []);
+        setNewsList(data.data);
       }
     } catch (error) {
       console.error("Lỗi tải danh sách tin tức:", error);
@@ -25,14 +25,10 @@ export default function AdminNewsPage() {
     fetchNews();
   }, []);
 
+  // Thay thế hàm xóa bằng hàm chuyển đổi trạng thái Ẩn/Hiện
   const handleToggleHide = async (id, currentStatus) => {
     const actionText = currentStatus ? "hiển thị lại" : "ẩn";
     if (!confirm(`Bạn có chắc chắn muốn ${actionText} bài viết này không?`)) return;
-
-    // Optimistic UI update
-    setNewsList((prev) =>
-      prev.map((item) => (item._id === id ? { ...item, isHidden: !currentStatus } : item))
-    );
 
     try {
       const res = await fetch(`/api/news?id=${id}`, {
@@ -41,16 +37,17 @@ export default function AdminNewsPage() {
         body: JSON.stringify({ isHidden: !currentStatus }),
       });
       const data = await res.json();
-      if (!data.success) {
+      if (data.success) {
+        fetchNews();
+      } else {
         alert(data.error || "Có lỗi xảy ra");
-        fetchNews(); // Rollback on failure
       }
     } catch (error) {
       console.error("Lỗi cập nhật trạng thái bài viết:", error);
-      fetchNews(); // Rollback on error
     }
   };
 
+  // Tính toán số liệu thống kê
   const totalLikes = newsList.reduce((acc, item) => acc + (item.likes || 0), 0);
   const totalComments = newsList.reduce((acc, item) => acc + (item.comments?.length || 0), 0);
 
@@ -122,27 +119,19 @@ export default function AdminNewsPage() {
                     <tr key={item._id} className={item.isHidden ? "table-light text-muted opacity-75" : ""}>
                       <td>
                         <div className="fw-semibold text-dark">
-                          {item.title}
+                          {item.title} 
                           {item.isHidden && <span className="badge bg-secondary ms-2">Đang ẩn</span>}
                         </div>
                       </td>
-                      <td>{item.author || "N/A"}</td>
+                      <td>{item.author}</td>
                       <td>
-                        <span className="badge bg-light text-dark border">{item.category || "Uncategorized"}</span>
+                        <span className="badge bg-light text-dark border">{item.category}</span>
                       </td>
                       <td>
                         <span className="me-3 text-danger">❤️ {item.likes || 0}</span>
                         <span className="text-primary">💬 {item.comments?.length || 0}</span>
                       </td>
-                      <td>
-                        {item.createdAt
-                          ? new Date(item.createdAt).toLocaleDateString("vi-VN", {
-                              year: "numeric",
-                              month: "2-digit",
-                              day: "2-digit",
-                            })
-                          : "N/A"}
-                      </td>
+                      <td>{new Date(item.createdAt || Date.now()).toLocaleDateString("vi-VN")}</td>
                       <td className="text-end">
                         <Link href={`/admin/news/edit/${item._id}`} className="btn btn-sm btn-outline-secondary me-2">
                           Sửa
