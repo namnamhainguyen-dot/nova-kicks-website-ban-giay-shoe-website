@@ -1,3 +1,4 @@
+// products/page.jsx
 import ProductFilter from "@/components/ProductFilter";
 import ProductChatbox from "@/components/ProductChatbox";
 import Link from "next/link";
@@ -5,7 +6,6 @@ import clientPromise from "@/libs/mongodb";
 
 const DB_NAME = "Nova-kicks";
 const COLLECTION_NAME = "products";
-const ITEMS_PER_PAGE = 10;
 
 // Hàm Query kết hợp lấy sản phẩm và thông tin Flash Sale (nếu có)
 async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery) {
@@ -36,24 +36,15 @@ async function getFilteredProductsFromDB(categoryID, filterIdsParam, searchQuery
     }
 
     const rawProducts = await db
-      .collection(COLLECTION_NAME)
+      .collection(DB_NAME)
       .find(filter)
       .sort({ _id: -1 })
       .toArray();
 
-    const allRawProducts = await db
-      .collection(COLLECTION_NAME)
-      .find({})
-      .sort({ _id: -1 })
-      .toArray();
-
-    return {
-      filtered: JSON.parse(JSON.stringify(rawProducts)),
-      all: JSON.parse(JSON.stringify(allRawProducts)),
-    };
+    return JSON.parse(JSON.stringify(rawProducts));
   } catch (error) {
     console.error("[MongoDB Query Error] Lỗi kết nối hoặc lấy dữ liệu:", error);
-    return { filtered: [], all: [] };
+    return [];
   }
 }
 
@@ -110,26 +101,15 @@ export default async function ProductsPage({ searchParams }) {
   const filterIdsParam = params?.filterIds;
   const searchQuery = params?.search;
   
-  const currentPage = Math.max(1, parseInt(params?.page || "1", 10));
-
-  const { filtered: rawFiltered, all: rawAll } = await getFilteredProductsFromDB(
+  // Lấy TẤT CẢ sản phẩm (không phân trang)
+  const rawProducts = await getFilteredProductsFromDB(
     categoryID,
     filterIdsParam,
     searchQuery
   );
 
-  const products = formatProducts(rawAll);
-  const filteredProducts = formatProducts(rawFiltered);
-
-  const totalItems = filteredProducts.length;
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-  const validPage = Math.min(currentPage, totalPages);
-
-  const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const displayedProducts = filteredProducts.slice(startIndex, endIndex);
-
-  // ⚠️ KHÔNG CẦN createPageUrl NỮA VÌ ProductFilter TỰ XỬ LÝ PHÂN TRANG
+  const products = formatProducts(rawProducts);
+  const totalItems = products.length;
 
   return (
     <main
@@ -239,7 +219,7 @@ export default async function ProductsPage({ searchParams }) {
         <div className="bg-white px-3 py-2 rounded-pill shadow-xs border d-flex align-items-center gap-2">
           <i className="fas fa-box-open text-warning fs-7"></i>
           <span className="text-secondary fw-medium" style={{ fontSize: "0.85rem" }}>
-            Hiển thị <strong className="text-dark">{displayedProducts.length}</strong> / <strong className="text-dark">{totalItems}</strong> sản phẩm
+            Tổng số <strong className="text-dark">{totalItems}</strong> sản phẩm
           </span>
         </div>
       </div>
@@ -257,7 +237,7 @@ export default async function ProductsPage({ searchParams }) {
             <div>
               <h6 className="mb-0 fw-bold text-dark" style={{ fontSize: "0.95rem" }}>Trợ lý AI đã tìm kiếm thông minh</h6>
               <p className="mb-0 text-secondary" style={{ fontSize: "0.85rem" }}>
-                Tìm thấy <strong>{filteredProducts.length}</strong> sản phẩm phù hợp hoàn hảo với yêu cầu của bạn.
+                Tìm thấy <strong>{products.length}</strong> sản phẩm phù hợp hoàn hảo với yêu cầu của bạn.
               </p>
             </div>
           </div>
@@ -271,14 +251,14 @@ export default async function ProductsPage({ searchParams }) {
         </div>
       )}
 
-      {/* LƯỚI HIỂN THỊ SẢN PHẨM */}
+      {/* LƯỚI HIỂN THỊ SẢN PHẨM - Truyền TẤT CẢ sản phẩm */}
       <ProductFilter
-        key={`${categoryID || "all"}-${filterIdsParam || "none"}-page-${validPage}`}
-        products={displayedProducts}
+        key={`${categoryID || "all"}-${filterIdsParam || "none"}`}
+        products={products}
       />
 
       {/* TRƯỜNG HỢP KHÔNG CÓ SẢN PHẨM */}
-      {displayedProducts.length === 0 && (
+      {products.length === 0 && (
         <div className="text-center py-5 my-5 bg-light rounded-4 border border-dashed">
           <div className="mb-3 text-muted opacity-50" style={{ fontSize: "2.5rem" }}>
             <i className="fas fa-search"></i>
@@ -290,8 +270,6 @@ export default async function ProductsPage({ searchParams }) {
           </Link>
         </div>
       )}
-
-      {/* ✅ ĐÃ XÓA PHÂN TRANG Ở ĐÂY - CHỈ GIỮ LẠI TRONG PRODUCTFILTER */}
 
       <ProductChatbox products={products} />
     </main>
