@@ -5,9 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-// Import động React Quill để tránh lỗi SSR (Server-Side Rendering) trong Next.js
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
-import "react-quill/dist/quill.snow.css"; // Import giao diện CSS chuẩn của Quill
+// Khởi tạo dynamic import an toàn cho Next.js
+const ReactQuill = dynamic(() => import("react-quill"), {
+  ssr: false,
+  loading: () => <p className="text-muted">Đang tải trình soạn thảo...</p>,
+});
+import "react-quill/dist/quill.snow.css";
 
 export default function EditNewsPage() {
   const params = useParams();
@@ -25,8 +28,10 @@ export default function EditNewsPage() {
   
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const fetchArticle = async () => {
       try {
         const res = await fetch(`/api/news?id=${params.id}`);
@@ -59,7 +64,6 @@ export default function EditNewsPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Hàm riêng để nhận dữ liệu khi soạn thảo văn bản phong phú
   const handleContentChange = (value) => {
     setFormData({ ...formData, content: value });
   };
@@ -87,11 +91,10 @@ export default function EditNewsPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !isMounted) {
     return <div className="container py-5 text-center">Đang tải dữ liệu bài viết...</div>;
   }
 
-  // Cấu hình các nút bấm trên thanh công cụ (giống Word)
   const modules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -116,7 +119,6 @@ export default function EditNewsPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="card shadow-sm border-0 p-4">
-        {/* Tiêu đề */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Tiêu đề bài viết</label>
           <input
@@ -129,7 +131,6 @@ export default function EditNewsPage() {
           />
         </div>
 
-        {/* Tác giả, Danh mục, Ngày đăng */}
         <div className="row mb-3">
           <div className="col-md-4">
             <label className="form-label fw-semibold">Tác giả</label>
@@ -166,7 +167,6 @@ export default function EditNewsPage() {
           </div>
         </div>
 
-        {/* Ảnh đại diện */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Ảnh đại diện (URL)</label>
           <input
@@ -178,7 +178,6 @@ export default function EditNewsPage() {
           />
         </div>
 
-        {/* Tóm tắt ngắn */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Tóm tắt ngắn</label>
           <textarea
@@ -190,7 +189,6 @@ export default function EditNewsPage() {
           ></textarea>
         </div>
 
-        {/* Nội dung chi tiết - Thay thế bằng React Quill */}
         <div className="mb-4" style={{ minHeight: "350px" }}>
           <label className="form-label fw-semibold mb-2">Nội dung chi tiết (Soạn thảo trực quan)</label>
           <div style={{ height: "300px", marginBottom: "50px" }}>
@@ -204,7 +202,6 @@ export default function EditNewsPage() {
           </div>
         </div>
 
-        {/* Nút hành động */}
         <div className="d-flex justify-content-end gap-2">
           <Link href="/admin/news" className="btn btn-light px-4">
             Hủy
