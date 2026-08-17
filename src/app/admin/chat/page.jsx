@@ -200,7 +200,7 @@ export default function AdminDirectReplyPage() {
                   <div>
                     <h6 className="m-0 fw-bold">{activeChat.user || "Khách hàng"}</h6>
                     <small className="text-muted" style={{ fontSize: "0.75rem" }}>
-                      Session ID: {activeChat.sessionId}
+                      {activeChat.status === "online" ? "Đang hoạt động" : "Không hoạt động"}
                     </small>
                   </div>
                 </div>
