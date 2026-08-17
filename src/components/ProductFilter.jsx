@@ -28,7 +28,8 @@ function FilterPanel({
   }, [priceRange.min, priceRange.max]);
 
   const handleInputChange = useCallback((type, e) => {
-    const value = e.target.value.replace(/,/g, '');
+    // Cho phép nhập số và dấu chấm hoặc phẩy, sau đó lọc lại
+    const value = e.target.value.replace(/[,.]/g, '');
     if (value === '' || /^\d*$/.test(value)) {
       if (type === 'min') {
         setLocalMin(value);
@@ -480,7 +481,8 @@ export default function ProductFilter({ products }) {
     } else {
       params.delete(key);
     }
-    if (key !== "page") params.set("page", "1");
+    // Đảm bảo luôn reset về trang 1 khi đổi bộ lọc
+    params.set("page", "1");
     router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
@@ -489,7 +491,7 @@ export default function ProductFilter({ products }) {
     if (minVal !== "") params.set("minPrice", minVal); else params.delete("minPrice");
     if (maxVal !== "") params.set("maxPrice", maxVal); else params.delete("maxPrice");
     params.set("page", "1");
-    router.replace(`?${params.toString()}`, { scroll: false });
+    router.push(`?${params.toString()}`, { scroll: false });
   }, [router, searchParams]);
 
   const toggleSizeParam = useCallback((size) => {
@@ -606,10 +608,11 @@ export default function ProductFilter({ products }) {
   const startIndex = (validPage - 1) * ITEMS_PER_PAGE;
   const displayedProducts = filtered.slice(startIndex, startIndex + ITEMS_PER_PAGE);
 
-  const createPageUrl = (pageNumber) => {
+  const handlePageChange = (e, pageNumber) => {
+    e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", pageNumber.toString());
-    return `?${params.toString()}`;
+    router.push(`?${params.toString()}`, { scroll: false });
   };
 
   const activeCount = useMemo(() => {
@@ -644,6 +647,7 @@ export default function ProductFilter({ products }) {
         }
         .pagination .page-link {
           color: #374151;
+          cursor: pointer;
         }
         .pagination .page-link:hover {
           color: #f97316 !important;
@@ -782,23 +786,34 @@ export default function ProductFilter({ products }) {
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
                     <li className={`page-item ${validPage <= 1 ? "disabled" : ""}`}>
-                      <Link className="page-link" href={createPageUrl(validPage - 1)}>
+                      <button 
+                        className="page-link border-0" 
+                        onClick={(e) => handlePageChange(e, validPage - 1)}
+                        disabled={validPage <= 1}
+                      >
                         <i className="fas fa-chevron-left me-1 fs-8"></i> Trước
-                      </Link>
+                      </button>
                     </li>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
                       <li key={pageNum} className={`page-item ${pageNum === validPage ? "active" : ""}`}>
-                        <Link className="page-link" href={createPageUrl(pageNum)}>
+                        <button 
+                          className="page-link border-0" 
+                          onClick={(e) => handlePageChange(e, pageNum)}
+                        >
                           {pageNum}
-                        </Link>
+                        </button>
                       </li>
                     ))}
 
                     <li className={`page-item ${validPage >= totalPages ? "disabled" : ""}`}>
-                      <Link className="page-link" href={createPageUrl(validPage + 1)}>
+                      <button 
+                        className="page-link border-0" 
+                        onClick={(e) => handlePageChange(e, validPage + 1)}
+                        disabled={validPage >= totalPages}
+                      >
                         Sau <i className="fas fa-chevron-right ms-1 fs-8"></i>
-                      </Link>
+                      </button>
                     </li>
                   </ul>
                 </nav>
