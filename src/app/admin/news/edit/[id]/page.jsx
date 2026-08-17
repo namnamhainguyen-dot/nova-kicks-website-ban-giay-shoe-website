@@ -186,9 +186,6 @@ export default function EditNewsPage() {
             placeholder="<p>Nhập nội dung bài viết...</p>"
             required
           ></textarea>
-          <small className="text-muted mt-1 d-block">
-            * Nếu bạn đang sử dụng thư viện CKEditor hoặc React Quill trong dự án, bạn có thể thay thế ô textarea này bằng component Editor tương ứng.
-          </small>
         </div>
 
         {/* Nút hành động */}
