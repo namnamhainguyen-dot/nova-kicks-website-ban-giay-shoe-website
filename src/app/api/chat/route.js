@@ -16,10 +16,7 @@ function buildFallbackResponse(userMessage, products = []) {
       ? `Bạn có thể xem các sản phẩm phù hợp như: ${productNames.join(", ")}.`
       : `Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
 
-  return {
-    reply,
-    matchedIds,
-  };
+  return { reply, matchedIds };
 }
 
 export async function POST(req) {
@@ -31,7 +28,7 @@ export async function POST(req) {
     const body = await req.json();
     userMessage = body.userMessage || "";
     products = body.products || [];
-    history = body.history || [];
+    history = body.history || []; // [{ role: "user" | "model", parts: [{ text: "..." }] }] hoặc dạng { sender, message }
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
@@ -42,7 +39,6 @@ export async function POST(req) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
 
-    // Cập nhật tên model ổn định mới nhất (gemini-1.5-flash)
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       generationConfig: {
@@ -50,7 +46,7 @@ export async function POST(req) {
       },
     });
 
-    // Rút gọn bớt dữ liệu sản phẩm để tránh làm phình Prompt/Token
+    // Rút gọn dữ liệu sản phẩm để tiết kiệm Token
     const productsContext = products.map((p) => ({
       id: String(p._id?.$oid || p._id || p.id),
       name: p.name,
@@ -59,69 +55,74 @@ export async function POST(req) {
       colors: p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || [],
     }));
 
-    const singlePrompt = `
-      Bạn là Trợ lý tư vấn bán giày nhiệt tình của Nova Kicks.
+    // Quy hoạch lại Lịch sử chat theo đúng chuẩn định dạng Gemini yêu cầu (nếu history từ client gửi lên có cấu trúc khác)
+    const formattedHistory = history.map((h) => ({
+      role: h.role === "assistant" || h.role === "model" ? "model" : "user",
+      parts: [{ text: typeof h.content === "string" ? h.content : (h.parts?.[0]?.text || h.message || "") }],
+    }));
 
-      Danh sách sản phẩm trong kho:
-      ${JSON.stringify(productsContext)}
+    // Khởi tạo phiên trò chuyện đa lượt (Multi-turn Chat)
+    const chat = model.startChat({
+      history: formattedHistory,
+      systemInstruction: {
+        parts: [
+          {
+            text: `Bạn là Trợ lý tư vấn bán hàng nhiệt tình và chuyên nghiệp.
+Danh sách sản phẩm hiện có trong kho (dạng JSON):
+${JSON.stringify(productsContext)}
 
-      Lịch sử trò chuyện:
-      ${JSON.stringify(history)}
-
-      Khách hàng vừa nhắn: ${JSON.stringify(userMessage)}
-
-      Nhiệm vụ và Quy tắc tư vấn:
-      1. Dựa vào lịch sử và tin nhắn mới nhất, phân tích nhu cầu của khách hàng:
-         - Nếu khách hỏi đi tiệc, ăn cưới, sự kiện: Chọn các mẫu giày sang trọng, giày tây, giày da bóng hoặc giày cao gót.
-         - Nếu khách hỏi đi leo núi, dã ngoại, phượt: Chọn giày thể thao chuyên dụng, giày sneaker có độ bám, chống trượt.
-         - Nếu khách hỏi đi học, đi chơi hàng ngày: Chọn giày sneaker năng động, thoải mái, dễ phối đồ.
-      2. Lọc ra danh sách các product ID thực sự phù hợp từ kho.
-      3. Trả về JSON theo đúng cấu trúc sau (không kèm ký tự markdown như \`\`\`json):
-      {
-        "reply": "Câu trả lời tư vấn ngắn gọn (2-3 câu), xưng 'mình' gọi 'bạn', gợi ý đúng loại giày phù hợp với mục đích của khách.",
-        "matchedIds": ["id1", "id2"]
+NHIỆM VỤ & QUY TẮC:
+1. Dựa vào yêu cầu của khách hàng và danh sách kho, hãy tư vấn sản phẩm phù hợp nhất.
+2. Xưng "mình" - gọi "bạn", giọng điệu thân thiện, ngắn gọn (tối đa 2-3 câu).
+3. Lọc chính xác danh sách ID sản phẩm phù hợp từ kho để đưa vào mảng "matchedIds".
+4. LUÔN LUÔN trả về kết quả dưới dạng JSON thuần túy (không kèm markdown như \`\`\`json) theo đúng cấu trúc sau:
+{
+  "reply": "Câu trả lời tư vấn...",
+  "matchedIds": ["id1", "id2"]
+}`
+          }
+        ]
       }
-    `;
+    });
 
-    const result = await model.generateContent(singlePrompt);
+    // Gửi tin nhắn mới nhất của người dùng vào phiên chat
+    const result = await chat.sendMessage(userMessage);
     let textResponse = result.response.text().trim();
 
-    // Làm sạch các ký tự bọc Codeblock của Markdown nếu có
-    if (textResponse.startsWith("```")) {
-      textResponse = textResponse.replace(/^```json\s*/, "").replace(/^```\s*/, "").replace(/\s*```$/, "");
-    }
+    // Làm sạch Markdown codeblock nếu mô hình lỡ sinh ra
+    textResponse = textResponse
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/, "");
 
-    let parsedData = {
-      reply: "Mình đã tiếp nhận yêu cầu, bạn xem các sản phẩm bên dưới nhé!",
-      matchedIds: [],
-    };
-
+    let parsedData;
     try {
       parsedData = JSON.parse(textResponse);
     } catch (e) {
-      console.warn("Lỗi parse JSON từ Gemini:", e);
+      console.warn("⚠️ Lỗi parse JSON từ Gemini, đang cố trích xuất thủ công...", e);
       const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedData = JSON.parse(jsonMatch[0]);
       } else {
-        parsedData.reply = textResponse;
+        parsedData = {
+          reply: textResponse,
+          matchedIds: [],
+        };
       }
     }
 
     return NextResponse.json(parsedData, { status: 200 });
 
   } catch (error) {
-    console.error("Lỗi API Chatbot Chi Tiết:", error);
+    console.error("❌ Lỗi API Chatbot Chi Tiết:", error);
 
-    let fallbackText = "⏳ Hệ thống tư vấn AI đang bận hoặc đạt giới hạn tạm thời. Bạn vui lòng thử lại sau vài giây nhé!";
-    
-    if (!error?.message?.includes("429")) {
-      return NextResponse.json(buildFallbackResponse(userMessage, products), { status: 200 });
+    if (error?.message?.includes("429")) {
+      return NextResponse.json({
+        reply: "⏳ Hệ thống tư vấn AI đang bận hoặc đạt giới hạn tạm thời. Bạn vui lòng thử lại sau vài giây nhé!",
+        matchedIds: [],
+      }, { status: 200 });
     }
 
-    return NextResponse.json({
-      reply: fallbackText,
-      matchedIds: [],
-    }, { status: 200 });
+    return NextResponse.json(buildFallbackResponse(userMessage, products), { status: 200 });
   }
 }
