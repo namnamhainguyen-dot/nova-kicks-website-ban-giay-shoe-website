@@ -30,7 +30,7 @@
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.6.0",
-    "react-quill-new": "^3.8.3",
+    "react-quill-new": "^3.7.0",
     "sharp": "^0.35.3",
     "swiper": "^14.1.0",
     "twilio": "^6.0.2"
