@@ -581,17 +581,29 @@ export default function ProductFilter({ products }) {
   }, [processedProducts]);
 
   const filtered = useMemo(() => {
+    const minPriceNum = priceRange.min !== "" ? Number(priceRange.min) : null;
+    const maxPriceNum = priceRange.max !== "" ? Number(priceRange.max) : null;
+
     const result = processedProducts.filter((p) => {
       const productId = String(p._id?.$oid || p._id);
+      
+      // 1. Lọc yêu thích
       if (showFavoritesOnly && !isFavorite(productId)) return false;
 
-      const minOk = priceRange.min === "" || p.effectivePrice >= Number(priceRange.min);
-      const maxOk = priceRange.max === "" || p.effectivePrice <= Number(priceRange.max);
-      const sizeOk = selectedSizes.length === 0 || selectedSizes.some((s) => (p.displaySizes || []).includes(s));
+      // 2. Lọc giá (Ép kiểu Number rõ ràng để so sánh chính xác)
+      if (minPriceNum !== null && p.effectivePrice < minPriceNum) return false;
+      if (maxPriceNum !== null && p.effectivePrice > maxPriceNum) return false;
 
-      return minOk && maxOk && sizeOk;
+      // 3. Lọc kích thước
+      if (selectedSizes.length > 0) {
+        const hasSize = selectedSizes.some((s) => (p.displaySizes || []).includes(s));
+        if (!hasSize) return false;
+      }
+
+      return true;
     });
 
+    // 4. Sắp xếp
     return result.sort((a, b) => {
       if (sortBy === "price-asc") return a.effectivePrice - b.effectivePrice;
       if (sortBy === "price-desc") return b.effectivePrice - a.effectivePrice;
