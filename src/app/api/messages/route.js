@@ -45,6 +45,7 @@ export async function GET(req) {
                 sender: "$sender",
                 text: "$text",
                 mode: "$mode",
+                matchedIds: "$matchedIds", // 👈 Bổ sung để gom cả matchedIds cho Admin nếu cần
                 createdAt: "$createdAt",
               },
             },
@@ -66,7 +67,7 @@ export async function GET(req) {
 export async function POST(req) {
   try {
     const body = await req.json();
-    const { sessionId, user, sender, text, mode } = body;
+    const { sessionId, user, sender, text, mode, matchedIds } = body; // 👈 Lấy thêm matchedIds từ client gửi lên
 
     if (!sessionId || !text) {
       return NextResponse.json({ error: "Thiếu dữ liệu bắt buộc" }, { status: 400 });
@@ -81,6 +82,7 @@ export async function POST(req) {
       sender: sender || "user", // "user" | "bot" | "admin"
       text,
       mode: mode || "bot", // "bot" | "admin"
+      matchedIds: Array.isArray(matchedIds) ? matchedIds : [], // 👈 Lưu mảng ID sản phẩm xuống DB
       createdAt: new Date(),
     };
 
