@@ -3,11 +3,23 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function buildFallbackResponse(userMessage, products = []) {
   const lowerMsg = userMessage.toLowerCase();
-  const matched = products.filter((p) => {
+  
+  // Thuật toán lọc thông minh cho fallback khi không có AI hoặc gặp lỗi kết nối
+  let matched = products.filter((p) => {
     const name = (p.name || "").toLowerCase();
     const desc = (p.description || "").toLowerCase();
-    return name.includes(lowerMsg) || desc.includes(lowerMsg);
+    const category = (p.category || "").toLowerCase();
+    return name.includes(lowerMsg) || desc.includes(lowerMsg) || category.includes(lowerMsg);
   });
+
+  // Nếu không khớp từ khóa cụ thể, xoay vòng dựa theo độ dài câu chữ để trả ra sản phẩm khác nhau
+  if (matched.length === 0 && products.length > 0) {
+    const startIndex = userMessage.length % products.length;
+    matched = [
+      products[startIndex % products.length],
+      products[(startIndex + 1) % products.length]
+    ].filter(Boolean);
+  }
 
   const targetProducts = matched.length > 0 ? matched.slice(0, 3) : products.slice(0, 3);
   const matchedIds = targetProducts.map((p) => String(p._id?.$oid || p._id || p.id)).filter(Boolean);
@@ -40,38 +52,44 @@ export async function POST(req) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash", // Sử dụng model chuẩn để đảm bảo ổn định
       generationConfig: {
         responseMimeType: "application/json",
       },
     });
 
-    const productsContext = products.map((p) => ({
-      id: String(p._id?.$oid || p._id || p.id),
-      name: p.name,
+    // Chuẩn hóa dữ liệu sản phẩm để AI dễ phân biệt
+    const productsContext = products.map((p, idx) => ({
+      index: idx,
+      id: p._id?.$oid || p._id || p.id,
+      name: p.name || p.title,
       price: p.price,
-      description: p.description || "",
+      description: p.description || p.category || "Giày thời trang đa năng"
     }));
 
     const singlePrompt = `
     Bạn là Trợ lý tư vấn bán giày thông minh của cửa hàng Nova Kicks.
 
-    DANH SÁCH SẢN PHẨM (JSON):
+    DANH SÁCH SẢN PHẨM HIỆN CÓ (JSON):
     ${JSON.stringify(productsContext)}
 
     YÊU CẦU CỦA KHÁCH:
     "${userMessage}"
 
+    QUY TẮC PHÂN TÍCH THEO CÁC NÚT GỢI Ý (BẮT BUỘC TUÂN THỦ):
+    1. Nếu khách chọn/hỏi về "đi ăn cưới, ăn tiệc": Phải ưu tiên chọn giày da, giày tây, giày thiết kế sang trọng hoặc giày cổ cao thời trang lịch lãm. Tránh chọn giày thể thao chạy bộ hầm hố.
+    2. Nếu khách chọn/hỏi về "đi leo núi": Phải ưu tiên chọn giày cổ cao, giày có đế bám, giày outdoor, boots hoặc giày thể thao bền chắc.
+    3. Nếu khách chọn/hỏi về "đi học": Phải ưu tiên chọn giày sneaker năng động, giày vải, giày thể thao nhẹ nhàng, thoải mái đi lại hằng ngày.
+    4. TUYỆT ĐỐI KHÔNG trả về một tập hợp sản phẩm y hệt nhau cho cả 3 nhu cầu trên. Mỗi nút bấm phải ra các sản phẩm khác nhau đặc trưng cho hoàn cảnh đó.
+
     NHIỆM VỤ:
-    1. Đọc kỹ yêu cầu của khách và so khớp thông minh với từng sản phẩm trong danh sách dựa trên tên, danh mục hoặc mô tả. 
-    2. NGUYÊN TẮC BẮT BUỘC - ĐỘ KHÁC BIỆT: Các câu hỏi khác nhau (ví dụ: "đi học" khác với "đi tiệc" hoặc "leo núi") PHẢI trả về các tập hợp sản phẩm khác nhau. TUYỆT ĐỐI KHÔNG được trả về cố định một nhóm sản phẩm cho mọi câu hỏi.
-    3. Nếu không có sản phẩm nào khớp tuyệt đối, hãy tìm sản phẩm gần đúng nhất và nêu rõ lý do trong câu trả lời. Nếu hoàn toàn không có, hãy để mảng matchedIds rỗng [].
-    4. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
-       "Chào bạn, gợi ý phù hợp nhất dành cho bạn đây ạ:
-       1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp với yêu cầu]).
-       2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp với yêu cầu])."
-    5. Trích xuất chính xác các giá trị định danh của sản phẩm được chọn (ưu tiên lấy _id hoặc id tùy theo cấu trúc JSON của sản phẩm) vào mảng "matchedIds".
-    6. ĐỊNH DẠNG ĐẦU RA: Chỉ trả về JSON thuần túy hợp lệ. TUYỆT ĐỐI KHÔNG bọc trong khối code markdown (như \`\`\`json ... \`\`\`), không kèm theo bất kỳ lời chào hay chữ nào khác ngoài cấu trúc JSON sau:
+    1. Chọn ra 2-3 sản phẩm phù hợp nhất trong danh sách dựa trên các quy tắc trên.
+    2. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
+       "Chào bạn, gợi ý phù hợp nhất cho việc ${userMessage.toLowerCase()} đây ạ:
+       1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp]).
+       2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp])."
+    3. Trích xuất chính xác trường "id" của các sản phẩm được chọn vào mảng "matchedIds".
+    4. ĐỊNH DẠNG ĐẦU RA: Chỉ trả về JSON thuần túy, tuyệt đối không kèm markdown, không kèm chữ ngoài cấu trúc:
     {
       "reply": "...",
       "matchedIds": ["id1", "id2"]
@@ -90,7 +108,6 @@ export async function POST(req) {
     try {
       parsedData = JSON.parse(textResponse);
     } catch (e) {
-      console.warn("⚠️ Lỗi parse JSON từ Gemini, dùng fallback...", e);
       const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         parsedData = JSON.parse(jsonMatch[0]);
@@ -99,7 +116,6 @@ export async function POST(req) {
       }
     }
 
-    // Đảm bảo cấu trúc trả về luôn hợp lệ
     return NextResponse.json({
       reply: parsedData.reply || "Dưới đây là các sản phẩm phù hợp với bạn:",
       matchedIds: Array.isArray(parsedData.matchedIds) ? parsedData.matchedIds.map(String) : []

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 const WELCOME_MESSAGE = {
   role: "bot",
   text: "Xin chào! Mình là trợ lý AI. Cứ nói cho mình biết gu giày của bạn (màu sắc, kích cỡ, tầm giá...), mình tìm cho liền nhé! 🤖",
+  matchedIds: [],
 };
 
 export default function ProductChatbox({ products }) {
@@ -121,6 +122,7 @@ export default function ProductChatbox({ products }) {
             const formattedDbMsgs = dbMessages.map((msg) => ({
               role: msg.sender === "user" ? "user" : "bot",
               text: msg.text || msg.content || msg.message || "",
+              matchedIds: msg.matchedIds || [],
             }));
 
             setMessages((prev) => {
@@ -151,12 +153,12 @@ export default function ProductChatbox({ products }) {
     };
   }, [isOpen, sessionInfo.id]);
 
-  // Hàm xử lý gửi tin nhắn chung (dùng cho cả ô input và dải gợi ý)
+  // Hàm xử lý gửi tin nhắn chung
   const submitMessage = async (textToSend) => {
     if (!textToSend.trim() || isLoading) return;
 
     const userText = textToSend.trim();
-    const updatedMessages = [...messages, { role: "user", text: userText, mode: replyMode }];
+    const updatedMessages = [...messages, { role: "user", text: userText, mode: replyMode, matchedIds: [] }];
 
     setMessages(updatedMessages);
     setInput("");
@@ -181,7 +183,7 @@ export default function ProductChatbox({ products }) {
 
     if (replyMode === "admin") {
       const adminNotice = "Đã chuyển tin nhắn của bạn đến Admin. Admin sẽ phản hồi sớm nhất có thể! 👨‍💼";
-      setMessages((prev) => [...prev, { role: "bot", text: adminNotice }]);
+      setMessages((prev) => [...prev, { role: "bot", text: adminNotice, matchedIds: [] }]);
 
       await fetch("/api/messages", {
         method: "POST",
@@ -192,6 +194,7 @@ export default function ProductChatbox({ products }) {
           sender: "bot",
           text: adminNotice,
           mode: "admin",
+          matchedIds: [],
         }),
       });
 
@@ -206,15 +209,17 @@ export default function ProductChatbox({ products }) {
         body: JSON.stringify({
           userMessage: userText,
           products,
-          history: [], // Truyền mảng rỗng để mỗi lần hỏi là một lượt tư vấn độc lập, tránh việc AI bị lặp lại kết quả cũ
+          history: [],
         }),
       });
 
       if (!res.ok) throw new Error("Giao tiếp AI thất bại");
 
       const data = await res.json();
+      const botReply = data.reply || "Dưới đây là các sản phẩm phù hợp với bạn:";
+      const matchedIds = Array.isArray(data.matchedIds) ? data.matchedIds : [];
 
-      setMessages((prev) => [...prev, { role: "bot", text: data.reply }]);
+      setMessages((prev) => [...prev, { role: "bot", text: botReply, matchedIds }]);
 
       await fetch("/api/messages", {
         method: "POST",
@@ -223,14 +228,15 @@ export default function ProductChatbox({ products }) {
           sessionId: sessionInfo.id,
           user: sessionInfo.name,
           sender: "bot",
-          text: data.reply,
+          text: botReply,
           mode: "bot",
+          matchedIds,
         }),
       });
 
-      if (data.matchedIds && data.matchedIds.length > 0) {
+      if (matchedIds.length > 0) {
         const params = new URLSearchParams(searchParams.toString());
-        params.set("filterIds", data.matchedIds.join(","));
+        params.set("filterIds", matchedIds.join(","));
         params.delete("search");
 
         router.push(`?${params.toString()}`);
@@ -238,14 +244,13 @@ export default function ProductChatbox({ products }) {
     } catch (error) {
       setMessages((prev) => [
         ...prev,
-        { role: "bot", text: "Ối, có chút lỗi kết nối với AI rồi. Bạn thử lại nhé!" },
+        { role: "bot", text: "Ối, có chút lỗi kết nối với AI rồi. Bạn thử lại nhé!", matchedIds: [] },
       ]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // 5. Gửi tin nhắn từ form
   const handleSendMessage = (e) => {
     e.preventDefault();
     submitMessage(input);
@@ -279,7 +284,7 @@ export default function ProductChatbox({ products }) {
           className="card shadow-lg border-0 d-flex flex-column"
           style={{
             width: "380px",
-            height: "580px", // Tăng nhẹ chiều cao để chứa dải gợi ý thoải mái hơn
+            height: "580px",
             borderRadius: "20px",
             overflow: "hidden",
             backgroundColor: "#ffffff",
@@ -349,38 +354,88 @@ export default function ProductChatbox({ products }) {
             className="card-body p-3 overflow-auto d-flex flex-column gap-3"
             style={{ flex: 1, backgroundColor: "#fcfcfc" }}
           >
-            {messages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`d-flex align-items-end gap-2 ${
-                  msg.role === "user" ? "justify-content-end" : "justify-content-start"
-                }`}
-              >
-                {msg.role !== "user" && (
-                  <div
-                    className="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center flex-shrink-0 mb-1"
-                    style={{ width: "26px", height: "26px", fontSize: "0.7rem" }}
-                  >
-                    AI
-                  </div>
-                )}
+            {messages.map((msg, idx) => {
+              // Lọc ra các sản phẩm khớp với tin nhắn của AI (nếu có matchedIds)
+              const matchedProducts = msg.role === "bot" && msg.matchedIds && msg.matchedIds.length > 0
+                ? products.filter((p) => {
+                    const pId = String(p._id?.$oid || p._id || p.id);
+                    return msg.matchedIds.includes(pId);
+                  })
+                : [];
+
+              return (
                 <div
-                  className={`p-3 shadow-sm ${
-                    msg.role === "user"
-                      ? "text-white rounded-4 rounded-bottom-end-0"
-                      : "bg-white text-dark rounded-4 rounded-bottom-start-0 border border-light-subtle"
+                  key={idx}
+                  className={`d-flex align-items-end gap-2 ${
+                    msg.role === "user" ? "justify-content-end" : "justify-content-start"
                   }`}
-                  style={{
-                    fontSize: "0.875rem",
-                    maxWidth: "80%",
-                    lineHeight: "1.5",
-                    backgroundColor: msg.role === "user" ? "#d87c3c" : "#ffffff",
-                  }}
                 >
-                  {msg.text}
+                  {msg.role !== "user" && (
+                    <div
+                      className="rounded-circle bg-dark text-white d-flex align-items-center justify-content-center flex-shrink-0 mb-1"
+                      style={{ width: "26px", height: "26px", fontSize: "0.7rem" }}
+                    >
+                      AI
+                    </div>
+                  )}
+
+                  <div className="d-flex flex-column gap-2" style={{ maxWidth: "82%" }}>
+                    {/* Nội dung text câu trả lời */}
+                    <div
+                      className={`p-3 shadow-sm ${
+                        msg.role === "user"
+                          ? "text-white rounded-4 rounded-bottom-end-0"
+                          : "bg-white text-dark rounded-4 rounded-bottom-start-0 border border-light-subtle"
+                      }`}
+                      style={{
+                        fontSize: "0.875rem",
+                        lineHeight: "1.5",
+                        backgroundColor: msg.role === "user" ? "#d87c3c" : "#ffffff",
+                      }}
+                    >
+                      {msg.text}
+                    </div>
+
+                    {/* 🌟 THẺ SẢN PHẨM THU NHỎ HIỂN THỊ NGAY DƯỚI TIN NHẮN AI */}
+                    {matchedProducts.length > 0 && (
+                      <div className="d-flex flex-column gap-1.5 mt-1">
+                        {matchedProducts.map((prod) => (
+                          <div
+                            key={prod._id?.$oid || prod._id || prod.id}
+                            className="bg-white border rounded-3 p-2 shadow-sm d-flex align-items-center gap-2 transition-all"
+                            style={{ cursor: "pointer" }}
+                            onClick={() => {
+                              const targetEl = document.getElementById(`product-${prod._id?.$oid || prod._id || prod.id}`);
+                              if (targetEl) {
+                                targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
+                                targetEl.classList.add("border-warning", "border-2");
+                                setTimeout(() => targetEl.classList.remove("border-warning", "border-2"), 2000);
+                              }
+                            }}
+                          >
+                            <img
+                              src={prod.image || prod.img || "/images/placeholder.jpg"}
+                              alt={prod.name}
+                              className="rounded object-fit-cover"
+                              style={{ width: "40px", height: "40px" }}
+                            />
+                            <div className="flex-grow-1 overflow-hidden">
+                              <div className="fw-bold text-truncate" style={{ fontSize: "0.75rem" }}>
+                                {prod.name}
+                              </div>
+                              <div className="text-danger fw-semibold" style={{ fontSize: "0.7rem" }}>
+                                {prod.price ? Number(prod.price).toLocaleString("vi-VN") + "đ" : "Liên hệ"}
+                              </div>
+                            </div>
+                            <span className="text-muted" style={{ fontSize: "0.7rem" }}>Xem ➔</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
 
             {isLoading && (
               <div className="d-flex align-items-end gap-2 justify-content-start">
