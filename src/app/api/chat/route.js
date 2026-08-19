@@ -2,18 +2,17 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function buildFallbackResponse(userMessage, products = []) {
+  // Bỏ .slice(0, 3) để cho phép lấy toàn bộ hoặc nhiều sản phẩm hơn khi fallback
   const productNames = products
-    .slice(0, 3)
     .map((p) => p.name || p.title)
     .filter(Boolean);
   const matchedIds = products
-    .slice(0, 3)
     .map((p) => p._id?.$oid || p._id || p.id)
     .filter(Boolean);
 
   const reply =
     productNames.length > 0
-      ? `Bạn có thể xem các sản phẩm phù hợp như: ${productNames.join(", ")}.`
+      ? `Mình gợi ý một số sản phẩm phù hợp với yêu cầu của bạn nhé!`
       : `Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
 
   return { reply, matchedIds };
@@ -46,16 +45,17 @@ export async function POST(req) {
       },
     });
 
-    // Rút gọn dữ liệu sản phẩm để tiết kiệm Token
+    // Rút gọn dữ liệu sản phẩm để tiết kiệm Token nhưng vẫn giữ đủ thông tin để AI lọc
     const productsContext = products.map((p) => ({
       id: String(p._id?.$oid || p._id || p.id),
       name: p.name,
       price: p.price,
+      description: p.description, // Bổ sung mô tả để AI đọc hiểu sản phẩm nào dùng đi leo núi, đi tiệc... tốt hơn
       sizes: p.availableSizes || p.displaySizes || p.sizes || [],
       colors: p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || [],
     }));
 
-    // Gom lịch sử chat thành dạng văn bản để AI dễ đọc và hiểu mạch hội thoại
+    // Gom lịch sử chat thành dạng văn bản
     const formattedHistory = history
       .map((h) => {
         const role = h.role === "assistant" || h.role === "model" ? "Trợ lý" : "Khách hàng";
@@ -64,7 +64,6 @@ export async function POST(req) {
       })
       .join("\n");
 
-    // Xây dựng một Prompt tổng hợp duy nhất cho mỗi request để AI không bị dính lỗi kẹt ngữ cảnh cũ
     const singlePrompt = `
     Bạn là Trợ lý tư vấn bán giày nhiệt tình và chuyên nghiệp của cửa hàng Nova Kicks.
 
@@ -79,20 +78,19 @@ export async function POST(req) {
 
     NHIỆM VỤ VÀ QUY TẮC TƯ VẤN:
     1. Đọc kỹ tin nhắn mới nhất của khách hàng để hiểu họ đang muốn tìm loại giày nào (ví dụ: đi leo núi, đi tiệc, đi học, chạy bộ, v.v.).
-    2. Đối chiếu với danh sách sản phẩm trong kho để chọn ra các sản phẩm thực sự phù hợp nhất.
+    2. Đối chiếu với danh sách sản phẩm trong kho, chọn ra **TẤT CẢ** các sản phẩm thực sự phù hợp (không giới hạn số lượng, có thể chọn nhiều hơn 3 sản phẩm nếu phù hợp).
     3. Xưng "mình" - gọi "bạn", viết câu trả lời tư vấn ngắn gọn, thân thiện (tối đa 2-3 câu).
-    4. Lấy danh sách ID của các sản phẩm phù hợp bỏ vào mảng "matchedIds".
-    5. TUYỆT ĐỐI chỉ trả về kết quả dưới dạng JSON thuần túy theo cấu trúc sau, không kèm bất kỳ định dạng markdown hay chữ giải thích nào khác ngoài JSON:
+    4. Lấy danh sách ID của **tất cả** các sản phẩm phù hợp bỏ vào mảng "matchedIds".
+    5. TUYỆT ĐỐI chỉ trả về kết quả dưới dạng JSON thuần túy theo cấu trúc sau, không kèm markdown:
     {
       "reply": "Câu trả lời tư vấn ngắn gọn...",
-      "matchedIds": ["id1", "id2"]
+      "matchedIds": ["id1", "id2", "id3", ...]
     }
     `;
 
     const result = await model.generateContent(singlePrompt);
     let textResponse = result.response.text().trim();
 
-    // Làm sạch Markdown codeblock nếu mô hình lỡ sinh ra
     textResponse = textResponse
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
