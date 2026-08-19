@@ -28,7 +28,7 @@ export async function POST(req) {
     const body = await req.json();
     userMessage = body.userMessage || "";
     products = body.products || [];
-    history = body.history || []; // [{ role: "user" | "model", parts: [{ text: "..." }] }] hoặc dạng { sender, message }
+    history = body.history || [];
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
@@ -55,38 +55,41 @@ export async function POST(req) {
       colors: p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || [],
     }));
 
-    // Quy hoạch lại Lịch sử chat theo đúng chuẩn định dạng Gemini yêu cầu (nếu history từ client gửi lên có cấu trúc khác)
-    const formattedHistory = history.map((h) => ({
-      role: h.role === "assistant" || h.role === "model" ? "model" : "user",
-      parts: [{ text: typeof h.content === "string" ? h.content : (h.parts?.[0]?.text || h.message || "") }],
-    }));
+    // Gom lịch sử chat thành dạng văn bản để AI dễ đọc và hiểu mạch hội thoại
+    const formattedHistory = history
+      .map((h) => {
+        const role = h.role === "assistant" || h.role === "model" ? "Trợ lý" : "Khách hàng";
+        const content = typeof h.content === "string" ? h.content : (h.parts?.[0]?.text || h.message || "");
+        return `${role}: ${content}`;
+      })
+      .join("\n");
 
-    // Khởi tạo phiên trò chuyện đa lượt (Multi-turn Chat)
-    const chat = model.startChat({
-      history: formattedHistory,
-      systemInstruction: {
-        parts: [
-          {
-            text: `Bạn là Trợ lý tư vấn bán hàng nhiệt tình và chuyên nghiệp.
-Danh sách sản phẩm hiện có trong kho (dạng JSON):
-${JSON.stringify(productsContext)}
+    // Xây dựng một Prompt tổng hợp duy nhất cho mỗi request để AI không bị dính lỗi kẹt ngữ cảnh cũ
+    const singlePrompt = `
+    Bạn là Trợ lý tư vấn bán giày nhiệt tình và chuyên nghiệp của cửa hàng Nova Kicks.
 
-NHIỆM VỤ & QUY TẮC:
-1. Dựa vào yêu cầu của khách hàng và danh sách kho, hãy tư vấn sản phẩm phù hợp nhất.
-2. Xưng "mình" - gọi "bạn", giọng điệu thân thiện, ngắn gọn (tối đa 2-3 câu).
-3. Lọc chính xác danh sách ID sản phẩm phù hợp từ kho để đưa vào mảng "matchedIds".
-4. LUÔN LUÔN trả về kết quả dưới dạng JSON thuần túy (không kèm markdown như \`\`\`json) theo đúng cấu trúc sau:
-{
-  "reply": "Câu trả lời tư vấn...",
-  "matchedIds": ["id1", "id2"]
-}`
-          }
-        ]
-      }
-    });
+    DANH SÁCH SẢN PHẨM TRONG KHO (JSON):
+    ${JSON.stringify(productsContext)}
 
-    // Gửi tin nhắn mới nhất của người dùng vào phiên chat
-    const result = await chat.sendMessage(userMessage);
+    LỊCH SỬ TRÒ CHUYỆN GẦN ĐÂY:
+    ${formattedHistory || "(Chưa có lịch sử)"}
+
+    TIN NHẮN MỚI NHẤT CỦA KHÁCH HÀNG:
+    "${userMessage}"
+
+    NHIỆM VỤ VÀ QUY TẮC TƯ VẤN:
+    1. Đọc kỹ tin nhắn mới nhất của khách hàng để hiểu họ đang muốn tìm loại giày nào (ví dụ: đi leo núi, đi tiệc, đi học, chạy bộ, v.v.).
+    2. Đối chiếu với danh sách sản phẩm trong kho để chọn ra các sản phẩm thực sự phù hợp nhất.
+    3. Xưng "mình" - gọi "bạn", viết câu trả lời tư vấn ngắn gọn, thân thiện (tối đa 2-3 câu).
+    4. Lấy danh sách ID của các sản phẩm phù hợp bỏ vào mảng "matchedIds".
+    5. TUYỆT ĐỐI chỉ trả về kết quả dưới dạng JSON thuần túy theo cấu trúc sau, không kèm bất kỳ định dạng markdown hay chữ giải thích nào khác ngoài JSON:
+    {
+      "reply": "Câu trả lời tư vấn ngắn gọn...",
+      "matchedIds": ["id1", "id2"]
+    }
+    `;
+
+    const result = await model.generateContent(singlePrompt);
     let textResponse = result.response.text().trim();
 
     // Làm sạch Markdown codeblock nếu mô hình lỡ sinh ra
