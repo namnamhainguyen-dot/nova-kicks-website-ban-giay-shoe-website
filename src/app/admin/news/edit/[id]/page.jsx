@@ -6,11 +6,13 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 
 // Import ReactQuill dynamically để tránh lỗi SSR trong Next.js
-const ReactQuill = dynamic(() => import("react-quill"), {
+// Đổi đường dẫn import sang react-quill-new
+const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
 });
-import "react-quill/dist/quill.snow.css";
+
+import "react-quill-new/dist/quill.snow.css";
 
 export default function EditNewsPage() {
   const params = useParams();
