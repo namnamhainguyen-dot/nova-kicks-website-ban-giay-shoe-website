@@ -28,7 +28,7 @@ function buildFallbackResponse(userMessage, products = []) {
     return `${index + 1}. **${p.name}** - Giá: ${formattedPrice}\n- Mô tả: ${desc}`;
   }).join("\n\n");
 
-  const reply = `Chào bạn, dựa trên yêu cầu "${userMessage}", mình gợi ý các mẫu phù hợp nhé:\n\n${productBullets}`;
+  const reply = `Chào bạn! Với yêu cầu "${userMessage}" của bạn, mình đã tìm thấy 2 mẫu giày cực "hợp cạ" đây ạ:\n\n${productBullets}`;
 
   return { reply, matchedIds };
 }
