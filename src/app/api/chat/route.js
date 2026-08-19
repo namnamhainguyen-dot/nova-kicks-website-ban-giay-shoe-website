@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function buildFallbackResponse(userMessage, products = []) {
-  // Fallback thông minh: Tự động lọc từ khóa cơ bản nếu AI gặp lỗi hoặc hết hạn mức API
   const lowerMsg = userMessage.toLowerCase();
   const matched = products.filter((p) => {
     const name = (p.name || "").toLowerCase();
@@ -10,14 +9,16 @@ function buildFallbackResponse(userMessage, products = []) {
     return name.includes(lowerMsg) || desc.includes(lowerMsg);
   });
 
-  // Nếu tìm thấy sản phẩm khớp từ khóa thì lấy, nếu không lấy toàn bộ để tránh mảng trống
   const targetProducts = matched.length > 0 ? matched : products;
-  
-  const matchedIds = targetProducts
-    .map((p) => p._id?.$oid || p._id || p.id)
-    .filter(Boolean);
+  const matchedIds = targetProducts.map((p) => p._id?.$oid || p._id || p.id).filter(Boolean);
 
-  const reply = `Chào bạn, dựa trên yêu cầu "${userMessage}", mình đã chọn lọc các mẫu giày phù hợp nhất trong cửa hàng để bạn tham khảo ở danh sách bên dưới nhé!`;
+  // Tạo danh sách dạng liệt kê giống mẫu bạn muốn khi fallback
+  const productBullets = targetProducts.slice(0, 5).map((p, index) => {
+    const formattedPrice = p.price ? p.price.toLocaleString("vi-VN") + "đ" : "Liên hệ";
+    return `${index + 1}. **${p.name}** - Giá ${formattedPrice}, ${p.description || "Thiết kế phù hợp với nhu cầu của bạn."}`;
+  }).join("\n\n");
+
+  const reply = `Chào bạn, dựa trên yêu cầu "${userMessage}", mình gợi ý một số mẫu giày phù hợp sau nhé:\n\n${productBullets}`;
 
   return { reply, matchedIds };
 }
@@ -41,7 +42,6 @@ export async function POST(req) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-
     const model = genAI.getGenerativeModel({
       model: "gemini-1.5-flash",
       generationConfig: {
@@ -49,17 +49,14 @@ export async function POST(req) {
       },
     });
 
-    // Truyền đầy đủ thông tin (tên, giá, mô tả, size) để AI phân tích chuẩn xác
     const productsContext = products.map((p) => ({
       id: String(p._id?.$oid || p._id || p.id),
       name: p.name,
       price: p.price,
-      description: p.description || "", 
+      description: p.description || "",
       sizes: p.availableSizes || p.displaySizes || p.sizes || [],
-      colors: p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || [],
     }));
 
-    // Gom lịch sử chat thành dạng văn bản
     const formattedHistory = history
       .map((h) => {
         const role = h.role === "assistant" || h.role === "model" ? "Trợ lý" : "Khách hàng";
@@ -69,26 +66,27 @@ export async function POST(req) {
       .join("\n");
 
     const singlePrompt = `
-    Bạn là Trợ lý tư vấn bán giày cao cấp, am hiểu thời trang và cực kỳ nhiệt tình của cửa hàng Nova Kicks.
+    Bạn là Trợ lý tư vấn bán giày chuyên nghiệp, thân thiện và am hiểu thời trang của cửa hàng Nova Kicks.
 
-    DANH SÁCH TẤT CẢ SẢN PHẨM TRONG KHO (JSON):
+    DANH SÁCH SẢN PHẨM GỢI Ý (JSON):
     ${JSON.stringify(productsContext)}
 
-    LỊCH SỬ TRÒ CHUYỆN GẦN ĐÂY:
+    LỊCH SỬ TRÒ CHUYỆN:
     ${formattedHistory || "(Chưa có lịch sử)"}
 
-    TIN NHẮN MỚI NHẤT CỦA KHÁCH HÀNG:
+    YÊU CẦU MỚI NHẤT CỦA KHÁCH:
     "${userMessage}"
 
-    NHIỆM VỤ VÀ QUY TẮC TƯ VẤN:
-    1. Đọc kỹ và phân tích thật sâu sắc nhu cầu của khách hàng (ví dụ: đi tiệc cần sự sang trọng, đi leo núi cần độ bám/chống nước, đi học cần sự thoải mái, v.v.).
-    2. Rà soát TOÀN BỘ danh sách sản phẩm trong kho, chọn ra **TẤT CẢ** các sản phẩm thực sự phù hợp (không giới hạn số lượng, quét hết kho nếu sản phẩm đáp ứng đúng tiêu chí).
-    3. Viết câu trả lời tư vấn thật chi tiết, thuyết phục và dài dặn hơn (khoảng 3-4 câu), xưng "mình" - gọi "bạn", giải thích rõ lý do tại sao những mẫu giày này lại phù hợp với yêu cầu của khách.
-    4. Trích xuất danh sách ID của **tất cả** các sản phẩm phù hợp đó bỏ vào mảng "matchedIds".
-    5. TUYỆT ĐỐI chỉ trả về kết quả dưới dạng JSON thuần túy theo cấu trúc sau, không kèm markdown:
+    NHIỆM VỤ VÀ QUY TẮC TRÌNH BÀY:
+    1. Đọc kỹ nhu cầu của khách hàng. Hãy mở đầu câu trả lời bằng một lời chào thân thiện, nhận xét ngắn gọn, tâm lý và tự nhiên (Ví dụ: "Chào bạn! Chọn giày đi chơi/đi học là một ý hay đấy. Mình gợi ý vài mẫu giày phù hợp với phong cách của bạn nhé:").
+    2. Liệt kê các sản phẩm theo đúng cấu trúc đánh số, trong đó **Tên sản phẩm phải được in đậm** và kèm theo mô tả chi tiết, cuốn hút về chất liệu, kiểu dáng hoặc dịp sử dụng phù hợp, kèm giá tiền rõ ràng:
+       1. **[Tên sản phẩm]** - [Mô tả chi tiết về điểm nổi bật, chất liệu hoặc phong cách], rất hợp cho [dịp sử dụng] với mức giá **[Giá sản phẩm]đ**.
+       2. **[Tên sản phẩm]** - [Mô tả chi tiết...], giá **[Giá sản phẩm]đ**.
+    3. Trích xuất chính xác ID của các sản phẩm có mặt trong danh sách gợi ý trên vào mảng "matchedIds".
+    4. Chỉ trả về JSON thuần túy theo cấu trúc:
     {
-      "reply": "Câu trả lời tư vấn chi tiết, dài dặn và phân tích kỹ lưỡng khoảng 3-4 câu...",
-      "matchedIds": ["id1", "id2", "id3", ...]
+      "reply": "Chào bạn! ...\n\n1. **Tên** - Mô tả..., giá ...\n2. **Tên** - Mô tả..., giá ...",
+      "matchedIds": ["id1", "id2", ...]
     }
     `;
 
@@ -120,14 +118,6 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("❌ Lỗi API Chatbot Chi Tiết:", error);
-
-    if (error?.message?.includes("429")) {
-      return NextResponse.json({
-        reply: "⏳ Hệ thống tư vấn AI đang bận hoặc đạt giới hạn tạm thời. Bạn vui lòng thử lại sau vài giây nhé!",
-        matchedIds: [],
-      }, { status: 200 });
-    }
-
     return NextResponse.json(buildFallbackResponse(userMessage, products), { status: 200 });
   }
 }
