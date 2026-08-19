@@ -590,7 +590,7 @@ export default function ProductFilter({ products }) {
       // 1. Lọc yêu thích
       if (showFavoritesOnly && !isFavorite(productId)) return false;
 
-      // 2. Lọc giá (Ép kiểu Number rõ ràng để so sánh chính xác)
+      // 2. Lọc giá
       if (minPriceNum !== null && p.effectivePrice < minPriceNum) return false;
       if (maxPriceNum !== null && p.effectivePrice > maxPriceNum) return false;
 
@@ -647,7 +647,6 @@ export default function ProductFilter({ products }) {
 
   return (
     <div>
-      {/* 🌟 ĐOẠN CSS ĐỔI MÀU CAM NHẸ CHO PHÂN TRANG */}
       <style>{`
         .pagination .page-item.active .page-link {
           background-color: #f97316 !important;
@@ -791,7 +790,7 @@ export default function ProductFilter({ products }) {
                 ))}
               </div>
 
-              {/* ✅ PHÂN TRANG DUY NHẤT */}
+              {/* Phân trang */}
               {totalPages > 1 && (
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">
