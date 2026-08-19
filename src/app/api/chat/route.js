@@ -80,14 +80,16 @@ export async function POST(req) {
     1. "Đi ăn cưới, ăn tiệc": Ưu tiên giày da, giày tây, thiết kế lịch lãm. Tránh giày thể thao chạy bộ hầm hố.
     2. "Đi leo núi": Ưu tiên giày cổ cao, đế bám tốt, outdoor, boots hoặc giày bền chắc.
     3. "Đi học": Ưu tiên sneaker năng động, giày vải hoặc giày thể thao nhẹ nhàng, thoải mái.
-    4. Các nhu cầu khác nhau phải trả về danh sách sản phẩm đặc trưng riêng phù hợp.
+    4. Các nhu cầu khác chọn sản phẩm phù hợp thực tế trong danh sách.
 
     NHIỆM VỤ:
     1. Chọn 2 sản phẩm phù hợp nhất.
-    2. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo mẫu:
+    2. Viết câu trả lời ("reply") theo đúng mẫu sau (BẮT BUỘC phải có phần lý do trong ngoặc đơn cho từng sản phẩm và xuống dòng rõ ràng):
         "Chào bạn, gợi ý phù hợp nhất đây ạ:
-        1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp]).
-        2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp])."
+        
+        1. **[Tên sản phẩm]** - Giá [Giá]đ (Lý do: [Viết rõ lý do vì sao mẫu này hợp với yêu cầu]).
+        
+        2. **[Tên sản phẩm]** - Giá [Giá]đ (Lý do: [Viết rõ lý do vì sao mẫu này hợp với yêu cầu])."
     3. Trích xuất chính xác trường "id" vào mảng "matchedIds".
     4. Chỉ trả về JSON thuần túy, không markdown, không kèm chữ ngoài cấu trúc:
     {
