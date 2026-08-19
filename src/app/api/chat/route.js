@@ -4,7 +4,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 function buildFallbackResponse(userMessage, products = []) {
   const lowerMsg = userMessage.toLowerCase();
   
-  // Thuật toán lọc thông minh cho fallback khi không có AI hoặc gặp lỗi kết nối
   let matched = products.filter((p) => {
     const name = (p.name || "").toLowerCase();
     const desc = (p.description || "").toLowerCase();
@@ -12,7 +11,6 @@ function buildFallbackResponse(userMessage, products = []) {
     return name.includes(lowerMsg) || desc.includes(lowerMsg) || category.includes(lowerMsg);
   });
 
-  // Nếu không khớp từ khóa cụ thể, xoay vòng dựa theo độ dài câu chữ để trả ra sản phẩm khác nhau
   if (matched.length === 0 && products.length > 0) {
     const startIndex = userMessage.length % products.length;
     matched = [
@@ -21,15 +19,16 @@ function buildFallbackResponse(userMessage, products = []) {
     ].filter(Boolean);
   }
 
-  const targetProducts = matched.length > 0 ? matched.slice(0, 3) : products.slice(0, 3);
+  const targetProducts = matched.length > 0 ? matched.slice(0, 2) : products.slice(0, 2);
   const matchedIds = targetProducts.map((p) => String(p._id?.$oid || p._id || p.id)).filter(Boolean);
 
   const productBullets = targetProducts.map((p, index) => {
     const formattedPrice = p.price ? Number(p.price).toLocaleString("vi-VN") + "đ" : "Liên hệ";
-    return `${index + 1}. **${p.name}** - Giá ${formattedPrice}`;
-  }).join("\n");
+    const desc = p.description || p.category || "Thiết kế thời trang, dễ phối đồ";
+    return `${index + 1}. **${p.name}** - Giá: ${formattedPrice}\n- Mô tả: ${desc}`;
+  }).join("\n\n");
 
-  const reply = `Chào bạn, dựa trên yêu cầu "${userMessage}", mình gợi ý các mẫu phù hợp nhé:\n${productBullets}`;
+  const reply = `Chào bạn, dựa trên yêu cầu "${userMessage}", mình gợi ý các mẫu phù hợp nhé:\n\n${productBullets}`;
 
   return { reply, matchedIds };
 }
@@ -46,57 +45,41 @@ export async function POST(req) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
     if (!apiKey) {
-      console.warn("⚠️ Khóa GEMINI_API_KEY chưa được khai báo!");
       return NextResponse.json(buildFallbackResponse(userMessage, products), { status: 200 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash", // Sử dụng model chuẩn để đảm bảo ổn định
+      model: "gemini-1.5-flash",
       generationConfig: {
         responseMimeType: "application/json",
       },
     });
 
-    // Chuẩn hóa dữ liệu sản phẩm để AI dễ phân biệt
+    // 🌟 QUAN TRỌNG: Đảm bảo lấy đủ mô tả (description) từ sản phẩm truyền cho AI
     const productsContext = products.map((p, idx) => ({
       index: idx,
       id: p._id?.$oid || p._id || p.id,
       name: p.name || p.title,
       price: p.price,
-      description: p.description || p.category || "Giày thời trang đa năng"
+      description: p.description || p.category || "Giày thời trang cao cấp, form ôm chân thoải mái"
     }));
 
     const singlePrompt = `
-    Bạn là Trợ lý tư vấn bán giày thông minh, chuyên nghiệp và nhiệt tình của cửa hàng Nova Kicks.
+    Bạn là Trợ lý tư vấn bán giày thông minh của cửa hàng Nova Kicks.
 
-    DANH SÁCH SẢN PHẨM HIỆN CÓ (JSON):
+    DANH SÁCH SẢN PHẨM (JSON):
     ${JSON.stringify(productsContext)}
 
-    YÊU CẦU CỦA KHÁCH:
-    "${userMessage}"
+    YÊU CẦU: "${userMessage}"
 
-    QUY TẮC TƯ VẤN (BẮT BUỘC):
-    1. "Đi ăn cưới, ăn tiệc": Ưu tiên giày da, giày tây, thiết kế lịch lãm. Tránh giày thể thao chạy bộ hầm hố.
-    2. "Đi leo núi": Ưu tiên giày cổ cao, đế bám tốt, outdoor, boots hoặc giày bền chắc.
-    3. "Đi học": Ưu tiên sneaker năng động, giày vải hoặc giày thể thao nhẹ nhàng, thoải mái.
-    4. Các nhu cầu khác (như tặng quà, dạo phố,...) hãy chọn sản phẩm thật tinh tế và phù hợp với đối tượng.
-
-    NHIỆM VỤ:
-    1. Chọn ra 2 sản phẩm phù hợp nhất trong danh sách.
-    2. Viết câu trả lời ("reply") thật chi tiết, thuyết phục và ĐÚNG ĐỊNH DẠNG xuông dòng sau:
-        "Chào bạn, dựa trên yêu cầu "${userMessage}", mình xin gợi ý 2 mẫu cực kỳ phù hợp nhé:
-
-        1. **[Tên sản phẩm]** - Giá: [Giá]đ
-        - Kiểu dáng & Chất liệu: [Mô tả ngắn gọn đặc điểm nổi bật hoặc chất liệu].
-        - Lý do phù hợp: [Giải thích vì sao mẫu này rất hợp để làm quà tặng hoặc đúng với nhu cầu của bạn].
-
-        2. **[Tên sản phẩm]** - Giá: [Giá]đ
-        - Kiểu dáng & Chất liệu: [Mô tả ngắn gọn đặc điểm nổi bật hoặc chất liệu].
-        - Lý do phù hợp: [Giải thích vì sao mẫu này rất hợp để làm quà tặng hoặc đúng với nhu cầu của bạn].
-
-        Bạn thấy ưng ý với mẫu nào hơn cứ nói mình hỗ trợ thêm nhé!"
-    3. Trích xuất chính xác trường "id" của các sản phẩm được chọn vào mảng "matchedIds".
+    QUY TẮC BẮT BUỘC:
+    1. Chọn ra đúng 2 sản phẩm phù hợp nhất trong danh sách dựa trên yêu cầu.
+    2. Với mỗi sản phẩm, BẮT BUỘC phải viết theo đúng cấu trúc nhiều dòng sau đây (không được gom thành 1 dòng):
+       [STT]. **[Tên sản phẩm]** - Giá: [Giá]đ
+       - Mô tả: [Lấy thông tin mô tả thực tế từ JSON hoặc tự viết thêm chi tiết về chất liệu, kiểu dáng, phong cách]
+       - Lý do hợp: [Giải thích vì sao mẫu này phù hợp với yêu cầu của khách]
+    3. Trích xuất chính xác trường "id" vào mảng "matchedIds".
     4. Chỉ trả về JSON thuần túy, không markdown, không kèm chữ ngoài cấu trúc:
     {
       "reply": "...",
