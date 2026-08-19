@@ -63,14 +63,15 @@ export async function POST(req) {
     "${userMessage}"
 
     NHIỆM VỤ:
-    1. Đọc kỹ yêu cầu của khách và phân tích xem sản phẩm nào trong danh sách thực sự phù hợp nhất (dựa vào tên hoặc mô tả). 
-    2. Nếu không có sản phẩm nào thực sự khớp hoàn toàn, hãy chọn ra các sản phẩm gần đúng nhất và nêu rõ lý do tại sao nó phù hợp trong phần reply. TUYỆT ĐỐI KHÔNG LUÔN LUÔN TRẢ VỀ CÙNG MỘT TẬP HỢP SẢN PHẨM CHO CÁC CÂU HỎI KHÁC NHAU trừ khi chúng thực sự giống nhau.
-    3. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
+    1. Đọc kỹ yêu cầu của khách và so khớp thông minh với từng sản phẩm trong danh sách dựa trên tên, danh mục hoặc mô tả. 
+    2. NGUYÊN TẮC BẮT BUỘC - ĐỘ KHÁC BIỆT: Các câu hỏi khác nhau (ví dụ: "đi học" khác với "đi tiệc" hoặc "leo núi") PHẢI trả về các tập hợp sản phẩm khác nhau. TUYỆT ĐỐI KHÔNG được trả về cố định một nhóm sản phẩm cho mọi câu hỏi.
+    3. Nếu không có sản phẩm nào khớp tuyệt đối, hãy tìm sản phẩm gần đúng nhất và nêu rõ lý do trong câu trả lời. Nếu hoàn toàn không có, hãy để mảng matchedIds rỗng [].
+    4. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
        "Chào bạn, gợi ý phù hợp nhất dành cho bạn đây ạ:
        1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp với yêu cầu]).
        2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp với yêu cầu])."
-    4. Trích xuất chính xác chuỗi ID của các sản phẩm được chọn vào mảng "matchedIds".
-    5. Chỉ trả về JSON thuần túy, không kèm Markdown hay chữ nào khác ngoài JSON:
+    5. Trích xuất chính xác các giá trị định danh của sản phẩm được chọn (ưu tiên lấy _id hoặc id tùy theo cấu trúc JSON của sản phẩm) vào mảng "matchedIds".
+    6. ĐỊNH DẠNG ĐẦU RA: Chỉ trả về JSON thuần túy hợp lệ. TUYỆT ĐỐI KHÔNG bọc trong khối code markdown (như \`\`\`json ... \`\`\`), không kèm theo bất kỳ lời chào hay chữ nào khác ngoài cấu trúc JSON sau:
     {
       "reply": "...",
       "matchedIds": ["id1", "id2"]
