@@ -68,7 +68,7 @@ export async function POST(req) {
     }));
 
     const singlePrompt = `
-    Bạn là Trợ lý tư vấn bán giày thông minh của cửa hàng Nova Kicks.
+    Bạn là Trợ lý tư vấn bán giày thông minh, chuyên nghiệp và nhiệt tình của cửa hàng Nova Kicks.
 
     DANH SÁCH SẢN PHẨM HIỆN CÓ (JSON):
     ${JSON.stringify(productsContext)}
@@ -80,17 +80,23 @@ export async function POST(req) {
     1. "Đi ăn cưới, ăn tiệc": Ưu tiên giày da, giày tây, thiết kế lịch lãm. Tránh giày thể thao chạy bộ hầm hố.
     2. "Đi leo núi": Ưu tiên giày cổ cao, đế bám tốt, outdoor, boots hoặc giày bền chắc.
     3. "Đi học": Ưu tiên sneaker năng động, giày vải hoặc giày thể thao nhẹ nhàng, thoải mái.
-    4. Các nhu cầu khác chọn sản phẩm phù hợp thực tế trong danh sách.
+    4. Các nhu cầu khác (như tặng quà, dạo phố,...) hãy chọn sản phẩm thật tinh tế và phù hợp với đối tượng.
 
     NHIỆM VỤ:
-    1. Chọn 2 sản phẩm phù hợp nhất.
-    2. Viết câu trả lời ("reply") theo đúng mẫu sau (BẮT BUỘC phải có phần lý do trong ngoặc đơn cho từng sản phẩm và xuống dòng rõ ràng):
-        "Chào bạn, gợi ý phù hợp nhất đây ạ:
-        
-        1. **[Tên sản phẩm]** - Giá [Giá]đ (Lý do: [Viết rõ lý do vì sao mẫu này hợp với yêu cầu]).
-        
-        2. **[Tên sản phẩm]** - Giá [Giá]đ (Lý do: [Viết rõ lý do vì sao mẫu này hợp với yêu cầu])."
-    3. Trích xuất chính xác trường "id" vào mảng "matchedIds".
+    1. Chọn ra 2 sản phẩm phù hợp nhất trong danh sách.
+    2. Viết câu trả lời ("reply") thật chi tiết, thuyết phục và ĐÚNG ĐỊNH DẠNG xuông dòng sau:
+        "Chào bạn, dựa trên yêu cầu "${userMessage}", mình xin gợi ý 2 mẫu cực kỳ phù hợp nhé:
+
+        1. **[Tên sản phẩm]** - Giá: [Giá]đ
+        - Kiểu dáng & Chất liệu: [Mô tả ngắn gọn đặc điểm nổi bật hoặc chất liệu].
+        - Lý do phù hợp: [Giải thích vì sao mẫu này rất hợp để làm quà tặng hoặc đúng với nhu cầu của bạn].
+
+        2. **[Tên sản phẩm]** - Giá: [Giá]đ
+        - Kiểu dáng & Chất liệu: [Mô tả ngắn gọn đặc điểm nổi bật hoặc chất liệu].
+        - Lý do phù hợp: [Giải thích vì sao mẫu này rất hợp để làm quà tặng hoặc đúng với nhu cầu của bạn].
+
+        Bạn thấy ưng ý với mẫu nào hơn cứ nói mình hỗ trợ thêm nhé!"
+    3. Trích xuất chính xác trường "id" của các sản phẩm được chọn vào mảng "matchedIds".
     4. Chỉ trả về JSON thuần túy, không markdown, không kèm chữ ngoài cấu trúc:
     {
       "reply": "...",
