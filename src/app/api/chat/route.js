@@ -40,7 +40,7 @@ export async function POST(req) {
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-latest",
       generationConfig: {
         responseMimeType: "application/json",
       },
@@ -54,7 +54,7 @@ export async function POST(req) {
     }));
 
     const singlePrompt = `
-    Bạn là Trợ lý tư vấn bán giày của cửa hàng Nova Kicks.
+    Bạn là Trợ lý tư vấn bán giày thông minh của cửa hàng Nova Kicks.
 
     DANH SÁCH SẢN PHẨM (JSON):
     ${JSON.stringify(productsContext)}
@@ -63,13 +63,14 @@ export async function POST(req) {
     "${userMessage}"
 
     NHIỆM VỤ:
-    1. Chọn ra tối đa 3 sản phẩm PHÙ HỢP NHẤT với yêu cầu của khách từ danh sách trên.
-    2. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
+    1. Đọc kỹ yêu cầu của khách và phân tích xem sản phẩm nào trong danh sách thực sự phù hợp nhất (dựa vào tên hoặc mô tả). 
+    2. Nếu không có sản phẩm nào thực sự khớp hoàn toàn, hãy chọn ra các sản phẩm gần đúng nhất và nêu rõ lý do tại sao nó phù hợp trong phần reply. TUYỆT ĐỐI KHÔNG LUÔN LUÔN TRẢ VỀ CÙNG MỘT TẬP HỢP SẢN PHẨM CHO CÁC CÂU HỎI KHÁC NHAU trừ khi chúng thực sự giống nhau.
+    3. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
        "Chào bạn, gợi ý phù hợp nhất dành cho bạn đây ạ:
-       1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do siêu ngắn gọn trong 1 câu]).
-       2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do siêu ngắn gọn trong 1 câu])."
-    3. Trích xuất chính xác chuỗi ID của các sản phẩm được chọn vào mảng "matchedIds".
-    4. Chỉ trả về JSON thuần túy, không kèm Markdown hay chữ nào khác ngoài JSON:
+       1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp với yêu cầu]).
+       2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp với yêu cầu])."
+    4. Trích xuất chính xác chuỗi ID của các sản phẩm được chọn vào mảng "matchedIds".
+    5. Chỉ trả về JSON thuần túy, không kèm Markdown hay chữ nào khác ngoài JSON:
     {
       "reply": "...",
       "matchedIds": ["id1", "id2"]
