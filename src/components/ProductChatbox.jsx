@@ -389,8 +389,10 @@ export default function ProductChatbox({ products }) {
                       }`}
                       style={{
                         fontSize: "0.875rem",
-                        lineHeight: "1.5",
+                        lineHeight: "1.6", // Tăng nhẹ line-height để dễ đọc hơn
                         backgroundColor: msg.role === "user" ? "#d87c3c" : "#ffffff",
+                        whiteSpace: "pre-wrap", // <--- THÊM DÒNG NÀY: Giúp giữ nguyên ngắt dòng \n từ AI
+                        wordBreak: "break-word", // Giúp các từ dài không bị tràn khung
                       }}
                     >
                       {msg.text}
