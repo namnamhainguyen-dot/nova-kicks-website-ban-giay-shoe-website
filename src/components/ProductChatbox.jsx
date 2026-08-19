@@ -405,11 +405,10 @@ export default function ProductChatbox({ products }) {
                             className="bg-white border rounded-3 p-2 shadow-sm d-flex align-items-center gap-2 transition-all"
                             style={{ cursor: "pointer" }}
                             onClick={() => {
-                              const targetEl = document.getElementById(`product-${prod._id?.$oid || prod._id || prod.id}`);
-                              if (targetEl) {
-                                targetEl.scrollIntoView({ behavior: "smooth", block: "center" });
-                                targetEl.classList.add("border-warning", "border-2");
-                                setTimeout(() => targetEl.classList.remove("border-warning", "border-2"), 2000);
+                              const prodId = prod._id?.$oid || prod._id || prod.id;
+                              if (prodId) {
+                                router.push(`/products/${prodId}`); // Hoặc đường dẫn chi tiết phù hợp với project của bạn (vd: `/product/${prodId}`)
+                                setIsOpen(false); // Đóng khung chat lại cho dễ nhìn
                               }
                             }}
                           >
