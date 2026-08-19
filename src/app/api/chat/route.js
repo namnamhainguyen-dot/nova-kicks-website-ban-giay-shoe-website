@@ -2,18 +2,22 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 function buildFallbackResponse(userMessage, products = []) {
-  // Bỏ .slice(0, 3) để cho phép lấy toàn bộ hoặc nhiều sản phẩm hơn khi fallback
-  const productNames = products
-    .map((p) => p.name || p.title)
-    .filter(Boolean);
-  const matchedIds = products
+  // Fallback thông minh: Tự động lọc từ khóa cơ bản nếu AI gặp lỗi hoặc hết hạn mức API
+  const lowerMsg = userMessage.toLowerCase();
+  const matched = products.filter((p) => {
+    const name = (p.name || "").toLowerCase();
+    const desc = (p.description || "").toLowerCase();
+    return name.includes(lowerMsg) || desc.includes(lowerMsg);
+  });
+
+  // Nếu tìm thấy sản phẩm khớp từ khóa thì lấy, nếu không lấy toàn bộ để tránh mảng trống
+  const targetProducts = matched.length > 0 ? matched : products;
+  
+  const matchedIds = targetProducts
     .map((p) => p._id?.$oid || p._id || p.id)
     .filter(Boolean);
 
-  const reply =
-    productNames.length > 0
-      ? `Mình gợi ý một số sản phẩm phù hợp với yêu cầu của bạn nhé!`
-      : `Bạn có thể tiếp tục xem các sản phẩm bên dưới nhé!`;
+  const reply = `Chào bạn, dựa trên yêu cầu "${userMessage}", mình đã chọn lọc các mẫu giày phù hợp nhất trong cửa hàng để bạn tham khảo ở danh sách bên dưới nhé!`;
 
   return { reply, matchedIds };
 }
@@ -45,12 +49,12 @@ export async function POST(req) {
       },
     });
 
-    // Rút gọn dữ liệu sản phẩm để tiết kiệm Token nhưng vẫn giữ đủ thông tin để AI lọc
+    // Truyền đầy đủ thông tin (tên, giá, mô tả, size) để AI phân tích chuẩn xác
     const productsContext = products.map((p) => ({
       id: String(p._id?.$oid || p._id || p.id),
       name: p.name,
       price: p.price,
-      description: p.description, // Bổ sung mô tả để AI đọc hiểu sản phẩm nào dùng đi leo núi, đi tiệc... tốt hơn
+      description: p.description || "", 
       sizes: p.availableSizes || p.displaySizes || p.sizes || [],
       colors: p.availableColors?.map((c) => (typeof c === "object" ? c.color : c)) || p.displayColors || [],
     }));
@@ -65,9 +69,9 @@ export async function POST(req) {
       .join("\n");
 
     const singlePrompt = `
-    Bạn là Trợ lý tư vấn bán giày nhiệt tình và chuyên nghiệp của cửa hàng Nova Kicks.
+    Bạn là Trợ lý tư vấn bán giày cao cấp, am hiểu thời trang và cực kỳ nhiệt tình của cửa hàng Nova Kicks.
 
-    DANH SÁCH SẢN PHẨM TRONG KHO (JSON):
+    DANH SÁCH TẤT CẢ SẢN PHẨM TRONG KHO (JSON):
     ${JSON.stringify(productsContext)}
 
     LỊCH SỬ TRÒ CHUYỆN GẦN ĐÂY:
@@ -77,13 +81,13 @@ export async function POST(req) {
     "${userMessage}"
 
     NHIỆM VỤ VÀ QUY TẮC TƯ VẤN:
-    1. Đọc kỹ tin nhắn mới nhất của khách hàng để hiểu họ đang muốn tìm loại giày nào (ví dụ: đi leo núi, đi tiệc, đi học, chạy bộ, v.v.).
-    2. Đối chiếu với danh sách sản phẩm trong kho, chọn ra **TẤT CẢ** các sản phẩm thực sự phù hợp (không giới hạn số lượng, có thể chọn nhiều hơn 3 sản phẩm nếu phù hợp).
-    3. Xưng "mình" - gọi "bạn", viết câu trả lời tư vấn ngắn gọn, thân thiện (tối đa 2-3 câu).
-    4. Lấy danh sách ID của **tất cả** các sản phẩm phù hợp bỏ vào mảng "matchedIds".
+    1. Đọc kỹ và phân tích thật sâu sắc nhu cầu của khách hàng (ví dụ: đi tiệc cần sự sang trọng, đi leo núi cần độ bám/chống nước, đi học cần sự thoải mái, v.v.).
+    2. Rà soát TOÀN BỘ danh sách sản phẩm trong kho, chọn ra **TẤT CẢ** các sản phẩm thực sự phù hợp (không giới hạn số lượng, quét hết kho nếu sản phẩm đáp ứng đúng tiêu chí).
+    3. Viết câu trả lời tư vấn thật chi tiết, thuyết phục và dài dặn hơn (khoảng 3-4 câu), xưng "mình" - gọi "bạn", giải thích rõ lý do tại sao những mẫu giày này lại phù hợp với yêu cầu của khách.
+    4. Trích xuất danh sách ID của **tất cả** các sản phẩm phù hợp đó bỏ vào mảng "matchedIds".
     5. TUYỆT ĐỐI chỉ trả về kết quả dưới dạng JSON thuần túy theo cấu trúc sau, không kèm markdown:
     {
-      "reply": "Câu trả lời tư vấn ngắn gọn...",
+      "reply": "Câu trả lời tư vấn chi tiết, dài dặn và phân tích kỹ lưỡng khoảng 3-4 câu...",
       "matchedIds": ["id1", "id2", "id3", ...]
     }
     `;
