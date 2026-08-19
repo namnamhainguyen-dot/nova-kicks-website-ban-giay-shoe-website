@@ -367,14 +367,14 @@ const handleBatchUpdate = async (nextStatus) => {
   };
 
   const renderDeadline = (order) => {
-    if (order.deadline) return new Date(order.deadline).toLocaleDateString("vi-VN");
-    if (order.createdAt) {
-      const date = new Date(order.createdAt);
-      date.setDate(date.getDate() + 2);
-      return date.toLocaleDateString("vi-VN");
-    }
-    return "---";
-  };
+  if (order.deadline) return new Date(order.deadline).toLocaleDateString("vi-VN");
+  if (order.createdAt) {
+    const date = new Date(order.createdAt);
+    date.setDate(date.getDate() + 2);
+    return date.toLocaleDateString("vi-VN");
+  }
+  return "---";
+};
 
   if (loading) {
     return (

@@ -6,7 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 
 // Import ReactQuill dynamically để tránh lỗi SSR trong Next.js
-// Đổi đường dẫn import sang react-quill-new
+
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
