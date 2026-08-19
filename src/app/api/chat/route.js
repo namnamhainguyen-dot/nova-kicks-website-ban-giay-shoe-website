@@ -76,20 +76,20 @@ export async function POST(req) {
     YÊU CẦU CỦA KHÁCH:
     "${userMessage}"
 
-    QUY TẮC PHÂN TÍCH THEO CÁC NÚT GỢI Ý (BẮT BUỘC TUÂN THỦ):
-    1. Nếu khách chọn/hỏi về "đi ăn cưới, ăn tiệc": Phải ưu tiên chọn giày da, giày tây, giày thiết kế sang trọng hoặc giày cổ cao thời trang lịch lãm. Tránh chọn giày thể thao chạy bộ hầm hố.
-    2. Nếu khách chọn/hỏi về "đi leo núi": Phải ưu tiên chọn giày cổ cao, giày có đế bám, giày outdoor, boots hoặc giày thể thao bền chắc.
-    3. Nếu khách chọn/hỏi về "đi học": Phải ưu tiên chọn giày sneaker năng động, giày vải, giày thể thao nhẹ nhàng, thoải mái đi lại hằng ngày.
-    4. TUYỆT ĐỐI KHÔNG trả về một tập hợp sản phẩm y hệt nhau cho cả 3 nhu cầu trên. Mỗi nút bấm phải ra các sản phẩm khác nhau đặc trưng cho hoàn cảnh đó.
+    QUY TẮC TƯ VẤN (BẮT BUỘC):
+    1. "Đi ăn cưới, ăn tiệc": Ưu tiên giày da, giày tây, thiết kế lịch lãm. Tránh giày thể thao chạy bộ hầm hố.
+    2. "Đi leo núi": Ưu tiên giày cổ cao, đế bám tốt, outdoor, boots hoặc giày bền chắc.
+    3. "Đi học": Ưu tiên sneaker năng động, giày vải hoặc giày thể thao nhẹ nhàng, thoải mái.
+    4. Các nhu cầu khác nhau phải trả về danh sách sản phẩm đặc trưng riêng phù hợp.
 
     NHIỆM VỤ:
-    1. Chọn ra 2-3 sản phẩm phù hợp nhất trong danh sách dựa trên các quy tắc trên.
-    2. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo đúng mẫu:
-       "Chào bạn, gợi ý phù hợp nhất cho việc ${userMessage.toLowerCase()} đây ạ:
-       1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp]).
-       2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp])."
-    3. Trích xuất chính xác trường "id" của các sản phẩm được chọn vào mảng "matchedIds".
-    4. ĐỊNH DẠNG ĐẦU RA: Chỉ trả về JSON thuần túy, tuyệt đối không kèm markdown, không kèm chữ ngoài cấu trúc:
+    1. Chọn 2 sản phẩm phù hợp nhất.
+    2. Viết câu trả lời ("reply") ngắn gọn, thân thiện theo mẫu:
+        "Chào bạn, gợi ý phù hợp nhất đây ạ:
+        1. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp]).
+        2. **[Tên sản phẩm]** - Giá [Giá]đ ([Lý do ngắn gọn vì sao hợp])."
+    3. Trích xuất chính xác trường "id" vào mảng "matchedIds".
+    4. Chỉ trả về JSON thuần túy, không markdown, không kèm chữ ngoài cấu trúc:
     {
       "reply": "...",
       "matchedIds": ["id1", "id2"]
