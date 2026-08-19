@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-// Dynamic import ReactQuill để tránh lỗi SSR trong Next.js
+// Import ReactQuill dynamically để tránh lỗi SSR trong Next.js
 const ReactQuill = dynamic(() => import("react-quill"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -15,6 +15,7 @@ import "react-quill/dist/quill.snow.css";
 export default function EditNewsPage() {
   const params = useParams();
   const router = useRouter();
+  const fileInputRef = useRef(null);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -78,16 +79,19 @@ export default function EditNewsPage() {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
-  // Hàm xử lý riêng cho Trình soạn thảo văn bản
   const handleContentChange = (contentValue) => {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
-  // Giả lập upload ảnh đại diện qua prompt URL (hoặc tải file lên)
-  const handleUploadImage = () => {
-    const url = prompt("Nhập đường dẫn URL hình ảnh bài viết:");
-    if (url) {
-      setFormData((prev) => ({ ...prev, image: url }));
+  // Xử lý tải ảnh từ File máy tính
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData((prev) => ({ ...prev, image: reader.result }));
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -191,9 +195,9 @@ export default function EditNewsPage() {
           </div>
         </div>
 
-        {/* Phần Ảnh đại diện có nút chọn ảnh + Xem trước */}
+        {/* Khối Ảnh Đại Diện: Hỗ trợ cả Nhập URL & Upload File */}
         <div className="mb-3">
-          <label className="form-label fw-semibold">Ảnh đại diện (URL)</label>
+          <label className="form-label fw-semibold">Ảnh đại diện</label>
           <div className="input-group mb-2">
             <input
               type="text"
@@ -201,23 +205,30 @@ export default function EditNewsPage() {
               className="form-control"
               value={formData.image || ""}
               onChange={handleChange}
-              placeholder="Dán đường dẫn ảnh hoặc bấm nút bên cạnh..."
+              placeholder="Dán đường dẫn URL ảnh hoặc chọn file từ máy..."
             />
             <button
               type="button"
               className="btn btn-outline-primary"
-              onClick={handleUploadImage}
+              onClick={() => fileInputRef.current?.click()}
             >
-              🖼️ Thêm ảnh
+              📁 Chọn tệp ảnh
             </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              accept="image/*"
+              className="d-none"
+            />
           </div>
           {formData.image && (
-            <div className="mt-2 p-2 border rounded bg-light d-inline-block">
+            <div className="mt-2 p-2 border rounded bg-light d-inline-block position-relative">
               <span className="d-block text-muted small mb-1">Xem trước ảnh:</span>
               <img
                 src={formData.image}
                 alt="Ảnh đại diện"
-                style={{ maxHeight: "120px", objectFit: "cover" }}
+                style={{ maxHeight: "140px", objectFit: "cover" }}
                 className="rounded border"
               />
             </div>
@@ -235,7 +246,7 @@ export default function EditNewsPage() {
           ></textarea>
         </div>
 
-        {/* Trình soạn thảo Rich Text Editor (hiện trực tiếp chữ to, chữ nhỏ, in đậm) */}
+        {/* Soạn thảo văn bản Rich Text WYSIWYG */}
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
