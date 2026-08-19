@@ -199,11 +199,6 @@ export default function ProductChatbox({ products }) {
       return;
     }
 
-    const historyForAPI = updatedMessages.slice(0, -1).map((msg) => ({
-      role: msg.role === "user" ? "user" : "model",
-      parts: [{ text: msg.text }],
-    }));
-
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
@@ -211,7 +206,7 @@ export default function ProductChatbox({ products }) {
         body: JSON.stringify({
           userMessage: userText,
           products,
-          history: historyForAPI,
+          history: [], // Truyền mảng rỗng để mỗi lần hỏi là một lượt tư vấn độc lập, tránh việc AI bị lặp lại kết quả cũ
         }),
       });
 
