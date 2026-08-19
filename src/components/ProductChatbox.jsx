@@ -413,8 +413,10 @@ export default function ProductChatbox({ products }) {
               type="button"
               className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 flex-shrink-0"
               style={{ fontSize: "0.75rem", borderColor: "#dee2e6", color: "#495057" }}
-              disabled={isLoading}
-              onClick={() => submitMessage("giày để đi ăn cưới, ăn tiệc")}
+              onClick={() => {
+                setInput("giày để đi ăn cưới, ăn tiệc");
+                submitMessage("giày để đi ăn cưới, ăn tiệc");
+              }}
             >
               🎉 Đi ăn cưới, ăn tiệc
             </button>
@@ -422,8 +424,10 @@ export default function ProductChatbox({ products }) {
               type="button"
               className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 flex-shrink-0"
               style={{ fontSize: "0.75rem", borderColor: "#dee2e6", color: "#495057" }}
-              disabled={isLoading}
-              onClick={() => submitMessage("giày để đi leo núi")}
+              onClick={() => {
+                setInput("giày để đi leo núi");
+                submitMessage("giày để đi leo núi");
+              }}
             >
               ⛰️ Đi leo núi
             </button>
@@ -431,8 +435,10 @@ export default function ProductChatbox({ products }) {
               type="button"
               className="btn btn-outline-secondary btn-sm rounded-pill px-3 py-1 flex-shrink-0"
               style={{ fontSize: "0.75rem", borderColor: "#dee2e6", color: "#495057" }}
-              disabled={isLoading}
-              onClick={() => submitMessage("giày để đi học")}
+              onClick={() => {
+                setInput("giày để đi học");
+                submitMessage("giày để đi học");
+              }}
             >
               📚 Đi học
             </button>
