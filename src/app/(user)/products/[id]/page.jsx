@@ -85,7 +85,7 @@ export default function ProductDetailPage() {
     const fetchReviews = useCallback(async () => {
         if (!id) return;
         try {
-            const resReviews = await fetch(`/api/products/${id}/reviews`, { cache: 'no-store' });
+            const resReviews = await fetch(`/api/comments?productId=${id}`, { cache: 'no-store' });
             if (resReviews.ok) {
                 const reviewsData = await resReviews.json();
                 const visibleReviews = Array.isArray(reviewsData) 
