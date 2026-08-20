@@ -202,7 +202,8 @@ export async function PATCH(request, { params }) {
       const nextStatus = body.status;
 
       const allowed = {
-        pending: ["preparing", "cancelled"],
+        pending: ["processing", "preparing", "cancelled"], // ✔️ Đã thêm "processing" vào đây
+        processing: ["preparing", "shipping", "cancelled"],
         preparing: ["shipping", "cancelled"],
         shipping: ["completed", "returned", "boomed"],
         completed: [],
