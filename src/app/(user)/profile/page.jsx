@@ -966,170 +966,175 @@ export default function Profile() {
 
                 <div className="d-flex flex-column gap-3">
                   {filteredOrders.length > 0 ? (
-                    filteredOrders.map((order) => {
-                      const itemsList = order.order_items || order.items || order.products || [];
-                      const badge = getStatusInfo(order.status);
-                      
-                      const rawPayment = order.paymentMethod || "cod";
-                      const displayPayment = rawPayment.toLowerCase() === "cod" ? "COD" : rawPayment.toUpperCase();
-                      
-                      const rawStatus = (order.status || "").toLowerCase().trim();
-                      const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
-                      const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
+  filteredOrders.map((order) => {
+    const itemsList = order.order_items || order.items || order.products || [];
+    
+    const rawPayment = (order.paymentMethod || "cod").toLowerCase().trim();
+    const displayPayment = rawPayment === "cod" ? "COD" : rawPayment.toUpperCase();
+    
+    // 💡 Xử lý: Nếu phương thức thanh toán là QR (qr / qrcode / banktransfer...), ép trạng thái hiển thị là "pending" (Đang chờ xác nhận)
+    const isQRPayment = rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+    const effectiveStatus = isQRPayment ? "pending" : order.status;
 
-                      const orderDiscount = Number(order.discountAmount || order.discount || 0);
+    const badge = getStatusInfo(effectiveStatus);
+    
+    const rawStatus = (effectiveStatus || "").toLowerCase().trim();
+    const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
+    const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
 
-                      return (
-                        <div 
-                          key={order._id || order.id}
-                          className="border rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
-                        >
-                          <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
-                            <div className="d-flex align-items-center gap-2">
-                              <span className="text-muted fw-medium d-flex align-items-center gap-1">
-                                <i className="bi bi-calendar3"></i> {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
-                              </span>
-                            </div>
-                            <div className="d-flex align-items-center gap-2">
-                              {orderDiscount > 0 && (
-                                <span className="badge bg-danger-subtle text-danger px-2.5 py-1.5 fw-medium d-flex align-items-center gap-1" style={{ fontSize: "0.8rem" }}>
-                                  <i className="bi bi-tag-fill"></i> Đã giảm {orderDiscount.toLocaleString("vi-VN")}đ
-                                </span>
-                              )}
-                              <span className={`badge px-3 py-2 ${badge.class || ""}`} style={badge.style || {}}>
-                                <i className={badge.icon}></i> {badge.text}
-                              </span>
-                            </div>
-                          </div>
+    const orderDiscount = Number(order.discountAmount || order.discount || 0);
 
-                          <div className="d-flex flex-column gap-3 mb-3">
-                            {itemsList.length > 0 ? (
-                              itemsList.map((item, idx) => {
-                                const itemName = item.name || item.productName || item.title || "Sản phẩm thời trang";
-                                const itemImage = item.image || item.img || item.imageUrl || item.photo || "https://placehold.co/80x80?text=No+Image";
-                                
-                                const itemPrice = Number(item.price || item.productPrice || 0);
-                                const originalPrice = Number(item.originalPrice || item.oldPrice || item.listPrice || 0);
-                                const discountAmount = originalPrice > itemPrice ? originalPrice - itemPrice : Number(item.discountAmount || item.discount || 0);
-                                
-                                const itemQuantity = Number(item.quantity || item.qty || 1);
-                                
-                                const itemColor = item.color || "";
-                                const itemSize = item.size || item.variant || "";
+    return (
+      <div 
+        key={order._id || order.id}
+        className="border rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
+      >
+        <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+          <div className="d-flex align-items-center gap-2">
+            <span className="text-muted fw-medium d-flex align-items-center gap-1">
+              <i className="bi bi-calendar3"></i> {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
+            </span>
+          </div>
+          <div className="d-flex align-items-center gap-2">
+            {orderDiscount > 0 && (
+              <span className="badge bg-danger-subtle text-danger px-2.5 py-1.5 fw-medium d-flex align-items-center gap-1" style={{ fontSize: "0.8rem" }}>
+                <i className="bi bi-tag-fill"></i> Đã giảm {orderDiscount.toLocaleString("vi-VN")}đ
+              </span>
+            )}
+            <span className={`badge px-3 py-2 ${badge.class || ""}`} style={badge.style || {}}>
+              <i className={badge.icon}></i> {badge.text}
+            </span>
+          </div>
+        </div>
 
-                                const detailsArray = [
-                                  itemColor && `Màu: ${itemColor}`,
-                                  itemSize && `Size: ${itemSize}`
-                                ].filter(Boolean);
+        <div className="d-flex flex-column gap-3 mb-3">
+            {itemsList.length > 0 ? (
+              itemsList.map((item, idx) => {
+                const itemName = item.name || item.productName || item.title || "Sản phẩm thời trang";
+                const itemImage = item.image || item.img || item.imageUrl || item.photo || "https://placehold.co/80x80?text=No+Image";
+                
+                const itemPrice = Number(item.price || item.productPrice || 0);
+                const originalPrice = Number(item.originalPrice || item.oldPrice || item.listPrice || 0);
+                const discountAmount = originalPrice > itemPrice ? originalPrice - itemPrice : Number(item.discountAmount || item.discount || 0);
+                
+                const itemQuantity = Number(item.quantity || item.qty || 1);
+                
+                const itemColor = item.color || "";
+                const itemSize = item.size || item.variant || "";
 
-                                return (
-                                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 py-2">
-                                    <div className="d-flex align-items-center gap-3 overflow-hidden">
-                                      <img 
-                                        src={itemImage} 
-                                        alt={itemName} 
-                                        className="rounded-2 border flex-shrink-0 object-fit-cover"
-                                        style={{ width: "60px", height: "60px" }}
-                                        onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
-                                      />
-                                      <div className="overflow-hidden">
-                                        <div className="d-flex align-items-center gap-2 mb-1">
-                                          <h6 className="fw-semibold text-dark text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
-                                            {itemName}
-                                          </h6>
-                                          <span className="text-muted small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
-                                            x{itemQuantity}
-                                          </span>
-                                        </div>
-                                        
-                                        {detailsArray.length > 0 && (
-                                          <div className="text-muted small mb-0">
-                                            Phân loại: <span className="text-dark">{detailsArray.join(" | ")}</span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
+                const detailsArray = [
+                  itemColor && `Màu: ${itemColor}`,
+                  itemSize && `Size: ${itemSize}`
+                ].filter(Boolean);
 
-                                    <div className="text-end flex-shrink-0">
-                                      {discountAmount > 0 && (
-                                        <div className="d-flex align-items-center justify-content-end gap-2 mb-1" style={{ fontSize: "0.8rem" }}>
-                                          {originalPrice > 0 && (
-                                            <span className="text-muted text-decoration-line-through">
-                                              {originalPrice.toLocaleString("vi-VN")}đ
-                                            </span>
-                                          )}
-                                          <span className="badge bg-danger-subtle text-danger px-1.5 py-0.5 fw-medium">
-                                            Giảm {discountAmount.toLocaleString("vi-VN")}đ
-                                          </span>
-                                        </div>
-                                      )}
-
-                                      <div className="fw-semibold text-dark">
-                                        {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })
-                            ) : (
-                              <div className="text-muted small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
-                            )}
-                          </div>
-
-                          {isCancelled && (
-                            <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
-                              <i className="bi bi-info-circle text-danger"></i>
-                              <div>
-                                <span className="fw-bold text-dark">Lý do hủy: </span>
-                                <span className="text-secondary">{order.cancelReason || "Không có lý do cụ thể"}</span>
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
-                            <div className="small text-muted d-flex align-items-center gap-1">
-                              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
-                            </div>
-                            
-                            <div className="d-flex flex-column align-items-end gap-1">
-                              <div className="d-flex align-items-center gap-3">
-                                <div>
-                                  <span className="small text-muted me-2">Tổng tiền:</span>
-                                  <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
-                                    {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
-                                  </span>
-                                </div>
-
-                                <div className="d-flex gap-2">
-                                  {isPending && (
-                                    <button 
-                                      onClick={() => openCancelModal(order._id || order.id)}
-                                      className="btn btn-sm btn-outline-danger px-3 py-2 rounded-2 fw-semibold d-flex align-items-center gap-1"
-                                    >
-                                      <i className="bi bi-x-lg"></i> Hủy đơn
-                                    </button>
-                                  )}
-
-                                  <button 
-                                    onClick={() => router.push(`/orders/${order._id || order.id}`)}
-                                    className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
-                                    style={{ backgroundColor: "#d97706" }}
-                                  >
-                                    <i className="bi bi-eye"></i> Xem chi tiết
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
+                return (
+                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 py-2">
+                    <div className="d-flex align-items-center gap-3 overflow-hidden">
+                      <img 
+                        src={itemImage} 
+                        alt={itemName} 
+                        className="rounded-2 border flex-shrink-0 object-fit-cover"
+                        style={{ width: "60px", height: "60px" }}
+                        onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
+                      />
+                      <div className="overflow-hidden">
+                        <div className="d-flex align-items-center gap-2 mb-1">
+                          <h6 className="fw-semibold text-dark text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
+                            {itemName}
+                          </h6>
+                          <span className="text-muted small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
+                            x{itemQuantity}
+                          </span>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <div className="text-center py-5">
-                      <p className="text-muted m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
+                        
+                        {detailsArray.length > 0 && (
+                          <div className="text-muted small mb-0">
+                            Phân loại: <span className="text-dark">{detailsArray.join(" | ")}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    <div className="text-end flex-shrink-0">
+                      {discountAmount > 0 && (
+                        <div className="d-flex align-items-center justify-content-end gap-2 mb-1" style={{ fontSize: "0.8rem" }}>
+                          {originalPrice > 0 && (
+                            <span className="text-muted text-decoration-line-through">
+                              {originalPrice.toLocaleString("vi-VN")}đ
+                            </span>
+                          )}
+                          <span className="badge bg-danger-subtle text-danger px-1.5 py-0.5 fw-medium">
+                            Giảm {discountAmount.toLocaleString("vi-VN")}đ
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="fw-semibold text-dark">
+                        {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="text-muted small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
+            )}
+          </div>
+
+          {isCancelled && (
+            <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
+              <i className="bi bi-info-circle text-danger"></i>
+              <div>
+                <span className="fw-bold text-dark">Lý do hủy: </span>
+                <span className="text-secondary">{order.cancelReason || "Không có lý do cụ thể"}</span>
+              </div>
+            </div>
+          )}
+
+          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
+            <div className="small text-muted d-flex align-items-center gap-1">
+              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
+            </div>
+            
+            <div className="d-flex flex-column align-items-end gap-1">
+              <div className="d-flex align-items-center gap-3">
+                <div>
+                  <span className="small text-muted me-2">Tổng tiền:</span>
+                  <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
+                    {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
+                  </span>
+                </div>
+
+                <div className="d-flex gap-2">
+                  {isPending && (
+                    <button 
+                      onClick={() => openCancelModal(order._id || order.id)}
+                      className="btn btn-sm btn-outline-danger px-3 py-2 rounded-2 fw-semibold d-flex align-items-center gap-1"
+                    >
+                      <i className="bi bi-x-lg"></i> Hủy đơn
+                    </button>
                   )}
+
+                  <button 
+                    onClick={() => router.push(`/orders/${order._id || order.id}`)}
+                    className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
+                    style={{ backgroundColor: "#d97706" }}
+                  >
+                    <i className="bi bi-eye"></i> Xem chi tiết
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      );
+    })
+  ) : (
+    <div className="text-center py-5">
+      <p className="text-muted m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
+    </div>
+  )}
                 </div>
               </div>
             )}
