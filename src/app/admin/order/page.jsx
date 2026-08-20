@@ -35,7 +35,6 @@ export default function AdminOrderPage() {
     image: "",
   });
 
-  // Thêm "processing" vào quy trình trạng thái đơn hàng
   const statusOrder = ["pending", "processing", "preparing", "shipping", "completed"];
 
   const loadOrders = async () => {
@@ -212,7 +211,6 @@ export default function AdminOrderPage() {
   const shippingOrders = orders.filter((o) => o.status === "shipping" || o.status === "preparing").length;
   const totalRevenue = orders.filter((o) => o.status === "completed").reduce((sum, o) => sum + Number(o.final_total || o.total || 0), 0);
 
-  // Thêm định nghĩa badge cho "processing"
   const statusBadges = {
     pending: { text: "Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning" },
     processing: { text: "Đang xử lý", class: "bg-primary bg-opacity-10 text-primary" },
@@ -263,15 +261,13 @@ export default function AdminOrderPage() {
   const filteredOrders = orders.filter((o) => {
     const matchesTab = activeTab === "all" ? true : o.status === activeTab;
     
-    // Kiểm tra cổng thanh toán linh hoạt hỗ trợ cả QR/Banking và VNPay/COD
+    // Cập nhật bộ lọc để bắt chuẩn mã VNPAY
     const rawMethod = (o.paymentMethod || o.payment_method || "").toLowerCase();
     let matchesPayment = true;
     if (paymentFilter === "cod") {
       matchesPayment = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
     } else if (paymentFilter === "vnpay") {
-      matchesPayment = rawMethod.includes("vnpay");
-    } else if (paymentFilter === "qr") {
-      matchesPayment = rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
+      matchesPayment = rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
     }
 
     const key = search.toLowerCase();
@@ -403,7 +399,6 @@ export default function AdminOrderPage() {
   return (
     <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", fontFamily: "inherit" }}>
       
-      {/* ================= INLINE MESSAGE NOTIFICATION ================= */}
       {messageBar.visible && (
         <div className={`alert alert-${messageBar.type} py-2 px-3 rounded-3 shadow-sm d-flex align-items-center mb-4`} role="alert">
           <span className="fw-medium small">{messageBar.text}</span>
@@ -411,7 +406,6 @@ export default function AdminOrderPage() {
         </div>
       )}
 
-      {/* ================= MODAL ACTION (BOM/TRẢ HÀNG/HỦY) ================= */}
       {actionModal.isOpen && (
         <div className="modal show d-block" style={{ background: "rgba(0,0,0,.5)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -452,7 +446,6 @@ export default function AdminOrderPage() {
         </div>
       )}
 
-      {/* Tiêu đề trang & Nút xuất Excel */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
@@ -471,7 +464,6 @@ export default function AdminOrderPage() {
         </button>
       </div>
 
-      {/* Thẻ thống kê tổng quan (Dashboard Widgets) */}
       <div className="row g-3 mb-4">
         <div className="col-xl-3 col-md-6">
           <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
@@ -499,7 +491,6 @@ export default function AdminOrderPage() {
         </div>
       </div>
 
-      {/* Thanh công cụ tìm kiếm, lọc & Tab trạng thái */}
       <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
           <div className="col-md-5">
@@ -523,8 +514,8 @@ export default function AdminOrderPage() {
             >
               <option value="all">Tất cả cổng thanh toán</option>
               <option value="cod">Thanh toán COD</option>
-              <option value="qr">Thanh toán QR / Banking</option>
-              <option value="vnpay">Thanh toán VNPay</option>
+              {/* Đã đổi nhãn thành VNPAY */}
+              <option value="vnpay">Thanh toán VNPAY</option>
             </select>
           </div>
           <div className="col-md-4 d-flex align-items-end justify-content-md-end">
@@ -538,7 +529,6 @@ export default function AdminOrderPage() {
           </div>
         </div>
 
-        {/* Các nút Tab trạng thái - Bao gồm tab "processing" */}
         <div className="d-flex gap-2 overflow-auto py-2 mt-3 border-top pt-3">
           {[
             "all",
@@ -563,7 +553,6 @@ export default function AdminOrderPage() {
         </div>
       </div>
 
-      {/* Thanh thao tác hàng loạt (Batch Actions Bar) */}
       {selectedOrderIds.length > 0 && (
         <div className="card border-0 shadow-sm rounded-4 px-4 py-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between">
           <div className="fw-semibold small">
@@ -598,7 +587,6 @@ export default function AdminOrderPage() {
         </div>
       )}
 
-      {/* Bảng danh sách đơn hàng */}
       <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
           <table className="table align-middle mb-0">
@@ -679,8 +667,9 @@ export default function AdminOrderPage() {
                         <div className="fw-bold text-dark" style={{ fontSize: "0.9rem" }}>
                           {(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ
                         </div>
-                        <span className={`badge mt-1 ${rawMethod.includes("qr") || rawMethod.includes("banking") ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.68rem" }}>
-                          {rawMethod.includes("qr") || rawMethod.includes("banking") ? "QR CODE" : (rawMethod.includes("vnpay") ? "VNPAY" : "COD")}
+                        {/* Hiển thị nhãn VNPAY nếu thanh toán qua VNPAY / QR / Banking */}
+                        <span className={`badge mt-1 ${rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.68rem" }}>
+                          {rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") ? "VNPAY" : "COD"}
                         </span>
                       </td>
 

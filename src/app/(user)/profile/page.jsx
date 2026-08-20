@@ -129,7 +129,6 @@ export default function Profile() {
                   parsedUser.phone = freshUserData.phone || parsedUser.phone;
                   parsedUser.fullname = freshUserData.fullname || parsedUser.fullname;
                   parsedUser.avatar = freshUserData.avatar || parsedUser.avatar;
-                  parsedUser.avatar = freshUserData.avatar;
                   localStorage.setItem("user", JSON.stringify(parsedUser));
                 }
               }
@@ -311,7 +310,6 @@ export default function Profile() {
     }));
   };
 
-  // XỬ LÝ CHỌN ẢNH TỪ MÁY TÍNH (Chuyển thành Base64)
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -327,7 +325,6 @@ export default function Profile() {
     }
   };
 
-  // 5. Cập nhật thông tin cơ bản & Avatar
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
@@ -369,11 +366,9 @@ export default function Profile() {
         const updatedUserData = { ...user, ...payload, _id: currentUserId };
         localStorage.setItem("user", JSON.stringify(updatedUserData));
         
-        // 🔔 Phát tín hiệu đồng bộ dữ liệu sang các component khác như Header / Admin
         window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updatedUserData }));
 
         setIsEditingProfile(false);
-        // XÓA hoặc BÌNH LUẬN DÒNG NÀY LẠI: window.location.reload();
       } else {
         alert(`Lỗi từ server: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
       }
@@ -383,7 +378,6 @@ export default function Profile() {
     }
   };
 
-  // 6. XỬ LÝ ĐỔI MẬT KHẨU
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
@@ -437,7 +431,6 @@ export default function Profile() {
     }
   };
 
-  // 7. QUẢN LÝ ĐA ĐỊA CHỈ
   const syncAddressesToStorageAndServer = async (newAddresses) => {
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
@@ -627,13 +620,12 @@ export default function Profile() {
 
   // Logic lọc đơn hàng dựa trên trạng thái được chọn
   const filteredOrders = orders.filter((order) => {
-    // Ép logic: QR/Banking -> Đang xử lý
-    const rawPayment = (order.paymentMethod || "").toLowerCase();
-    const isQRPayment = rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+    const rawPayment = (order.paymentMethod || order.payment_method || "").toLowerCase();
+    const isQRPayment = rawPayment.includes("vnpay") || rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
     const st = isQRPayment ? "processing" : (order.status || "").toLowerCase().trim();
 
     if (orderFilter === "all") return true;
-    if (orderFilter === "pending") return st === "pending" || st === "chờ xác nhận";
+    if (orderFilter === "pending") return st === "pending" || st === "đang chờ xác nhận";
     if (orderFilter === "processing") return st === "processing" || st === "đang xử lý";
     if (orderFilter === "preparing") return st === "preparing" || st === "đang đóng gói";
     if (orderFilter === "shipping") return st === "shipping" || st === "đang giao";
@@ -656,7 +648,6 @@ export default function Profile() {
     <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
       <main className="container mb-5 flex-grow-1" style={{ marginTop: "-110px" }}>
-        {/* Tiêu đề được đưa vào chung trong main */}
         <div className="mb-4">
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
@@ -751,8 +742,6 @@ export default function Profile() {
                 </div>
 
                 <form onSubmit={handleUpdateProfile} style={{ maxWidth: "650px" }}>
-                  
-                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN */}
                   <div className="mb-4 row align-items-center">
                     <label className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Ảnh đại diện</label>
                     <div className="col-sm-9 d-flex align-items-center gap-3">
@@ -945,7 +934,7 @@ export default function Profile() {
                   {[
                     { key: "all", label: "Tất cả" },
                     { key: "pending", label: "Chờ xác nhận" },
-                    { key: "processing", label: "Đang xử lý" }, // Thêm mục này
+                    { key: "processing", label: "Đang xử lý" },
                     { key: "preparing", label: "Đang đóng gói" },
                     { key: "shipping", label: "Đang giao" },
                     { key: "completed", label: "Hoàn thành" },
@@ -966,175 +955,173 @@ export default function Profile() {
 
                 <div className="d-flex flex-column gap-3">
                   {filteredOrders.length > 0 ? (
-            filteredOrders.map((order) => {
-              const itemsList = order.order_items || order.items || order.products || [];
-              
-              const rawPayment = (order.paymentMethod || "cod").toLowerCase().trim();
-              const displayPayment = rawPayment === "cod" ? "COD" : rawPayment.toUpperCase();
-              
-              // 💡 Xử lý: Nếu phương thức thanh toán là QR, ép trạng thái hiển thị là "processing" (Đang xử lý)
-              const isQRPayment = rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
-              const effectiveStatus = isQRPayment ? "processing" : order.status; // 👈 Đã đổi từ "pending" thành "processing"
+                    filteredOrders.map((order) => {
+                      const itemsList = order.order_items || order.items || order.products || [];
+                      
+                      const rawPayment = (order.paymentMethod || order.payment_method || "cod").toLowerCase().trim();
+                      const isQRPayment = rawPayment.includes("vnpay") || rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+                      const displayPayment = isQRPayment ? "VNPAY" : (rawPayment === "cod" ? "COD" : rawPayment.toUpperCase());
+                      
+                      const effectiveStatus = isQRPayment ? "processing" : order.status;
+                      const badge = getStatusInfo(effectiveStatus);
+                      
+                      const rawStatus = (effectiveStatus || "").toLowerCase().trim();
+                      const isPending = rawStatus === "pending" || rawStatus === "đang chờ xác nhận" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
+                      const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
 
-              const badge = getStatusInfo(effectiveStatus);
-              
-              const rawStatus = (effectiveStatus || "").toLowerCase().trim();
-              const isPending = rawStatus === "pending" || rawStatus === "đang chờ xác nhận" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
-              const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
+                      const orderDiscount = Number(order.discountAmount || order.discount || 0);
 
-              const orderDiscount = Number(order.discountAmount || order.discount || 0);
-
-    return (
-      <div 
-        key={order._id || order.id}
-        className="border rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
-      >
-        <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
-          <div className="d-flex align-items-center gap-2">
-            <span className="text-muted fw-medium d-flex align-items-center gap-1">
-              <i className="bi bi-calendar3"></i> {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
-            </span>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            {orderDiscount > 0 && (
-              <span className="badge bg-danger-subtle text-danger px-2.5 py-1.5 fw-medium d-flex align-items-center gap-1" style={{ fontSize: "0.8rem" }}>
-                <i className="bi bi-tag-fill"></i> Đã giảm {orderDiscount.toLocaleString("vi-VN")}đ
-              </span>
-            )}
-            <span className={`badge px-3 py-2 ${badge.class || ""}`} style={badge.style || {}}>
-              <i className={badge.icon}></i> {badge.text}
-            </span>
-          </div>
-        </div>
-
-        <div className="d-flex flex-column gap-3 mb-3">
-            {itemsList.length > 0 ? (
-              itemsList.map((item, idx) => {
-                const itemName = item.name || item.productName || item.title || "Sản phẩm thời trang";
-                const itemImage = item.image || item.img || item.imageUrl || item.photo || "https://placehold.co/80x80?text=No+Image";
-                
-                const itemPrice = Number(item.price || item.productPrice || 0);
-                const originalPrice = Number(item.originalPrice || item.oldPrice || item.listPrice || 0);
-                const discountAmount = originalPrice > itemPrice ? originalPrice - itemPrice : Number(item.discountAmount || item.discount || 0);
-                
-                const itemQuantity = Number(item.quantity || item.qty || 1);
-                
-                const itemColor = item.color || "";
-                const itemSize = item.size || item.variant || "";
-
-                const detailsArray = [
-                  itemColor && `Màu: ${itemColor}`,
-                  itemSize && `Size: ${itemSize}`
-                ].filter(Boolean);
-
-                return (
-                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 py-2">
-                    <div className="d-flex align-items-center gap-3 overflow-hidden">
-                      <img 
-                        src={itemImage} 
-                        alt={itemName} 
-                        className="rounded-2 border flex-shrink-0 object-fit-cover"
-                        style={{ width: "60px", height: "60px" }}
-                        onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
-                      />
-                      <div className="overflow-hidden">
-                        <div className="d-flex align-items-center gap-2 mb-1">
-                          <h6 className="fw-semibold text-dark text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
-                            {itemName}
-                          </h6>
-                          <span className="text-muted small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
-                            x{itemQuantity}
-                          </span>
-                        </div>
-                        
-                        {detailsArray.length > 0 && (
-                          <div className="text-muted small mb-0">
-                            Phân loại: <span className="text-dark">{detailsArray.join(" | ")}</span>
+                      return (
+                        <div 
+                          key={order._id || order.id}
+                          className="border rounded-4 p-3 p-md-4 bg-white shadow-sm transition-all"
+                        >
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pb-3 mb-3 border-bottom gap-2">
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="text-muted fw-medium d-flex align-items-center gap-1">
+                                <i className="bi bi-calendar3"></i> {order.createdAt ? new Date(order.createdAt).toLocaleDateString("vi-VN", { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }) : ""}
+                              </span>
+                            </div>
+                            <div className="d-flex align-items-center gap-2">
+                              {orderDiscount > 0 && (
+                                <span className="badge bg-danger-subtle text-danger px-2.5 py-1.5 fw-medium d-flex align-items-center gap-1" style={{ fontSize: "0.8rem" }}>
+                                  <i className="bi bi-tag-fill"></i> Đã giảm {orderDiscount.toLocaleString("vi-VN")}đ
+                                </span>
+                              )}
+                              <span className={`badge px-3 py-2 ${badge.class || ""}`} style={badge.style || {}}>
+                                <i className={badge.icon}></i> {badge.text}
+                              </span>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                    </div>
 
-                    <div className="text-end flex-shrink-0">
-                      {discountAmount > 0 && (
-                        <div className="d-flex align-items-center justify-content-end gap-2 mb-1" style={{ fontSize: "0.8rem" }}>
-                          {originalPrice > 0 && (
-                            <span className="text-muted text-decoration-line-through">
-                              {originalPrice.toLocaleString("vi-VN")}đ
-                            </span>
+                          <div className="d-flex flex-column gap-3 mb-3">
+                            {itemsList.length > 0 ? (
+                              itemsList.map((item, idx) => {
+                                const itemName = item.name || item.productName || item.title || "Sản phẩm thời trang";
+                                const itemImage = item.image || item.img || item.imageUrl || item.photo || "https://placehold.co/80x80?text=No+Image";
+                                
+                                const itemPrice = Number(item.price || item.productPrice || 0);
+                                const originalPrice = Number(item.originalPrice || item.oldPrice || item.listPrice || 0);
+                                const discountAmount = originalPrice > itemPrice ? originalPrice - itemPrice : Number(item.discountAmount || item.discount || 0);
+                                
+                                const itemQuantity = Number(item.quantity || item.qty || 1);
+                                
+                                const itemColor = item.color || "";
+                                const itemSize = item.size || item.variant || "";
+
+                                const detailsArray = [
+                                  itemColor && `Màu: ${itemColor}`,
+                                  itemSize && `Size: ${itemSize}`
+                                ].filter(Boolean);
+
+                                return (
+                                  <div key={idx} className="d-flex align-items-center justify-content-between gap-3 py-2">
+                                    <div className="d-flex align-items-center gap-3 overflow-hidden">
+                                      <img 
+                                        src={itemImage} 
+                                        alt={itemName} 
+                                        className="rounded-2 border flex-shrink-0 object-fit-cover"
+                                        style={{ width: "60px", height: "60px" }}
+                                        onError={(e) => { e.target.src = "https://placehold.co/80x80?text=Product"; }}
+                                      />
+                                      <div className="overflow-hidden">
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                          <h6 className="fw-semibold text-dark text-truncate mb-0" style={{ fontSize: "0.95rem" }}>
+                                            {itemName}
+                                          </h6>
+                                          <span className="text-muted small fw-medium flex-shrink-0" style={{ fontSize: "0.85rem" }}>
+                                            x{itemQuantity}
+                                          </span>
+                                        </div>
+                                        
+                                        {detailsArray.length > 0 && (
+                                          <div className="text-muted small mb-0">
+                                            Phân loại: <span className="text-dark">{detailsArray.join(" | ")}</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    <div className="text-end flex-shrink-0">
+                                      {discountAmount > 0 && (
+                                        <div className="d-flex align-items-center justify-content-end gap-2 mb-1" style={{ fontSize: "0.8rem" }}>
+                                          {originalPrice > 0 && (
+                                            <span className="text-muted text-decoration-line-through">
+                                              {originalPrice.toLocaleString("vi-VN")}đ
+                                            </span>
+                                          )}
+                                          <span className="badge bg-danger-subtle text-danger px-1.5 py-0.5 fw-medium">
+                                            Giảm {discountAmount.toLocaleString("vi-VN")}đ
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      <div className="fw-semibold text-dark">
+                                        {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-muted small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
+                            )}
+                          </div>
+
+                          {isCancelled && (
+                            <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
+                              <i className="bi bi-info-circle text-danger"></i>
+                              <div>
+                                <span className="fw-bold text-dark">Lý do hủy: </span>
+                                <span className="text-secondary">{order.cancelReason || "Không có lý do cụ thể"}</span>
+                              </div>
+                            </div>
                           )}
-                          <span className="badge bg-danger-subtle text-danger px-1.5 py-0.5 fw-medium">
-                            Giảm {discountAmount.toLocaleString("vi-VN")}đ
-                          </span>
+
+                          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
+                            <div className="small text-muted d-flex align-items-center gap-1">
+                              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
+                            </div>
+                            
+                            <div className="d-flex flex-column align-items-end gap-1">
+                              <div className="d-flex align-items-center gap-3">
+                                <div>
+                                  <span className="small text-muted me-2">Tổng tiền:</span>
+                                  <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
+                                    {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
+                                  </span>
+                                </div>
+
+                                <div className="d-flex gap-2">
+                                  {isPending && (
+                                    <button 
+                                      onClick={() => openCancelModal(order._id || order.id)}
+                                      className="btn btn-sm btn-outline-danger px-3 py-2 rounded-2 fw-semibold d-flex align-items-center gap-1"
+                                    >
+                                      <i className="bi bi-x-lg"></i> Hủy đơn
+                                    </button>
+                                  )}
+
+                                  <button 
+                                    onClick={() => router.push(`/orders/${order._id || order.id}`)}
+                                    className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
+                                    style={{ backgroundColor: "#d97706" }}
+                                  >
+                                    <i className="bi bi-eye"></i> Xem chi tiết
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
                         </div>
-                      )}
-
-                      <div className="fw-semibold text-dark">
-                        {(itemPrice * itemQuantity).toLocaleString("vi-VN")}đ
-                      </div>
+                      );
+                    })
+                  ) : (
+                    <div className="text-center py-5">
+                      <p className="text-muted m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
                     </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="text-muted small italic">Không có thông tin chi tiết sản phẩm trong đơn hàng này.</div>
-            )}
-          </div>
-
-          {isCancelled && (
-            <div className="bg-light p-3 rounded-3 text-sm my-3 border border-light-subtle d-flex align-items-center gap-2">
-              <i className="bi bi-info-circle text-danger"></i>
-              <div>
-                <span className="fw-bold text-dark">Lý do hủy: </span>
-                <span className="text-secondary">{order.cancelReason || "Không có lý do cụ thể"}</span>
-              </div>
-            </div>
-          )}
-
-          <div className="d-flex flex-wrap justify-content-between align-items-center pt-3 border-top gap-2">
-            <div className="small text-muted d-flex align-items-center gap-1">
-              <i className="bi bi-credit-card"></i> Phương thức thanh toán: <span className="fw-medium text-dark">{displayPayment}</span>
-            </div>
-            
-            <div className="d-flex flex-column align-items-end gap-1">
-              <div className="d-flex align-items-center gap-3">
-                <div>
-                  <span className="small text-muted me-2">Tổng tiền:</span>
-                  <span className="fw-bold fs-5" style={{ color: "#d97706" }}>
-                    {Number(order.final_total || order.totalPrice || order.total || 0).toLocaleString("vi-VN")}đ
-                  </span>
-                </div>
-
-                <div className="d-flex gap-2">
-                  {isPending && (
-                    <button 
-                      onClick={() => openCancelModal(order._id || order.id)}
-                      className="btn btn-sm btn-outline-danger px-3 py-2 rounded-2 fw-semibold d-flex align-items-center gap-1"
-                    >
-                      <i className="bi bi-x-lg"></i> Hủy đơn
-                    </button>
                   )}
-
-                  <button 
-                    onClick={() => router.push(`/orders/${order._id || order.id}`)}
-                    className="btn btn-sm text-white px-3 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
-                    style={{ backgroundColor: "#d97706" }}
-                  >
-                    <i className="bi bi-eye"></i> Xem chi tiết
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      );
-    })
-  ) : (
-    <div className="text-center py-5">
-      <p className="text-muted m-0">Không tìm thấy đơn hàng nào ở trạng thái này.</p>
-    </div>
-  )}
                 </div>
               </div>
             )}

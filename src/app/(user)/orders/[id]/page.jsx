@@ -196,7 +196,6 @@ export default function OrderDetailPage() {
     }
   };
 
-  // Thêm cấu hình trạng thái "processing" (Đang xử lý)
   const statusConfigs = {
     pending: { text: "Chờ xác nhận", badge: "bg-warning text-dark"},
     processing: { text: "Đang xử lý", badge: "bg-primary text-white"},
@@ -217,22 +216,30 @@ export default function OrderDetailPage() {
   const rawMethod = (order.paymentMethod || order.payment_method || "").toLowerCase();
   const isCod = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
   
-  // Ép trạng thái thành "processing" nếu thanh toán bằng QR / Banking / Chuyển khoản
-  const isQRPayment = rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
+  const isQRPayment = rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản") || rawMethod.includes("vnpay");
   const effectiveStatus = isQRPayment ? "processing" : (order.status || "pending");
 
   const currentStatus = statusConfigs[effectiveStatus] || { text: order.status || "Đang xử lý", badge: "bg-secondary text-white", icon: "•" };
 
-  // Format tên phương thức thanh toán viết hoa
+  // Chuẩn hóa hiển thị tên VNPAY / Thanh toán trực tuyến đồng bộ profile và admin
   let displayPaymentName = "VNPAY";
+  let displayPaymentStatusText = "Thanh toán VNPAY thành công";
+  
   if (isCod) {
     displayPaymentName = "COD";
+    displayPaymentStatusText = "Thanh toán khi nhận hàng (COD)";
   } else if (rawMethod.includes("momo")) {
     displayPaymentName = "MOMO";
+    displayPaymentStatusText = "Thanh toán MOMO thành công";
+  } else if (rawMethod.includes("vnpay")) {
+    displayPaymentName = "VNPAY";
+    displayPaymentStatusText = "Thanh toán VNPAY thành công";
   } else if (isQRPayment) {
-    displayPaymentName = "THANH TOÁN QR";
+    displayPaymentName = "VNPAY";
+    displayPaymentStatusText = "Thanh toán VNPAY thành công";
   } else if (order.paymentMethod || order.payment_method) {
     displayPaymentName = (order.paymentMethod || order.payment_method).toUpperCase();
+    displayPaymentStatusText = `Thanh toán ${displayPaymentName} thành công`;
   }
 
   return (
@@ -265,7 +272,7 @@ export default function OrderDetailPage() {
               {isCod ? "📦" : "✓"}
             </span>
             <span className="fw-bold">
-              {isCod ? "Thanh toán khi nhận hàng (COD)" : "Thanh toán chuyển khoản thành công"}
+              {displayPaymentStatusText}
             </span>
           </div>
           <span className="fw-bold text-dark">{displayFinalTotal.toLocaleString("vi-VN")}đ</span>
