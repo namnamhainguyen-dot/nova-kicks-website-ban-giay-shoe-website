@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import clientPromise from "@/lib/mongodb"; // Hoặc file connect db mongodb native của bạn
+import clientPromise from "@/libs/mongodb"; // Hoặc file connect db mongodb native của bạn
 
 export const maxDuration = 60;
 
