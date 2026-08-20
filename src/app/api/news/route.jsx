@@ -1,26 +1,33 @@
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-import connectDB from "@/libs/mongodb";
-import News from "@/models/News";
+import { ObjectId } from "mongodb";
+import clientPromise from "@/libs/mongodb"; // Hoặc đường dẫn trỏ tới file clientPromise của bạn
 
 export const maxDuration = 60; // Tăng timeout cho Vercel Serverless Function
+
+// Hàm hỗ trợ kết nối database và lấy collection "news"
+async function getNewsCollection() {
+  const client = await clientPromise;
+  const db = client.db(); // Lấy database mặc định từ connection string
+  return db.collection("news");
+}
 
 // 1. LẤY BÀI VIẾT (GET)
 export async function GET(request) {
   try {
-    await connectDB();
+    const collection = await getNewsCollection();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
     const isAdmin = searchParams.get("admin");
 
     if (id) {
-      if (!mongoose.Types.ObjectId.isValid(id)) {
+      if (!ObjectId.isValid(id)) {
         return NextResponse.json(
           { success: false, error: "ID bài viết không hợp lệ" },
           { status: 400 }
         );
       }
-      const article = await News.findById(id);
+      
+      const article = await collection.findOne({ _id: new ObjectId(id) });
       if (!article) {
         return NextResponse.json(
           { success: false, error: "Không tìm thấy bài viết" },
@@ -31,7 +38,7 @@ export async function GET(request) {
     }
 
     const filter = isAdmin === "true" ? {} : { isHidden: { $ne: true } };
-    const news = await News.find(filter).sort({ createdAt: -1 });
+    const news = await collection.find(filter).sort({ createdAt: -1 }).toArray();
 
     return NextResponse.json({ success: true, data: news });
   } catch (error) {
@@ -46,11 +53,11 @@ export async function GET(request) {
 // 2. CẬP NHẬT BÀI VIẾT (PUT)
 export async function PUT(request) {
   try {
-    await connectDB();
+    const collection = await getNewsCollection();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, error: "ID bài viết không hợp lệ" },
         { status: 400 }
@@ -59,7 +66,7 @@ export async function PUT(request) {
 
     const body = await request.json();
 
-    // LOẠI BỎ CÁC TRƯỜNG CẤM CỦA MONGOOSE (Khắc phục nguyên nhân lỗi Status 500)
+    // Loại bỏ các trường hệ thống không được phép ghi đè trực tiếp
     delete body._id;
     delete body.__v;
     delete body.updatedAt;
@@ -69,11 +76,17 @@ export async function PUT(request) {
       body.createdAt = new Date(body.createdAt);
     }
 
-    const updatedArticle = await News.findByIdAndUpdate(
-      id,
+    // Tự động cập nhật thời gian sửa
+    body.updatedAt = new Date();
+
+    const result = await collection.findOneAndUpdate(
+      { _id: new ObjectId(id) },
       { $set: body },
-      { new: true, runValidators: true }
+      { returnDocument: "after" }
     );
+
+    // Xử lý tùy theo cấu trúc trả về của driver
+    const updatedArticle = result.value || result;
 
     if (!updatedArticle) {
       return NextResponse.json(
@@ -95,18 +108,26 @@ export async function PUT(request) {
 // 3. XÓA BÀI VIẾT (DELETE)
 export async function DELETE(request) {
   try {
-    await connectDB();
+    const collection = await getNewsCollection();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    if (!id || !ObjectId.isValid(id)) {
       return NextResponse.json(
         { success: false, error: "ID không hợp lệ" },
         { status: 400 }
       );
     }
 
-    await News.findByIdAndDelete(id);
+    const deleteResult = await collection.deleteOne({ _id: new ObjectId(id) });
+
+    if (deleteResult.deletedCount === 0) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy bài viết để xóa" },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json({
       success: true,
       message: "Xóa bài viết thành công",
