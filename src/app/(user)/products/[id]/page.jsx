@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation'; // Thêm useSearchParams
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useContext, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { CartContext } from "@/components/CartContext";
@@ -8,7 +8,7 @@ import { CartContext } from "@/components/CartContext";
 export default function ProductDetailPage() {
     const { cart, setCart } = useContext(CartContext);
     const params = useParams();
-    const searchParams = useSearchParams(); // Lấy query params từ URL
+    const searchParams = useSearchParams();
     const router = useRouter();
     const id = params?.id;
 
@@ -16,9 +16,10 @@ export default function ProductDetailPage() {
     const [loading, setLoading] = useState(true);
     const [addedToCart, setAddedToCart] = useState(false);
     
-    // Auth State
+    // Auth State & Lock State
     const [isAdmin, setIsAdmin] = useState(false);
     const [currentUser, setCurrentUser] = useState(null);
+    const [isAccountLocked, setIsAccountLocked] = useState(false); // 🛑 State kiểm tra tài khoản bị khóa
 
     // Product Variant State
     const [selectedSize, setSelectedSize] = useState('');
@@ -50,13 +51,18 @@ export default function ProductDetailPage() {
         return !isNaN(num) ? num.toLocaleString('vi-VN') : '0';
     };
 
-    // Lấy user từ localStorage
+    // Lấy user từ localStorage và kiểm tra trạng thái khóa
     useEffect(() => {
         try {
             const savedUser = localStorage.getItem('user');
             if (savedUser) {
                 const user = JSON.parse(savedUser);
                 setCurrentUser(user);
+                
+                // 🛑 Kiểm tra nếu tài khoản bị khóa
+                if (user?.status === 'inactive' || user?.isLocked === true) {
+                    setIsAccountLocked(true);
+                }
                 
                 const roleLower = (user?.role || '').toLowerCase();
                 const emailLower = (user?.email || '').toLowerCase();
@@ -94,7 +100,7 @@ export default function ProductDetailPage() {
 
     // Check user eligibility for review
     const checkUserEligibility = useCallback(async (userId, productId) => {
-        if (!userId || !productId) return;
+        if (!userId || !productId || isAccountLocked) return; // Nếu khóa thì không cần check quyền đánh giá
         try {
             const res = await fetch(`/api/orders?userId=${userId}`, { cache: 'no-store' });
             if (res.ok) {
@@ -116,7 +122,7 @@ export default function ProductDetailPage() {
         } catch (err) {
             console.error("Lỗi kiểm tra quyền đánh giá:", err);
         }
-    }, []);
+    }, [isAccountLocked]);
 
     const getNormalizedSizeValue = (s) => {
         if (typeof s === 'object' && s !== null) {
@@ -159,7 +165,7 @@ export default function ProductDetailPage() {
         setStockAvailable(currentVariant.quantity ?? 0);
     }, [product]);
 
-    // Fetch product data & chuẩn hóa thông tin Flash Sale
+    // Fetch product data
     useEffect(() => {
         if (!id) return;
 
@@ -312,11 +318,8 @@ export default function ProductDetailPage() {
         return product?.variants?.find(v => v.color === selectedColor)?.sizes || product?.sizes || [];
     }, [product, selectedColor]);
 
-    // 🎯 LOGIC MỚI: Kiểm tra xem sản phẩm có đang đúng Flash Sale của tuần hiện tại hay không
     const isCurrentWeekFlashSale = useMemo(() => {
         if (!product || !product.isFlashSale) return false;
-
-        // Lấy batch từ URL (ví dụ: ?batch=8-3), nếu không có thì tự tính theo ngày hiện tại giống bên API
         const batchParam = searchParams.get("batch");
         let currentBatch = batchParam;
         if (!currentBatch) {
@@ -326,27 +329,19 @@ export default function ProductDetailPage() {
             const currentWeekOfMonth = Math.ceil(currentDay / 7);
             currentBatch = `${currentMonth}-${currentWeekOfMonth}`;
         }
-
-        // Nếu sản phẩm không có trường flashSaleBatch hoặc trùng khớp với batch hiện tại thì tính là đúng tuần
         if (!product.flashSaleBatch) return true; 
         return product.flashSaleBatch === currentBatch;
     }, [product, searchParams]);
 
-    // 🎯 Xử lý giá hiển thị: Chỉ giảm giá Flash Sale khi đúng tuần, ngược lại trả về giá gốc
     const displayPrice = useMemo(() => {
         if (!product) return 0;
-        
-        // Nếu bật flash sale và ĐÚNG TUẦN hiện tại mới áp dụng flashSalePrice
         if (product.isFlashSale && isCurrentWeekFlashSale && Number(product.flashSalePrice) > 0) {
             return Number(product.flashSalePrice);
         }
-        
-        // Kiểm tra giảm giá thường (nếu có trường salePrice thông thường ngoài flash sale)
         const sale = Number(product.salePrice ?? product.discountPrice ?? 0);
         if (sale > 0 && sale < Number(product.price)) {
             return sale;
         }
-        
         return Number(product.price ?? 0);
     }, [product, isCurrentWeekFlashSale]);
 
@@ -385,7 +380,7 @@ export default function ProductDetailPage() {
 
     // 🛒 ADD TO CART
     const handleAddToCart = () => {
-        if (stockAvailable <= 0 || isAdmin) return;
+        if (isAccountLocked || stockAvailable <= 0 || isAdmin) return;
         const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
         const finalSizeStr = getNormalizedSizeValue(selectedSize);
 
@@ -422,7 +417,7 @@ export default function ProductDetailPage() {
 
     // 🚀 BUY NOW
     const handleBuyNow = () => {
-        if (stockAvailable <= 0 || isAdmin) return;
+        if (isAccountLocked || stockAvailable <= 0 || isAdmin) return;
         const buyQuantity = typeof quantity === 'number' && quantity >= 1 ? quantity : 1;
         const finalSizeStr = getNormalizedSizeValue(selectedSize);
 
@@ -464,7 +459,7 @@ export default function ProductDetailPage() {
 
     const handleReviewSubmit = async (e) => {
         e.preventDefault();
-        if (!newComment.trim() || !currentUser || !canReview) return;
+        if (isAccountLocked || !newComment.trim() || !currentUser || !canReview) return;
 
         setSubmittingReview(true);
         try {
@@ -529,6 +524,15 @@ export default function ProductDetailPage() {
 
     return (
         <div style={{ width: '100%', maxWidth: '1280px', margin: '0 auto', padding: '40px 20px', fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' }}>
+            
+            {/* 🛑 THÔNG BÁO TÀI KHOẢN BỊ KHÓA (Hiển thị ngay đầu trang nếu bị khóa) */}
+            {isAccountLocked && (
+                <div style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', borderRadius: '12px', padding: '16px 20px', marginBottom: '24px', fontSize: '14px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>⚠️</span>
+                    <span>Tài khoản của bạn đã bị khóa bởi quản trị viên. Bạn chỉ có thể xem thông tin sản phẩm và không thể thực hiện giao dịch mua hàng hay đánh giá.</span>
+                </div>
+            )}
+
             {/* Breadcrumb */}
             <nav style={{ marginBottom: '28px', fontSize: '13px', color: '#6b7280' }}>
                 <Link href="/" style={{ color: '#6b7280', textDecoration: 'none' }}>Trang chủ</Link>
@@ -588,7 +592,7 @@ export default function ProductDetailPage() {
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>({reviews.length} đánh giá)</span>
                     </div>
 
-                    {/* Hiển thị giá (Chỉ giảm giá nếu đúng flash sale tuần hiện tại) */}
+                    {/* Hiển thị giá */}
                     <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'baseline', gap: '12px', flexWrap: 'wrap' }}>
                         <p style={{ fontSize: '30px', fontWeight: '900', color: '#e11d48', margin: 0 }}>
                             {formatPrice(displayPrice)}
@@ -653,46 +657,36 @@ export default function ProductDetailPage() {
                             </h3>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                                 {availableSizes.map((item, index) => {
-                                let rawSize = '';
-                                if (typeof item === 'object' && item !== null) {
-                                    rawSize = item.size ?? item.name ?? item.value ?? item.sizeValue ?? '';
-                                } else {
-                                    rawSize = item;
-                                }
+                                    let rawSize = '';
+                                    if (typeof item === 'object' && item !== null) {
+                                        rawSize = item.size ?? item.name ?? item.value ?? item.sizeValue ?? '';
+                                    } else {
+                                        rawSize = item;
+                                    }
 
-                                const isValidSize = rawSize !== null && rawSize !== undefined && String(rawSize).trim() !== '' && String(rawSize) !== 'null';
-                                const displaySize = isValidSize ? String(rawSize) : `Size ${index + 1}`;
+                                    const isValidSize = rawSize !== null && rawSize !== undefined && String(rawSize).trim() !== '' && String(rawSize) !== 'null';
+                                    const displaySize = isValidSize ? String(rawSize) : `Size ${index + 1}`;
 
-                                const sizeVal = getNormalizedSizeValue(rawSize);
-                                const currentSelectedVal = getNormalizedSizeValue(selectedSize);
-                                const isSelected = currentSelectedVal === sizeVal;
+                                    const sizeVal = getNormalizedSizeValue(rawSize);
+                                    const currentSelectedVal = getNormalizedSizeValue(selectedSize);
+                                    const isSelected = currentSelectedVal === sizeVal;
 
-                                return (
-                                    <button
-                                        key={`size-${index}`}
-                                        type="button"
-                                        onClick={() => handleSizeChange(item)}
-                                        style={{
-                                            minWidth: '44px',
-                                            height: '44px',
-                                            padding: '0 12px',
-                                            fontSize: '14px',
-                                            fontWeight: '600',
-                                            border: isSelected ? '2px solid #0f172a' : '1px solid #cbd5e1',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            backgroundColor: isSelected ? '#0f172a' : '#ffffff',
-                                            color: isSelected ? '#ffffff' : '#1e293b',
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            transition: 'all 0.2s ease',
-                                        }}
-                                    >
-                                        {displaySize}
-                                    </button>
-                                );
-                            })}
+                                    return (
+                                        <button
+                                            key={`size-${index}`}
+                                            type="button"
+                                            onClick={() => handleSizeChange(item)}
+                                            style={{
+                                                minWidth: '44px', height: '44px', padding: '0 12px', fontSize: '14px', fontWeight: '600',
+                                                border: isSelected ? '2px solid #0f172a' : '1px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer',
+                                                backgroundColor: isSelected ? '#0f172a' : '#ffffff', color: isSelected ? '#ffffff' : '#1e293b',
+                                                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease',
+                                            }}
+                                        >
+                                            {displaySize}
+                                        </button>
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
@@ -767,33 +761,33 @@ export default function ProductDetailPage() {
                         </div>
                     )}
 
-                    {/* Action Buttons */}
+                    {/* Action Buttons - 🛑 Vô hiệu hóa khi bị khóa tài khoản (isAccountLocked) */}
                     <div style={{ display: 'flex', gap: '12px', borderTop: '1px solid #f3f4f6', paddingTop: '16px' }}>
                         <button
                             onClick={handleAddToCart}
-                            disabled={isAdmin || stockAvailable <= 0}
+                            disabled={isAdmin || stockAvailable <= 0 || isAccountLocked}
                             style={{
-                                flex: 1, backgroundColor: (isAdmin || stockAvailable <= 0) ? '#e5e7eb' : '#fff',
-                                border: (isAdmin || stockAvailable <= 0) ? '1.5px solid #d1d5db' : '1.5px solid #111827', 
-                                color: (isAdmin || stockAvailable <= 0) ? '#9ca3af' : '#111827',
+                                flex: 1, backgroundColor: (isAdmin || stockAvailable <= 0 || isAccountLocked) ? '#e5e7eb' : '#fff',
+                                border: (isAdmin || stockAvailable <= 0 || isAccountLocked) ? '1.5px solid #d1d5db' : '1.5px solid #111827', 
+                                color: (isAdmin || stockAvailable <= 0 || isAccountLocked) ? '#9ca3af' : '#111827',
                                 fontWeight: '600', padding: '13px 0', borderRadius: '12px',
-                                cursor: (isAdmin || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
+                                cursor: (isAdmin || stockAvailable <= 0 || isAccountLocked) ? 'not-allowed' : 'pointer',
                                 fontSize: '14px', transition: 'all 0.2s',
                             }}
                         >
-                            {stockAvailable <= 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
+                            {isAccountLocked ? 'Tài khoản bị khóa' : stockAvailable <= 0 ? 'Hết hàng' : 'Thêm vào giỏ hàng'}
                         </button>
                         <button
                             onClick={handleBuyNow}
-                            disabled={isAdmin || stockAvailable <= 0}
+                            disabled={isAdmin || stockAvailable <= 0 || isAccountLocked}
                             style={{
-                                flex: 1, backgroundColor: (isAdmin || stockAvailable <= 0) ? '#d1d5db' : '#111827',
+                                flex: 1, backgroundColor: (isAdmin || stockAvailable <= 0 || isAccountLocked) ? '#d1d5db' : '#111827',
                                 border: 'none', color: '#fff', fontWeight: '600', padding: '13px 0',
-                                borderRadius: '12px', cursor: (isAdmin || stockAvailable <= 0) ? 'not-allowed' : 'pointer',
+                                borderRadius: '12px', cursor: (isAdmin || stockAvailable <= 0 || isAccountLocked) ? 'not-allowed' : 'pointer',
                                 fontSize: '14px', transition: 'all 0.2s',
                             }}
                         >
-                            {isAdmin ? 'Admin không thể mua' : stockAvailable <= 0 ? 'Tạm hết hàng' : 'Mua ngay'}
+                            {isAccountLocked ? 'Tài khoản bị khóa' : isAdmin ? 'Admin không thể mua' : stockAvailable <= 0 ? 'Tạm hết hàng' : 'Mua ngay'}
                         </button>
                     </div>
 
@@ -869,7 +863,8 @@ export default function ProductDetailPage() {
                     Đánh giá sản phẩm ({reviews.length})
                 </h2>
 
-                {currentUser && canReview && (
+                {/* 🛑 Ẩn form viết đánh giá nếu tài khoản bị khóa */}
+                {currentUser && canReview && !isAccountLocked && (
                     <form onSubmit={handleReviewSubmit} style={{ backgroundColor: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '16px', padding: '24px', marginBottom: '40px' }}>
                         <h3 style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '12px' }}>
                             Viết đánh giá của bạn
@@ -903,12 +898,8 @@ export default function ProductDetailPage() {
                                         type="button"
                                         onClick={() => setNewRating(star)}
                                         style={{ 
-                                            background: 'none', 
-                                            border: 'none', 
-                                            cursor: 'pointer', 
-                                            padding: '2px',
-                                            transition: 'transform 0.15s ease',
-                                            outline: 'none'
+                                            background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                                            transition: 'transform 0.15s ease', outline: 'none'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
                                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
@@ -918,9 +909,7 @@ export default function ProductDetailPage() {
                                             src="https://img.icons8.com/color/48/star--v1.png" 
                                             alt={`${star} star`} 
                                             style={{ 
-                                                width: '24px', 
-                                                height: '24px', 
-                                                display: 'block', 
+                                                width: '24px', height: '24px', display: 'block', 
                                                 filter: star <= newRating ? 'none' : 'grayscale(100%) opacity(0.55)' 
                                             }} 
                                         />
@@ -988,8 +977,7 @@ export default function ProductDetailPage() {
                                     backgroundColor: !newComment.trim() ? '#9ca3af' : '#111827',
                                     color: '#fff', border: 'none', padding: '10px 24px', borderRadius: '8px',
                                     fontWeight: '600', fontSize: '14px', cursor: !newComment.trim() ? 'not-allowed' : 'pointer',
-                                    transition: 'background-color 0.2s',
-                                    fontFamily: 'inherit'
+                                    transition: 'background-color 0.2s', fontFamily: 'inherit'
                                 }}
                             >
                                 {submittingReview ? 'Đang gửi...' : 'Gửi đánh giá'}
@@ -1038,8 +1026,7 @@ export default function ProductDetailPage() {
                                                     src="https://img.icons8.com/color/48/star--v1.png" 
                                                     alt="star" 
                                                     style={{ 
-                                                        width: '16px', 
-                                                        height: '16px', 
+                                                        width: '16px', height: '16px', 
                                                         filter: i < ratingStars ? 'none' : 'grayscale(100%) opacity(0.55)' 
                                                     }} 
                                                 />
