@@ -199,7 +199,7 @@ export default function OrderDetailPage() {
   // Thêm cấu hình trạng thái "processing" (Đang xử lý)
   const statusConfigs = {
     pending: { text: "Chờ xác nhận", badge: "bg-warning text-dark"},
-    processing: { text: "Đang xử lý", badge: "bg-primary text-white", icon: "⚙️" },
+    processing: { text: "Đang xử lý", badge: "bg-primary text-white"},
     preparing: { text: "Đang đóng gói", badge: "bg-info text-dark"},
     completed: { text: "Đã giao hàng", badge: "bg-success text-white", icon: "✓" },
     "Đã giao": { text: "Đã giao hàng", badge: "bg-success text-white", icon: "✓" },
