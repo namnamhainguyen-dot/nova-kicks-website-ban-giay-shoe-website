@@ -1230,23 +1230,24 @@ export default function Profile() {
                       />
                     </div>
 
+                    {/* TỈNH / THÀNH PHỐ */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Phường / Xã *</label>
+                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
-                        value={selectedWard} 
-                        onChange={(e) => setSelectedWard(e.target.value)} 
-                        disabled={!selectedDistrict} 
+                        value={selectedProvince} 
+                        onChange={handleProvinceChange} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Phường/Xã --</option>
-                        {wards.map((w) => (
-                          <option key={w.id} value={w.id}>{w.full_name}</option>
+                        <option value="">-- Chọn Tỉnh/Thành --</option>
+                        {provinces.map((p) => (
+                          <option key={p.id} value={p.id}>{p.full_name}</option>
                         ))}
                       </select>
                     </div>
 
+                    {/* QUẬN / HUYỆN */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Quận / Huyện *</label>
                       <select 
@@ -1264,18 +1265,20 @@ export default function Profile() {
                       </select>
                     </div>
 
+                    {/* PHƯỜNG / XÃ */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
+                      <label className="form-label small fw-semibold">Phường / Xã *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
-                        value={selectedProvince} 
-                        onChange={handleProvinceChange} 
+                        value={selectedWard} 
+                        onChange={(e) => setSelectedWard(e.target.value)} 
+                        disabled={!selectedDistrict} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Tỉnh/Thành --</option>
-                        {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>{p.full_name}</option>
+                        <option value="">-- Chọn Phường/Xã --</option>
+                        {wards.map((w) => (
+                          <option key={w.id} value={w.id}>{w.full_name}</option>
                         ))}
                       </select>
                     </div>
