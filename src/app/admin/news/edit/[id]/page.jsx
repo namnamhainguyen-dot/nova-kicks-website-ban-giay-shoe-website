@@ -88,6 +88,7 @@ export default function EditNewsPage() {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
+  // Nén chất lượng ảnh Base64 gọn nhẹ trước khi lưu
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -97,7 +98,7 @@ export default function EditNewsPage() {
         img.src = event.target.result;
         img.onload = () => {
           const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 800;
+          const MAX_WIDTH = 600; // Giới hạn kích thước chiều rộng ảnh
           const scaleRatio = MAX_WIDTH / img.width;
           
           canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
@@ -106,7 +107,8 @@ export default function EditNewsPage() {
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
+          // Nén chất lượng ảnh xuống 0.5 để giảm tối đa dung lượng
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.5);
           setFormData((prev) => ({ ...prev, image: compressedBase64 }));
         };
       };
@@ -124,7 +126,7 @@ export default function EditNewsPage() {
 
     setSubmitting(true);
 
-    // Lọc bỏ các trường mặc định của MongoDB tránh lỗi update
+    // Bắt buộc tách các trường đặc biệt của MongoDB trước khi gửi đi
     const { _id, __v, updatedAt, ...updateData } = formData;
 
     try {
@@ -139,11 +141,11 @@ export default function EditNewsPage() {
         alert("Cập nhật bài viết thành công!");
         router.push("/admin/news");
       } else {
-        alert(data.error || "Có lỗi xảy ra khi cập nhật");
+        alert("Lỗi server: " + (data.error || "Không thể cập nhật bài viết"));
       }
     } catch (error) {
       console.error("Lỗi cập nhật:", error);
-      alert("Lỗi kết nối máy chủ hoặc dữ liệu gửi đi không hợp lệ!");
+      alert("Lỗi kết nối máy chủ hoặc dữ liệu bài viết quá lớn!");
     } finally {
       setSubmitting(false);
     }
