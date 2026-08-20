@@ -213,10 +213,10 @@ export default function OrderDetailPage() {
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
 
   // Kiểm tra phương thức thanh toán
-  const rawMethod = (order.paymentMethod || order.payment_method || "").toLowerCase();
+  const rawMethod = (order.paymentMethod || order.payment_method || "cod").toLowerCase().trim();
   const isCod = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
   
-  const isQRPayment = rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản") || rawMethod.includes("vnpay");
+  const isQRPayment = rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
   const effectiveStatus = isQRPayment ? "processing" : (order.status || "pending");
 
   const currentStatus = statusConfigs[effectiveStatus] || { text: order.status || "Đang xử lý", badge: "bg-secondary text-white", icon: "•" };
