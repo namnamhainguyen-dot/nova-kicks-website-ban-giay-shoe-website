@@ -75,6 +75,7 @@ export default function Profile() {
   // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình
   const statusBadges = {
     pending: { text: "Đang chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
+    processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-gear-wide-connected" },
     preparing: { text: "Đang đóng gói", class: "bg-info-subtle text-info-emphasis fw-bold", icon: "bi bi-box-seam" },
     shipping: { text: "Đang giao", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-truck" },
     completed: { text: "Hoàn thành", class: "bg-success-subtle text-success-emphasis fw-bold", icon: "bi bi-check-circle" },
@@ -83,8 +84,11 @@ export default function Profile() {
 
   const getStatusInfo = (statusKey) => {
     const key = (statusKey || "").toLowerCase().trim();
-    if (key === "pending" || key === "đang chờ xác nhận" || key === "chờ xác nhận" || key === "chờ xử lý") {
+    if (key === "pending" || key === "đang chờ xác nhận" || key === "chờ xác nhận") {
       return statusBadges.pending;
+    }
+    if (key === "processing" || key === "đang xử lý" || key === "chờ xử lý") {
+      return statusBadges.processing;
     }
     if (key === "preparing" || key === "đang đóng gói") {
       return statusBadges.preparing;
@@ -623,23 +627,18 @@ export default function Profile() {
 
   // Logic lọc đơn hàng dựa trên trạng thái được chọn
   const filteredOrders = orders.filter((order) => {
+    // Ép logic: QR/Banking -> Đang xử lý
+    const rawPayment = (order.paymentMethod || "").toLowerCase();
+    const isQRPayment = rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+    const st = isQRPayment ? "processing" : (order.status || "").toLowerCase().trim();
+
     if (orderFilter === "all") return true;
-    const st = (order.status || "").toLowerCase().trim();
-    if (orderFilter === "pending") {
-      return st === "pending" || st === "đang chờ xác nhận" || st === "chờ xác nhận" || st === "chờ xử lý";
-    }
-    if (orderFilter === "preparing") {
-      return st === "preparing" || st === "đang đóng gói";
-    }
-    if (orderFilter === "shipping") {
-      return st === "shipping" || st === "đang giao";
-    }
-    if (orderFilter === "completed") {
-      return st === "completed" || st === "hoàn thành" || st === "đã giao hàng";
-    }
-    if (orderFilter === "cancelled") {
-      return st === "cancelled" || st === "đã hủy";
-    }
+    if (orderFilter === "pending") return st === "pending" || st === "chờ xác nhận";
+    if (orderFilter === "processing") return st === "processing" || st === "đang xử lý";
+    if (orderFilter === "preparing") return st === "preparing" || st === "đang đóng gói";
+    if (orderFilter === "shipping") return st === "shipping" || st === "đang giao";
+    if (orderFilter === "completed") return st === "completed" || st === "hoàn thành";
+    if (orderFilter === "cancelled") return st === "cancelled" || st === "đã hủy";
     return true;
   });
 
@@ -945,7 +944,8 @@ export default function Profile() {
                 <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
                   {[
                     { key: "all", label: "Tất cả" },
-                    { key: "pending", label: "Đang chờ xác nhận" },
+                    { key: "pending", label: "Chờ xác nhận" },
+                    { key: "processing", label: "Đang xử lý" }, // Thêm mục này
                     { key: "preparing", label: "Đang đóng gói" },
                     { key: "shipping", label: "Đang giao" },
                     { key: "completed", label: "Hoàn thành" },
@@ -966,23 +966,23 @@ export default function Profile() {
 
                 <div className="d-flex flex-column gap-3">
                   {filteredOrders.length > 0 ? (
-  filteredOrders.map((order) => {
-    const itemsList = order.order_items || order.items || order.products || [];
-    
-    const rawPayment = (order.paymentMethod || "cod").toLowerCase().trim();
-    const displayPayment = rawPayment === "cod" ? "COD" : rawPayment.toUpperCase();
-    
-    // 💡 Xử lý: Nếu phương thức thanh toán là QR (qr / qrcode / banktransfer...), ép trạng thái hiển thị là "pending" (Đang chờ xác nhận)
-    const isQRPayment = rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
-    const effectiveStatus = isQRPayment ? "pending" : order.status;
+            filteredOrders.map((order) => {
+              const itemsList = order.order_items || order.items || order.products || [];
+              
+              const rawPayment = (order.paymentMethod || "cod").toLowerCase().trim();
+              const displayPayment = rawPayment === "cod" ? "COD" : rawPayment.toUpperCase();
+              
+              // 💡 Xử lý: Nếu phương thức thanh toán là QR, ép trạng thái hiển thị là "processing" (Đang xử lý)
+              const isQRPayment = rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+              const effectiveStatus = isQRPayment ? "processing" : order.status; // 👈 Đã đổi từ "pending" thành "processing"
 
-    const badge = getStatusInfo(effectiveStatus);
-    
-    const rawStatus = (effectiveStatus || "").toLowerCase().trim();
-    const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
-    const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
+              const badge = getStatusInfo(effectiveStatus);
+              
+              const rawStatus = (effectiveStatus || "").toLowerCase().trim();
+              const isPending = rawStatus === "pending" || rawStatus === "đang chờ xác nhận" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
+              const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
 
-    const orderDiscount = Number(order.discountAmount || order.discount || 0);
+              const orderDiscount = Number(order.discountAmount || order.discount || 0);
 
     return (
       <div 
