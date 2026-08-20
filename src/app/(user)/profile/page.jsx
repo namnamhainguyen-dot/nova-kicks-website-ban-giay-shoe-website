@@ -105,8 +105,27 @@ export default function Profile() {
     return { text: statusKey || "Đang chờ xác nhận", class: "bg-secondary-subtle text-secondary-emphasis fw-bold", icon: "bi bi-question-circle" };
   };
 
-  // 2. Tải thông tin người dùng từ API Server & đơn hàng
+  // 2. Tải thông tin người dùng từ API Server & đơn hàng (Đồng bộ tức thì)
   useEffect(() => {
+    let emailToFetch = null;
+
+    const fetchOrdersOnly = async (email) => {
+      if (!email) return;
+      try {
+        const resOrders = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+        if (resOrders.ok) {
+          const ordersData = await resOrders.json();
+          if (Array.isArray(ordersData)) {
+            setOrders(ordersData);
+          } else if (ordersData && Array.isArray(ordersData.data)) {
+            setOrders(ordersData.data);
+          }
+        }
+      } catch (err) {
+        console.log("Lỗi đồng bộ đơn hàng ngầm:", err);
+      }
+    };
+
     const fetchUserDataAndOrders = async () => {
       try {
         const savedUser = localStorage.getItem("user");
@@ -133,7 +152,7 @@ export default function Profile() {
                 }
               }
             } catch (err) {
-              console.error("Không thể đồng bộ user từ server, dùng tạm dữ liệu local:", err);
+              console.error("Không thể đồng bộ user từ server:", err);
             }
           }
 
@@ -157,15 +176,8 @@ export default function Profile() {
           });
 
           if (parsedUser && parsedUser.email) {
-            const resOrders = await fetch(`/api/orders?email=${encodeURIComponent(parsedUser.email)}`);
-            if (resOrders.ok) {
-              const ordersData = await resOrders.json();
-              if (Array.isArray(ordersData)) {
-                setOrders(ordersData);
-              } else if (ordersData && Array.isArray(ordersData.data)) {
-                setOrders(ordersData.data);
-              }
-            }
+            emailToFetch = parsedUser.email;
+            await fetchOrdersOnly(emailToFetch);
           } else {
             setOrders([]);
           }
@@ -178,6 +190,33 @@ export default function Profile() {
     };
 
     fetchUserDataAndOrders();
+
+    // ==========================================
+    // CƠ CHẾ ĐỒNG BỘ TỨC THÌ (REAL-TIME CROSS-TAB)
+    // ==========================================
+    // 1. Lắng nghe tín hiệu từ trang Admin
+    const orderChannel = new BroadcastChannel("order_status_sync");
+    orderChannel.onmessage = (event) => {
+      if (event.data && event.data.type === "UPDATE_ORDERS" && emailToFetch) {
+        fetchOrdersOnly(emailToFetch); // Cập nhật ngay lập tức khi Admin đổi trạng thái
+      }
+    };
+
+    // 2. Polling phụ phòng hờ (giảm xuống 2 giây) & sự kiện focus tab
+    const intervalId = setInterval(() => {
+      if (emailToFetch) fetchOrdersOnly(emailToFetch);
+    }, 2000);
+
+    const handleFocus = () => {
+      if (emailToFetch) fetchOrdersOnly(emailToFetch);
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      orderChannel.close();
+      clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // 3. API Địa chính: Lấy danh sách Tỉnh / Thành phố
