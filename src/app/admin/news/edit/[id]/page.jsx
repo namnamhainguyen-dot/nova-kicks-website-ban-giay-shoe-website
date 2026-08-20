@@ -5,8 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-// Import ReactQuill dynamically để tránh lỗi SSR trong Next.js
-
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -27,12 +25,12 @@ export default function EditNewsPage() {
     summary: "",
     image: "",
     content: "",
+    isHidden: false,
   });
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Cấu hình thanh công cụ soạn thảo trực quan
   const quillModules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -47,7 +45,7 @@ export default function EditNewsPage() {
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`/api/news?id=${params.id}`);
+        const res = await fetch(`/api/news?id=${params.id}&admin=true`);
         const data = await res.json();
 
         if (data.success && data.data) {
@@ -58,6 +56,7 @@ export default function EditNewsPage() {
           setFormData({
             ...data.data,
             createdAt: formattedDate,
+            isHidden: data.data.isHidden ?? false,
           });
         } else {
           alert(data.error || "Không tìm thấy bài viết!");
@@ -78,20 +77,40 @@ export default function EditNewsPage() {
   }, [params?.id, router]);
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleContentChange = (contentValue) => {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
-  // Xử lý tải ảnh từ File máy tính
+  // Nén chất lượng ảnh Base64 gọn nhẹ trước khi lưu
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, image: reader.result }));
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 600; // Giới hạn kích thước chiều rộng ảnh
+          const scaleRatio = MAX_WIDTH / img.width;
+          
+          canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
+          canvas.height = img.width > MAX_WIDTH ? img.height * scaleRatio : img.height;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          // Nén chất lượng ảnh xuống 0.5 để giảm tối đa dung lượng
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.5);
+          setFormData((prev) => ({ ...prev, image: compressedBase64 }));
+        };
       };
       reader.readAsDataURL(file);
     }
@@ -106,11 +125,15 @@ export default function EditNewsPage() {
     }
 
     setSubmitting(true);
+
+    // Bắt buộc tách các trường đặc biệt của MongoDB trước khi gửi đi
+    const { _id, __v, updatedAt, ...updateData } = formData;
+
     try {
       const res = await fetch(`/api/news?id=${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(updateData),
       });
       const data = await res.json();
 
@@ -118,10 +141,11 @@ export default function EditNewsPage() {
         alert("Cập nhật bài viết thành công!");
         router.push("/admin/news");
       } else {
-        alert(data.error || "Có lỗi xảy ra khi cập nhật");
+        alert("Lỗi server: " + (data.error || "Không thể cập nhật bài viết"));
       }
     } catch (error) {
       console.error("Lỗi cập nhật:", error);
+      alert("Lỗi kết nối máy chủ hoặc dữ liệu bài viết quá lớn!");
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +186,7 @@ export default function EditNewsPage() {
         </div>
 
         <div className="row mb-3">
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label className="form-label fw-semibold">Tác giả</label>
             <input
               type="text"
@@ -173,7 +197,7 @@ export default function EditNewsPage() {
               required
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label className="form-label fw-semibold">Danh mục</label>
             <input
               type="text"
@@ -184,7 +208,7 @@ export default function EditNewsPage() {
               required
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label className="form-label fw-semibold">Ngày đăng</label>
             <input
               type="date"
@@ -195,9 +219,24 @@ export default function EditNewsPage() {
               required
             />
           </div>
+          
+          <div className="col-md-3 d-flex align-items-end">
+            <div className="form-check form-switch mb-2">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="isHidden"
+                name="isHidden"
+                checked={formData.isHidden || false}
+                onChange={handleChange}
+              />
+              <label className="form-check-label fw-semibold text-danger ms-1" htmlFor="isHidden">
+                Ẩn bài viết này
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* Khối Ảnh Đại Diện: Hỗ trợ cả Nhập URL & Upload File */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Ảnh đại diện</label>
           <div className="input-group mb-2">
@@ -248,7 +287,6 @@ export default function EditNewsPage() {
           ></textarea>
         </div>
 
-        {/* Soạn thảo văn bản Rich Text WYSIWYG */}
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">

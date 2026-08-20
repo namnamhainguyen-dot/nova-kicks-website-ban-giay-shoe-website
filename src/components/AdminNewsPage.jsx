@@ -21,6 +21,7 @@ const emptyForm = {
   category: "Xu hướng",
   author: "Nova Kicks Admin",
   isFeatured: false,
+  isHidden: false, // Bổ sung trường Ẩn/Hiện bài viết
 };
 
 export default function AdminNewsPage() {
@@ -30,9 +31,10 @@ export default function AdminNewsPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
+  // Bổ sung query ?admin=true để Admin tải được TẤT CẢ bài viết (kể cả bài bị ẩn)
   const fetchArticles = async () => {
     try {
-      const res = await fetch("/api/news");
+      const res = await fetch("/api/news?admin=true");
       const data = await res.json();
       if (data.success) {
         setArticles(data.data || []);
@@ -85,7 +87,28 @@ export default function AdminNewsPage() {
       category: article.category || "Xu hướng",
       author: article.author || "Nova Kicks Admin",
       isFeatured: Boolean(article.isFeatured),
+      isHidden: Boolean(article.isHidden), // Lấy trạng thái isHidden của bài viết
     });
+  };
+
+  // Thêm nhanh chức năng Bật/Tắt Ẩn ngay tại danh sách bài viết
+  const handleToggleHide = async (article) => {
+    try {
+      const res = await fetch(`/api/news?id=${article._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isHidden: !article.isHidden }),
+      });
+      const result = await res.json();
+      if (result.success) {
+        setMessage(`Đã ${!article.isHidden ? "ẩn" : "hiển thị"} bài viết!`);
+        fetchArticles();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      setMessage(error.message || "Lỗi đổi trạng thái bài viết");
+    }
   };
 
   const handleDelete = async (id) => {
@@ -184,14 +207,26 @@ export default function AdminNewsPage() {
                   />
                 </div>
 
-                <label className="d-flex align-items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={form.isFeatured}
-                    onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
-                  />
-                  Đặt làm bài nổi bật
-                </label>
+                {/* Khối các thuộc tính chọn Checkbox */}
+                <div className="d-flex gap-4">
+                  <label className="d-flex align-items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={form.isFeatured}
+                      onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })}
+                    />
+                    <span>Đặt làm bài nổi bật</span>
+                  </label>
+
+                  <label className="d-flex align-items-center gap-2 cursor-pointer text-danger fw-semibold">
+                    <input
+                      type="checkbox"
+                      checked={form.isHidden}
+                      onChange={(e) => setForm({ ...form, isHidden: e.target.checked })}
+                    />
+                    <span>Ẩn bài viết này</span>
+                  </label>
+                </div>
 
                 <div className="d-flex gap-2">
                   <button className="btn btn-dark" disabled={loading} type="submit">
@@ -223,10 +258,16 @@ export default function AdminNewsPage() {
                 {articles.length === 0 ? (
                   <div className="text-muted">Chưa có bài viết nào.</div>
                 ) : articles.map((article) => (
-                  <div key={article._id} className="border rounded-3 p-3">
+                  <div 
+                    key={article._id} 
+                    className={`border rounded-3 p-3 ${article.isHidden ? "bg-light opacity-75" : ""}`}
+                  >
                     <div className="d-flex justify-content-between gap-3">
                       <div>
-                        <h6 className="fw-bold mb-1">{article.title}</h6>
+                        <h6 className="fw-bold mb-1">
+                          {article.title}
+                          {article.isHidden && <span className="badge bg-secondary ms-2">Đang ẩn</span>}
+                        </h6>
                         <p className="text-muted small mb-2">{article.summary}</p>
                         <div className="small text-secondary">
                           <span className="me-3">Danh mục: {article.category}</span>
@@ -237,6 +278,12 @@ export default function AdminNewsPage() {
                       <div className="d-flex gap-2 align-items-start">
                         <button className="btn btn-sm btn-outline-primary" onClick={() => handleEdit(article)}>
                           Sửa
+                        </button>
+                        <button 
+                          className={`btn btn-sm ${article.isHidden ? "btn-outline-success" : "btn-outline-warning"}`} 
+                          onClick={() => handleToggleHide(article)}
+                        >
+                          {article.isHidden ? "Hiện" : "Ẩn"}
                         </button>
                         <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(article._id)}>
                           Xóa

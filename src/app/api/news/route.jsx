@@ -1,135 +1,121 @@
-import clientPromise from "@/libs/mongodb";
 import { NextResponse } from "next/server";
-import { ObjectId } from "mongodb";
+import mongoose from "mongoose";
+import connectDB from "@/lib/mongodb";
+import News from "@/models/News";
 
-export async function GET(req) {
+export const maxDuration = 60; // Tăng timeout cho Vercel Serverless Function
+
+// 1. LẤY BÀI VIẾT (GET)
+export async function GET(request) {
   try {
-    const { searchParams } = new URL(req.url);
+    await connectDB();
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
+    const isAdmin = searchParams.get("admin");
 
     if (id) {
-      const article = await db.collection("news").findOne({ _id: new ObjectId(id) });
+      if (!mongoose.Types.ObjectId.isValid(id)) {
+        return NextResponse.json(
+          { success: false, error: "ID bài viết không hợp lệ" },
+          { status: 400 }
+        );
+      }
+      const article = await News.findById(id);
+      if (!article) {
+        return NextResponse.json(
+          { success: false, error: "Không tìm thấy bài viết" },
+          { status: 404 }
+        );
+      }
       return NextResponse.json({ success: true, data: article });
     }
 
-    const newsList = await db
-      .collection("news")
-      .find({})
-      .sort({ createdAt: -1 })
-      .toArray();
+    const filter = isAdmin === "true" ? {} : { isHidden: { $ne: true } };
+    const news = await News.find(filter).sort({ createdAt: -1 });
 
-    return NextResponse.json({ success: true, data: newsList });
+    return NextResponse.json({ success: true, data: news });
   } catch (error) {
-    console.error("Lỗi API GET news:", error);
-    return NextResponse.json({ success: false, error: "Lỗi kết nối máy chủ" }, { status: 500 });
+    console.error("Lỗi GET /api/news:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi Server: " + error.message },
+      { status: 500 }
+    );
   }
 }
 
-export async function POST(req) {
+// 2. CẬP NHẬT BÀI VIẾT (PUT)
+export async function PUT(request) {
   try {
-    const body = await req.json();
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
-    const article = {
-      ...body,
-      likes: 0,
-      comments: [],
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    const result = await db.collection("news").insertOne(article);
-    return NextResponse.json({ success: true, data: { ...article, _id: result.insertedId } });
-  } catch (error) {
-    console.error("Lỗi API POST news:", error);
-    return NextResponse.json({ success: false, error: "Không thể tạo bài viết" }, { status: 500 });
-  }
-}
-
-export async function PUT(req) {
-  try {
-    const { searchParams } = new URL(req.url);
+    await connectDB();
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
-    const body = await req.json();
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: "Thiếu ID bài viết" }, { status: 400 });
-    }
-
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-    const collection = db.collection("news");
-
-    // XỬ LÝ LIKE
-    if (body.action === "like") {
-      const result = await collection.findOneAndUpdate(
-        { _id: new ObjectId(id) },
-        { $inc: { likes: 1 } },
-        { returnDocument: "after" }
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "ID bài viết không hợp lệ" },
+        { status: 400 }
       );
-      
-      const updatedDoc = result.value || result; // Tương thích với các phiên bản driver MongoDB khác nhau
-      return NextResponse.json({ success: true, likes: updatedDoc?.likes });
     }
 
-    // XỬ LÝ COMMENT
-    if (body.action === "comment") {
-      const newComment = {
-        _id: new ObjectId(),
-        name: body.name,
-        content: body.content,
-        createdAt: new Date().toISOString(),
-      };
-      
-      await collection.updateOne(
-        { _id: new ObjectId(id) },
-        { $push: { comments: newComment } }
-      );
-      
-      return NextResponse.json({ success: true, comment: newComment });
+    const body = await request.json();
+
+    // LOẠI BỎ CÁC TRƯỜNG CẤM CỦA MONGOOSE (Khắc phục nguyên nhân lỗi Status 500)
+    delete body._id;
+    delete body.__v;
+    delete body.updatedAt;
+
+    // Chuyển đổi định dạng ngày nếu có gửi lên
+    if (body.createdAt) {
+      body.createdAt = new Date(body.createdAt);
     }
 
-    // XỬ LÝ UPDATE BÀI VIẾT THÔNG THƯỜNG
-    const result = await collection.updateOne(
-      { _id: new ObjectId(id) },
-      { $set: { ...body, updatedAt: new Date().toISOString() } }
+    const updatedArticle = await News.findByIdAndUpdate(
+      id,
+      { $set: body },
+      { new: true, runValidators: true }
     );
 
-    if (result.matchedCount === 0) {
-      return NextResponse.json({ success: false, error: "Không tìm thấy bài viết" }, { status: 404 });
+    if (!updatedArticle) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy bài viết trong CSDL" },
+        { status: 404 }
+      );
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data: updatedArticle });
   } catch (error) {
-    console.error("Lỗi API PUT news:", error);
-    return NextResponse.json({ success: false, error: "Không thể cập nhật bài viết" }, { status: 500 });
+    console.error("Lỗi Server PUT /api/news:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi Server DB: " + error.message },
+      { status: 500 }
+    );
   }
 }
 
-export async function DELETE(req) {
+// 3. XÓA BÀI VIẾT (DELETE)
+export async function DELETE(request) {
   try {
-    const { searchParams } = new URL(req.url);
+    await connectDB();
+    const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
-    if (!id) {
-      return NextResponse.json({ success: false, error: "Thiếu id bài viết" }, { status: 400 });
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { success: false, error: "ID không hợp lệ" },
+        { status: 400 }
+      );
     }
 
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
-
-    const result = await db.collection("news").deleteOne({ _id: new ObjectId(id) });
-
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ success: false, error: "Không tìm thấy bài viết" }, { status: 404 });
-    }
-
-    return NextResponse.json({ success: true });
+    await News.findByIdAndDelete(id);
+    return NextResponse.json({
+      success: true,
+      message: "Xóa bài viết thành công",
+    });
   } catch (error) {
-    console.error("Lỗi API DELETE news:", error);
-    return NextResponse.json({ success: false, error: "Không thể xóa bài viết" }, { status: 500 });
+    console.error("Lỗi DELETE /api/news:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi Server: " + error.message },
+      { status: 500 }
+    );
   }
 }
