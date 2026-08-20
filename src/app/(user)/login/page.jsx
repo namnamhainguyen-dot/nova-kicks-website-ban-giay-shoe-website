@@ -106,7 +106,7 @@ export default function Login() {
   // Xử lý Google Response
   const handleGoogleResponse = async (response) => {
     setError("");
-    setSuccess("");
+    setSuccess(""); // 🌟 Reset thông báo thành công/xác thực về rỗng ngay từ đầu
     setLoading(true);
 
     try {
@@ -128,6 +128,7 @@ export default function Login() {
       handleAuthSuccess(data);
 
     } catch (err) {
+      setSuccess(""); // 🛑 BẮT BUỘC: Xóa ngay dòng chữ xanh "Đang xác thực..." khi có lỗi xảy ra
       setError(err.message || "Đăng nhập bằng Google thất bại. Vui lòng thử lại!");
       setLoading(false);
     }
