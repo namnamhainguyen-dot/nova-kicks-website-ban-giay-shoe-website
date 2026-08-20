@@ -5,8 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 
-// Import ReactQuill dynamically để tránh lỗi SSR trong Next.js
-
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -27,12 +25,12 @@ export default function EditNewsPage() {
     summary: "",
     image: "",
     content: "",
+    isHidden: false, // Bổ sung trạng thái ẩn
   });
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  // Cấu hình thanh công cụ soạn thảo trực quan
   const quillModules = {
     toolbar: [
       [{ header: [1, 2, 3, false] }],
@@ -47,7 +45,8 @@ export default function EditNewsPage() {
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const res = await fetch(`/api/news?id=${params.id}`);
+        // Thêm ?admin=true để gọi được bài viết dù đang bị ẩn
+        const res = await fetch(`/api/news?id=${params.id}&admin=true`);
         const data = await res.json();
 
         if (data.success && data.data) {
@@ -58,6 +57,7 @@ export default function EditNewsPage() {
           setFormData({
             ...data.data,
             createdAt: formattedDate,
+            isHidden: data.data.isHidden ?? false,
           });
         } else {
           alert(data.error || "Không tìm thấy bài viết!");
@@ -78,20 +78,40 @@ export default function EditNewsPage() {
   }, [params?.id, router]);
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
   const handleContentChange = (contentValue) => {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
-  // Xử lý tải ảnh từ File máy tính
+  // Nén ảnh gọn lại trước khi chuyển về Base64 để không bị lỗi quá tải dung lượng
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, image: reader.result }));
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const MAX_WIDTH = 800;
+          const scaleRatio = MAX_WIDTH / img.width;
+          
+          canvas.width = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
+          canvas.height = img.width > MAX_WIDTH ? img.height * scaleRatio : img.height;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          // Nén chất lượng ảnh xuống 0.7 để giảm dung lượng file gửi đi
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+          setFormData((prev) => ({ ...prev, image: compressedBase64 }));
+        };
       };
       reader.readAsDataURL(file);
     }
@@ -122,6 +142,7 @@ export default function EditNewsPage() {
       }
     } catch (error) {
       console.error("Lỗi cập nhật:", error);
+      alert("Lỗi kết nối máy chủ hoặc dữ liệu ảnh quá lớn!");
     } finally {
       setSubmitting(false);
     }
@@ -162,7 +183,7 @@ export default function EditNewsPage() {
         </div>
 
         <div className="row mb-3">
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label className="form-label fw-semibold">Tác giả</label>
             <input
               type="text"
@@ -173,7 +194,7 @@ export default function EditNewsPage() {
               required
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label className="form-label fw-semibold">Danh mục</label>
             <input
               type="text"
@@ -184,7 +205,7 @@ export default function EditNewsPage() {
               required
             />
           </div>
-          <div className="col-md-4">
+          <div className="col-md-3">
             <label className="form-label fw-semibold">Ngày đăng</label>
             <input
               type="date"
@@ -195,9 +216,26 @@ export default function EditNewsPage() {
               required
             />
           </div>
+          
+          {/* Nút bật tắt ẩn/hiện bài viết */}
+          <div className="col-md-3 d-flex align-items-end">
+            <div className="form-check form-switch mb-2">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                id="isHidden"
+                name="isHidden"
+                checked={formData.isHidden || false}
+                onChange={handleChange}
+              />
+              <label className="form-check-label fw-semibold text-danger ms-1" htmlFor="isHidden">
+                Ẩn bài viết này
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* Khối Ảnh Đại Diện: Hỗ trợ cả Nhập URL & Upload File */}
+        {/* Khối Ảnh Đại Diện */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Ảnh đại diện</label>
           <div className="input-group mb-2">

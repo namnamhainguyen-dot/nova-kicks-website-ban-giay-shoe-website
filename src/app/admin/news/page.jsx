@@ -7,9 +7,10 @@ export default function AdminNewsPage() {
   const [newsList, setNewsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Cập nhật URL fetch có ?admin=true để lấy cả các bài đang bị ẩn
   const fetchNews = async () => {
     try {
-      const res = await fetch("/api/news");
+      const res = await fetch("/api/news?admin=true");
       const data = await res.json();
       if (data.success) {
         setNewsList(data.data);
@@ -25,7 +26,7 @@ export default function AdminNewsPage() {
     fetchNews();
   }, []);
 
-  // Thay thế hàm xóa bằng hàm chuyển đổi trạng thái Ẩn/Hiện
+  // Hàm chuyển đổi trạng thái Ẩn/Hiện bài viết
   const handleToggleHide = async (id, currentStatus) => {
     const actionText = currentStatus ? "hiển thị lại" : "ẩn";
     if (!confirm(`Bạn có chắc chắn muốn ${actionText} bài viết này không?`)) return;
@@ -44,6 +45,26 @@ export default function AdminNewsPage() {
       }
     } catch (error) {
       console.error("Lỗi cập nhật trạng thái bài viết:", error);
+    }
+  };
+
+  // Hàm xóa vĩnh viễn bài viết
+  const handleDelete = async (id) => {
+    if (!confirm("Hành động này không thể hoàn tác! Bạn có chắc muốn XÓA hẳn bài viết này?")) return;
+
+    try {
+      const res = await fetch(`/api/news?id=${id}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("Đã xóa bài viết thành công!");
+        fetchNews();
+      } else {
+        alert(data.error || "Không thể xóa bài viết");
+      }
+    } catch (error) {
+      console.error("Lỗi xóa bài viết:", error);
     }
   };
 
@@ -138,9 +159,15 @@ export default function AdminNewsPage() {
                         </Link>
                         <button
                           onClick={() => handleToggleHide(item._id, item.isHidden)}
-                          className={`btn btn-sm ${item.isHidden ? "btn-outline-success" : "btn-outline-warning"}`}
+                          className={`btn btn-sm me-2 ${item.isHidden ? "btn-outline-success" : "btn-outline-warning"}`}
                         >
                           {item.isHidden ? "Hiện" : "Ẩn"}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item._id)}
+                          className="btn btn-sm btn-outline-danger"
+                        >
+                          Xóa
                         </button>
                       </td>
                     </tr>
