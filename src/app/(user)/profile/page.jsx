@@ -74,7 +74,7 @@ export default function Profile() {
 
   // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình
   const statusBadges = {
-    pending: { text: "Đang chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
+    pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
     processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-gear-wide-connected" },
     preparing: { text: "Đang đóng gói", class: "bg-info-subtle text-info-emphasis fw-bold", icon: "bi bi-box-seam" },
     shipping: { text: "Đang giao", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-truck" },
