@@ -25,7 +25,7 @@ export default function EditNewsPage() {
     summary: "",
     image: "",
     content: "",
-    isHidden: false, // Bổ sung trạng thái ẩn
+    isHidden: false,
   });
 
   const [loading, setLoading] = useState(true);
@@ -45,7 +45,6 @@ export default function EditNewsPage() {
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        // Thêm ?admin=true để gọi được bài viết dù đang bị ẩn
         const res = await fetch(`/api/news?id=${params.id}&admin=true`);
         const data = await res.json();
 
@@ -89,7 +88,6 @@ export default function EditNewsPage() {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
-  // Nén ảnh gọn lại trước khi chuyển về Base64 để không bị lỗi quá tải dung lượng
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -108,8 +106,7 @@ export default function EditNewsPage() {
           const ctx = canvas.getContext("2d");
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-          // Nén chất lượng ảnh xuống 0.7 để giảm dung lượng file gửi đi
-          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.7);
+          const compressedBase64 = canvas.toDataURL("image/jpeg", 0.6);
           setFormData((prev) => ({ ...prev, image: compressedBase64 }));
         };
       };
@@ -126,11 +123,15 @@ export default function EditNewsPage() {
     }
 
     setSubmitting(true);
+
+    // Lọc bỏ các trường mặc định của MongoDB tránh lỗi update
+    const { _id, __v, updatedAt, ...updateData } = formData;
+
     try {
       const res = await fetch(`/api/news?id=${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(updateData),
       });
       const data = await res.json();
 
@@ -142,7 +143,7 @@ export default function EditNewsPage() {
       }
     } catch (error) {
       console.error("Lỗi cập nhật:", error);
-      alert("Lỗi kết nối máy chủ hoặc dữ liệu ảnh quá lớn!");
+      alert("Lỗi kết nối máy chủ hoặc dữ liệu gửi đi không hợp lệ!");
     } finally {
       setSubmitting(false);
     }
@@ -217,7 +218,6 @@ export default function EditNewsPage() {
             />
           </div>
           
-          {/* Nút bật tắt ẩn/hiện bài viết */}
           <div className="col-md-3 d-flex align-items-end">
             <div className="form-check form-switch mb-2">
               <input
@@ -235,7 +235,6 @@ export default function EditNewsPage() {
           </div>
         </div>
 
-        {/* Khối Ảnh Đại Diện */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Ảnh đại diện</label>
           <div className="input-group mb-2">
@@ -286,7 +285,6 @@ export default function EditNewsPage() {
           ></textarea>
         </div>
 
-        {/* Soạn thảo văn bản Rich Text WYSIWYG */}
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
