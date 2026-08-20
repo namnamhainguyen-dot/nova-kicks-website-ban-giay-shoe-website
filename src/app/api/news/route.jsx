@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
-import connectDB from "@/lib/mongodb";
+import connectDB from "@/libs/mongodb";
 import News from "@/models/News";
 
 export const maxDuration = 60; // Tăng timeout cho Vercel Serverless Function
