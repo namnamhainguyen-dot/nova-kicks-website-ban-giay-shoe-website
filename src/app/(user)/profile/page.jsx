@@ -74,7 +74,8 @@ export default function Profile() {
 
   // Từ điển ánh xạ trạng thái đơn hàng chuẩn quy trình
   const statusBadges = {
-    pending: { text: "Đang chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
+    pending: { text: "Chờ xác nhận", class: "bg-warning-subtle text-warning-emphasis fw-bold", icon: "bi bi-clock-history" },
+    processing: { text: "Đang xử lý", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-gear-wide-connected" },
     preparing: { text: "Đang đóng gói", class: "bg-info-subtle text-info-emphasis fw-bold", icon: "bi bi-box-seam" },
     shipping: { text: "Đang giao", class: "bg-primary-subtle text-primary-emphasis fw-bold", icon: "bi bi-truck" },
     completed: { text: "Hoàn thành", class: "bg-success-subtle text-success-emphasis fw-bold", icon: "bi bi-check-circle" },
@@ -83,8 +84,11 @@ export default function Profile() {
 
   const getStatusInfo = (statusKey) => {
     const key = (statusKey || "").toLowerCase().trim();
-    if (key === "pending" || key === "đang chờ xác nhận" || key === "chờ xác nhận" || key === "chờ xử lý") {
+    if (key === "pending" || key === "đang chờ xác nhận" || key === "chờ xác nhận") {
       return statusBadges.pending;
+    }
+    if (key === "processing" || key === "đang xử lý" || key === "chờ xử lý") {
+      return statusBadges.processing;
     }
     if (key === "preparing" || key === "đang đóng gói") {
       return statusBadges.preparing;
@@ -101,8 +105,27 @@ export default function Profile() {
     return { text: statusKey || "Đang chờ xác nhận", class: "bg-secondary-subtle text-secondary-emphasis fw-bold", icon: "bi bi-question-circle" };
   };
 
-  // 2. Tải thông tin người dùng từ API Server & đơn hàng
+  // 2. Tải thông tin người dùng từ API Server & đơn hàng (Đồng bộ tức thì)
   useEffect(() => {
+    let emailToFetch = null;
+
+    const fetchOrdersOnly = async (email) => {
+      if (!email) return;
+      try {
+        const resOrders = await fetch(`/api/orders?email=${encodeURIComponent(email)}`);
+        if (resOrders.ok) {
+          const ordersData = await resOrders.json();
+          if (Array.isArray(ordersData)) {
+            setOrders(ordersData);
+          } else if (ordersData && Array.isArray(ordersData.data)) {
+            setOrders(ordersData.data);
+          }
+        }
+      } catch (err) {
+        console.log("Lỗi đồng bộ đơn hàng ngầm:", err);
+      }
+    };
+
     const fetchUserDataAndOrders = async () => {
       try {
         const savedUser = localStorage.getItem("user");
@@ -125,12 +148,11 @@ export default function Profile() {
                   parsedUser.phone = freshUserData.phone || parsedUser.phone;
                   parsedUser.fullname = freshUserData.fullname || parsedUser.fullname;
                   parsedUser.avatar = freshUserData.avatar || parsedUser.avatar;
-                  parsedUser.avatar = freshUserData.avatar;
                   localStorage.setItem("user", JSON.stringify(parsedUser));
                 }
               }
             } catch (err) {
-              console.error("Không thể đồng bộ user từ server, dùng tạm dữ liệu local:", err);
+              console.error("Không thể đồng bộ user từ server:", err);
             }
           }
 
@@ -154,15 +176,8 @@ export default function Profile() {
           });
 
           if (parsedUser && parsedUser.email) {
-            const resOrders = await fetch(`/api/orders?email=${encodeURIComponent(parsedUser.email)}`);
-            if (resOrders.ok) {
-              const ordersData = await resOrders.json();
-              if (Array.isArray(ordersData)) {
-                setOrders(ordersData);
-              } else if (ordersData && Array.isArray(ordersData.data)) {
-                setOrders(ordersData.data);
-              }
-            }
+            emailToFetch = parsedUser.email;
+            await fetchOrdersOnly(emailToFetch);
           } else {
             setOrders([]);
           }
@@ -175,6 +190,33 @@ export default function Profile() {
     };
 
     fetchUserDataAndOrders();
+
+    // ==========================================
+    // CƠ CHẾ ĐỒNG BỘ TỨC THÌ (REAL-TIME CROSS-TAB)
+    // ==========================================
+    // 1. Lắng nghe tín hiệu từ trang Admin
+    const orderChannel = new BroadcastChannel("order_status_sync");
+    orderChannel.onmessage = (event) => {
+      if (event.data && event.data.type === "UPDATE_ORDERS" && emailToFetch) {
+        fetchOrdersOnly(emailToFetch); // Cập nhật ngay lập tức khi Admin đổi trạng thái
+      }
+    };
+
+    // 2. Polling phụ phòng hờ (giảm xuống 2 giây) & sự kiện focus tab
+    const intervalId = setInterval(() => {
+      if (emailToFetch) fetchOrdersOnly(emailToFetch);
+    }, 2000);
+
+    const handleFocus = () => {
+      if (emailToFetch) fetchOrdersOnly(emailToFetch);
+    };
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      orderChannel.close();
+      clearInterval(intervalId);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // 3. API Địa chính: Lấy danh sách Tỉnh / Thành phố
@@ -307,7 +349,6 @@ export default function Profile() {
     }));
   };
 
-  // XỬ LÝ CHỌN ẢNH TỪ MÁY TÍNH (Chuyển thành Base64)
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -323,7 +364,6 @@ export default function Profile() {
     }
   };
 
-  // 5. Cập nhật thông tin cơ bản & Avatar
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
@@ -365,11 +405,9 @@ export default function Profile() {
         const updatedUserData = { ...user, ...payload, _id: currentUserId };
         localStorage.setItem("user", JSON.stringify(updatedUserData));
         
-        // 🔔 Phát tín hiệu đồng bộ dữ liệu sang các component khác như Header / Admin
         window.dispatchEvent(new CustomEvent("userProfileUpdated", { detail: updatedUserData }));
 
         setIsEditingProfile(false);
-        // XÓA hoặc BÌNH LUẬN DÒNG NÀY LẠI: window.location.reload();
       } else {
         alert(`Lỗi từ server: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
       }
@@ -379,7 +417,6 @@ export default function Profile() {
     }
   };
 
-  // 6. XỬ LÝ ĐỔI MẬT KHẨU
   const handleChangePassword = async (e) => {
     e.preventDefault();
 
@@ -433,7 +470,6 @@ export default function Profile() {
     }
   };
 
-  // 7. QUẢN LÝ ĐA ĐỊA CHỈ
   const syncAddressesToStorageAndServer = async (newAddresses) => {
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
@@ -623,23 +659,17 @@ export default function Profile() {
 
   // Logic lọc đơn hàng dựa trên trạng thái được chọn
   const filteredOrders = orders.filter((order) => {
+    const rawPayment = (order.paymentMethod || order.payment_method || "").toLowerCase();
+    const isQRPayment = rawPayment.includes("vnpay") || rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+    const st = isQRPayment ? "processing" : (order.status || "").toLowerCase().trim();
+
     if (orderFilter === "all") return true;
-    const st = (order.status || "").toLowerCase().trim();
-    if (orderFilter === "pending") {
-      return st === "pending" || st === "đang chờ xác nhận" || st === "chờ xác nhận" || st === "chờ xử lý";
-    }
-    if (orderFilter === "preparing") {
-      return st === "preparing" || st === "đang đóng gói";
-    }
-    if (orderFilter === "shipping") {
-      return st === "shipping" || st === "đang giao";
-    }
-    if (orderFilter === "completed") {
-      return st === "completed" || st === "hoàn thành" || st === "đã giao hàng";
-    }
-    if (orderFilter === "cancelled") {
-      return st === "cancelled" || st === "đã hủy";
-    }
+    if (orderFilter === "pending") return st === "pending" || st === "đang chờ xác nhận";
+    if (orderFilter === "processing") return st === "processing" || st === "đang xử lý";
+    if (orderFilter === "preparing") return st === "preparing" || st === "đang đóng gói";
+    if (orderFilter === "shipping") return st === "shipping" || st === "đang giao";
+    if (orderFilter === "completed") return st === "completed" || st === "hoàn thành";
+    if (orderFilter === "cancelled") return st === "cancelled" || st === "đã hủy";
     return true;
   });
 
@@ -657,7 +687,6 @@ export default function Profile() {
     <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
       <main className="container mb-5 flex-grow-1" style={{ marginTop: "-110px" }}>
-        {/* Tiêu đề được đưa vào chung trong main */}
         <div className="mb-4">
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
@@ -752,8 +781,6 @@ export default function Profile() {
                 </div>
 
                 <form onSubmit={handleUpdateProfile} style={{ maxWidth: "650px" }}>
-                  
-                  {/* PHẦN ĐỔI ẢNH ĐẠI DIỆN */}
                   <div className="mb-4 row align-items-center">
                     <label className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Ảnh đại diện</label>
                     <div className="col-sm-9 d-flex align-items-center gap-3">
@@ -945,7 +972,8 @@ export default function Profile() {
                 <div className="d-flex flex-wrap gap-2 mb-4 pb-3 border-bottom">
                   {[
                     { key: "all", label: "Tất cả" },
-                    { key: "pending", label: "Đang chờ xác nhận" },
+                    { key: "pending", label: "Chờ xác nhận" },
+                    { key: "processing", label: "Đang xử lý" },
                     { key: "preparing", label: "Đang đóng gói" },
                     { key: "shipping", label: "Đang giao" },
                     { key: "completed", label: "Hoàn thành" },
@@ -968,13 +996,16 @@ export default function Profile() {
                   {filteredOrders.length > 0 ? (
                     filteredOrders.map((order) => {
                       const itemsList = order.order_items || order.items || order.products || [];
-                      const badge = getStatusInfo(order.status);
                       
-                      const rawPayment = order.paymentMethod || "cod";
-                      const displayPayment = rawPayment.toLowerCase() === "cod" ? "COD" : rawPayment.toUpperCase();
+                      const rawPayment = (order.paymentMethod || order.payment_method || "cod").toLowerCase().trim();
+                      const isQRPayment = rawPayment.includes("vnpay") || rawPayment.includes("qr") || rawPayment.includes("banking") || rawPayment.includes("chuyển khoản");
+                      const displayPayment = isQRPayment ? "VNPAY" : (rawPayment === "cod" ? "COD" : rawPayment.toUpperCase());
                       
-                      const rawStatus = (order.status || "").toLowerCase().trim();
-                      const isPending = rawStatus === "pending" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
+                      const effectiveStatus = isQRPayment ? "processing" : order.status;
+                      const badge = getStatusInfo(effectiveStatus);
+                      
+                      const rawStatus = (effectiveStatus || "").toLowerCase().trim();
+                      const isPending = rawStatus === "pending" || rawStatus === "đang chờ xác nhận" || rawStatus === "chờ xác nhận" || rawStatus === "chờ xử lý";
                       const isCancelled = rawStatus === "cancelled" || rawStatus === "đã hủy";
 
                       const orderDiscount = Number(order.discountAmount || order.discount || 0);
@@ -1238,23 +1269,24 @@ export default function Profile() {
                       />
                     </div>
 
+                    {/* TỈNH / THÀNH PHỐ */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Phường / Xã *</label>
+                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
-                        value={selectedWard} 
-                        onChange={(e) => setSelectedWard(e.target.value)} 
-                        disabled={!selectedDistrict} 
+                        value={selectedProvince} 
+                        onChange={handleProvinceChange} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Phường/Xã --</option>
-                        {wards.map((w) => (
-                          <option key={w.id} value={w.id}>{w.full_name}</option>
+                        <option value="">-- Chọn Tỉnh/Thành --</option>
+                        {provinces.map((p) => (
+                          <option key={p.id} value={p.id}>{p.full_name}</option>
                         ))}
                       </select>
                     </div>
 
+                    {/* QUẬN / HUYỆN */}
                     <div className="col-md-4">
                       <label className="form-label small fw-semibold">Quận / Huyện *</label>
                       <select 
@@ -1272,18 +1304,20 @@ export default function Profile() {
                       </select>
                     </div>
 
+                    {/* PHƯỜNG / XÃ */}
                     <div className="col-md-4">
-                      <label className="form-label small fw-semibold">Tỉnh / Thành phố *</label>
+                      <label className="form-label small fw-semibold">Phường / Xã *</label>
                       <select 
                         className="form-select rounded-2 shadow-none py-2 px-3" 
-                        value={selectedProvince} 
-                        onChange={handleProvinceChange} 
+                        value={selectedWard} 
+                        onChange={(e) => setSelectedWard(e.target.value)} 
+                        disabled={!selectedDistrict} 
                         required 
                         style={{ borderColor: "#d97706" }}
                       >
-                        <option value="">-- Chọn Tỉnh/Thành --</option>
-                        {provinces.map((p) => (
-                          <option key={p.id} value={p.id}>{p.full_name}</option>
+                        <option value="">-- Chọn Phường/Xã --</option>
+                        {wards.map((w) => (
+                          <option key={w.id} value={w.id}>{w.full_name}</option>
                         ))}
                       </select>
                     </div>

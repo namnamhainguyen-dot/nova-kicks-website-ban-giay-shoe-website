@@ -452,7 +452,7 @@ function ProductCard({ product, isFavorite, toggleWishlist }) {
   );
 }
 
-export default function ProductFilter({ products }) {
+export default function ProductFilter({ products, aiFilteredIds = null }) { // 👈 Thêm prop nhận mảng ID từ AI
   const router = useRouter();
   const searchParams = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -585,16 +585,21 @@ export default function ProductFilter({ products }) {
     const maxPriceNum = priceRange.max !== "" ? Number(priceRange.max) : null;
 
     const result = processedProducts.filter((p) => {
-      const productId = String(p._id?.$oid || p._id);
+      const productId = String(p._id?.$oid || p._id || p.id);
       
-      // 1. Lọc yêu thích
+      // 1. Lọc theo AI gợi ý (Nếu người dùng vừa chat với AI và có kết quả matchedIds)
+      if (aiFilteredIds && Array.isArray(aiFilteredIds) && aiFilteredIds.length > 0) {
+        if (!aiFilteredIds.includes(productId)) return false;
+      }
+
+      // 2. Lọc yêu thích
       if (showFavoritesOnly && !isFavorite(productId)) return false;
 
-      // 2. Lọc giá (Ép kiểu Number rõ ràng để so sánh chính xác)
+      // 3. Lọc giá
       if (minPriceNum !== null && p.effectivePrice < minPriceNum) return false;
       if (maxPriceNum !== null && p.effectivePrice > maxPriceNum) return false;
 
-      // 3. Lọc kích thước
+      // 4. Lọc kích thước
       if (selectedSizes.length > 0) {
         const hasSize = selectedSizes.some((s) => (p.displaySizes || []).includes(s));
         if (!hasSize) return false;
@@ -603,7 +608,7 @@ export default function ProductFilter({ products }) {
       return true;
     });
 
-    // 4. Sắp xếp
+    // 5. Sắp xếp
     return result.sort((a, b) => {
       if (sortBy === "price-asc") return a.effectivePrice - b.effectivePrice;
       if (sortBy === "price-desc") return b.effectivePrice - a.effectivePrice;
@@ -611,7 +616,7 @@ export default function ProductFilter({ products }) {
       if (sortBy === "name-desc") return b.name.localeCompare(a.name);
       return 0;
     });
-  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy]);
+  }, [processedProducts, priceRange, selectedSizes, showFavoritesOnly, isFavorite, sortBy, aiFilteredIds]);
 
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE) || 1;
   const validPage = Math.min(currentPage, totalPages);
@@ -647,7 +652,6 @@ export default function ProductFilter({ products }) {
 
   return (
     <div>
-      {/* 🌟 ĐOẠN CSS ĐỔI MÀU CAM NHẸ CHO PHÂN TRANG */}
       <style>{`
         .pagination .page-item.active .page-link {
           background-color: #f97316 !important;
@@ -791,7 +795,7 @@ export default function ProductFilter({ products }) {
                 ))}
               </div>
 
-              {/* ✅ PHÂN TRANG DUY NHẤT */}
+              {/* Phân trang */}
               {totalPages > 1 && (
                 <nav className="d-flex justify-content-center mt-5 pt-3">
                   <ul className="pagination shadow-sm rounded-3 bg-white p-2 border">

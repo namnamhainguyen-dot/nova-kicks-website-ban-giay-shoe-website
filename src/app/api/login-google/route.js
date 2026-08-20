@@ -57,15 +57,24 @@ export async function POST(request) {
     const userEmail = googleUser.email.trim().toLowerCase();
     let user = await db.collection("users").findOne({ email: userEmail });
 
+    // 🛑 THÊM CHỐT CHẶN NÀY: Nếu tài khoản đã tồn tại NHƯNG bị khóa
+    if (user && user.status === "inactive") {
+      return NextResponse.json(
+        { message: "Tài khoản của bạn đã bị khóa bởi quản trị viên." },
+        { status: 403 } // 403 Forbidden
+      );
+    }
+
     // 🟢 3. Nếu CHƯA tồn tại -> Tự động đăng ký tài khoản mới
     if (!user) {
       const newUser = {
         fullname: googleUser.name || "Người dùng Google",
         email: userEmail,
-        avatar: googleUser.picture || null, // 🌟 Lưu thêm avatar Google
+        avatar: googleUser.picture || null,
         phone: null,
-        password: null, // Đăng nhập Google không dùng mật khẩu
-        role: "user",   // Mặc định là user
+        password: null, 
+        role: "user",   
+        status: "active", // Nên chủ động set active cho user mới đăng ký qua Google
         provider: "google",
         createdAt: new Date(),
       };

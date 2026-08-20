@@ -35,7 +35,7 @@ export default function AdminOrderPage() {
     image: "",
   });
 
-  const statusOrder = ["pending", "preparing", "shipping", "completed"];
+  const statusOrder = ["pending", "processing", "preparing", "shipping", "completed"];
 
   const loadOrders = async () => {
     try {
@@ -72,7 +72,7 @@ export default function AdminOrderPage() {
     }
 
     if (nextStatus === "cancelled") {
-      if (currentStatus === "pending" || currentStatus === "preparing") {
+      if (["pending", "processing", "preparing"].includes(currentStatus)) {
         setActionModal({
           isOpen: true,
           type: "cancelled",
@@ -207,12 +207,13 @@ export default function AdminOrderPage() {
   };
 
   const totalOrders = orders.length;
-  const pendingOrders = orders.filter((o) => !o.status || o.status === "pending").length;
+  const pendingOrders = orders.filter((o) => !o.status || o.status === "pending" || o.status === "processing").length;
   const shippingOrders = orders.filter((o) => o.status === "shipping" || o.status === "preparing").length;
   const totalRevenue = orders.filter((o) => o.status === "completed").reduce((sum, o) => sum + Number(o.final_total || o.total || 0), 0);
 
   const statusBadges = {
     pending: { text: "Chờ xác nhận", class: "bg-warning bg-opacity-10 text-warning" },
+    processing: { text: "Đang xử lý", class: "bg-primary bg-opacity-10 text-primary" },
     preparing: { text: "Đang đóng gói", class: "bg-info bg-opacity-10 text-info" },
     shipping: { text: "Đang giao", class: "bg-primary bg-opacity-10 text-primary" },
     completed: { text: "Hoàn thành", class: "bg-success bg-opacity-10 text-success" },
@@ -224,6 +225,7 @@ export default function AdminOrderPage() {
   const getAllowedOptions = (currentStatus) => {
     const allOpts = [
       { value: "pending", label: "Chờ xác nhận" },
+      { value: "processing", label: "Đang xử lý" },
       { value: "preparing", label: "Đóng gói" },
       { value: "shipping", label: "Đang giao" },
       { value: "completed", label: "Hoàn thành" },
@@ -244,7 +246,7 @@ export default function AdminOrderPage() {
       const optIndex = statusOrder.indexOf(opt.value);
       if (optIndex === currentIndex + 1) return true;
 
-      if (currentStatus === "pending" || currentStatus === "preparing") {
+      if (["pending", "processing", "preparing"].includes(currentStatus)) {
         if (opt.value === "cancelled") return true;
       }
       
@@ -258,7 +260,16 @@ export default function AdminOrderPage() {
 
   const filteredOrders = orders.filter((o) => {
     const matchesTab = activeTab === "all" ? true : o.status === activeTab;
-    const matchesPayment = paymentFilter === "all" ? true : o.paymentMethod === paymentFilter;
+    
+    // Cập nhật bộ lọc để bắt chuẩn mã VNPAY
+    const rawMethod = (o.paymentMethod || o.payment_method || "").toLowerCase();
+    let matchesPayment = true;
+    if (paymentFilter === "cod") {
+      matchesPayment = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
+    } else if (paymentFilter === "vnpay") {
+      matchesPayment = rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
+    }
+
     const key = search.toLowerCase();
     const matchesSearch =
       o._id?.toLowerCase().includes(key) ||
@@ -285,58 +296,57 @@ export default function AdminOrderPage() {
     }
   };
 
-  // Thao tác hàng loạt: Duyệt nhanh / Chuyển sang đóng gói
-// Thao tác hàng loạt
-const handleBatchUpdate = async (nextStatus) => {
-  if (selectedOrderIds.length === 0) {
-    showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
-    return;
-  }
-
-  if (
-    !confirm(
-      `Bạn có chắc muốn cập nhật ${selectedOrderIds.length} đơn hàng?`
-    )
-  ) {
-    return;
-  }
-
-  let success = 0;
-  let failed = 0;
-
-  try {
-    for (const id of selectedOrderIds) {
-      const res = await fetch(`/api/orders/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          status: nextStatus,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.success) {
-        success++;
-      } else {
-        failed++;
-      }
+  const handleBatchUpdate = async (nextStatus) => {
+    if (selectedOrderIds.length === 0) {
+      showMessage("Vui lòng chọn ít nhất một đơn hàng!", "warning");
+      return;
     }
 
-    showMessage(
-      `Thành công ${success} đơn, thất bại ${failed} đơn`,
-      failed === 0 ? "success" : "warning"
-    );
+    if (
+      !confirm(
+        `Bạn có chắc muốn cập nhật ${selectedOrderIds.length} đơn hàng?`
+      )
+    ) {
+      return;
+    }
 
-    setSelectedOrderIds([]);
-    loadOrders();
-  } catch (err) {
-    console.error(err);
-    showMessage("Có lỗi xảy ra!", "danger");
-  }
-};
+    let success = 0;
+    let failed = 0;
+
+    try {
+      for (const id of selectedOrderIds) {
+        const res = await fetch(`/api/orders/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            status: nextStatus,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (data.success) {
+          success++;
+        } else {
+          failed++;
+        }
+      }
+
+      showMessage(
+        `Thành công ${success} đơn, thất bại ${failed} đơn`,
+        failed === 0 ? "success" : "warning"
+      );
+
+      setSelectedOrderIds([]);
+      loadOrders();
+    } catch (err) {
+      console.error(err);
+      showMessage("Có lỗi xảy ra!", "danger");
+    }
+  };
+
   const exportToCSV = () => {
     if (filteredOrders.length === 0) {
       showMessage("Không có dữ liệu để xuất file!", "warning");
@@ -367,14 +377,14 @@ const handleBatchUpdate = async (nextStatus) => {
   };
 
   const renderDeadline = (order) => {
-  if (order.deadline) return new Date(order.deadline).toLocaleDateString("vi-VN");
-  if (order.createdAt) {
-    const date = new Date(order.createdAt);
-    date.setDate(date.getDate() + 2);
-    return date.toLocaleDateString("vi-VN");
-  }
-  return "---";
-};
+    if (order.deadline) return new Date(order.deadline).toLocaleDateString("vi-VN");
+    if (order.createdAt) {
+      const date = new Date(order.createdAt);
+      date.setDate(date.getDate() + 2);
+      return date.toLocaleDateString("vi-VN");
+    }
+    return "---";
+  };
 
   if (loading) {
     return (
@@ -389,7 +399,6 @@ const handleBatchUpdate = async (nextStatus) => {
   return (
     <div className="p-4" style={{ backgroundColor: "#f8f9fa", minHeight: "100vh", fontFamily: "inherit" }}>
       
-      {/* ================= INLINE MESSAGE NOTIFICATION ================= */}
       {messageBar.visible && (
         <div className={`alert alert-${messageBar.type} py-2 px-3 rounded-3 shadow-sm d-flex align-items-center mb-4`} role="alert">
           <span className="fw-medium small">{messageBar.text}</span>
@@ -397,7 +406,6 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       )}
 
-      {/* ================= MODAL ACTION (BOM/TRẢ HÀNG/HỦY) ================= */}
       {actionModal.isOpen && (
         <div className="modal show d-block" style={{ background: "rgba(0,0,0,.5)", zIndex: 1050 }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -438,7 +446,6 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       )}
 
-      {/* Tiêu đề trang & Nút xuất Excel */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
           <h2 className="fw-bold text-dark mb-1" style={{ fontSize: "1.75rem" }}>
@@ -457,7 +464,6 @@ const handleBatchUpdate = async (nextStatus) => {
         </button>
       </div>
 
-      {/* Thẻ thống kê tổng quan (Dashboard Widgets) */}
       <div className="row g-3 mb-4">
         <div className="col-xl-3 col-md-6">
           <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
@@ -467,7 +473,7 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
         <div className="col-xl-3 col-md-6">
           <div className="card border-0 p-3 rounded-4 shadow-sm bg-white h-100">
-            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Chờ xác nhận</div>
+            <div className="text-uppercase text-muted small fw-semibold mb-1" style={{ fontSize: "0.75rem" }}>Chờ xác nhận / xử lý</div>
             <div className="fs-3 fw-bold text-warning">{pendingOrders}</div>
           </div>
         </div>
@@ -485,7 +491,6 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       </div>
 
-      {/* Thanh công cụ tìm kiếm, lọc & Tab trạng thái */}
       <div className="card border-0 shadow-sm rounded-4 p-3 mb-4 bg-white">
         <div className="row g-3 align-items-center">
           <div className="col-md-5">
@@ -509,7 +514,8 @@ const handleBatchUpdate = async (nextStatus) => {
             >
               <option value="all">Tất cả cổng thanh toán</option>
               <option value="cod">Thanh toán COD</option>
-              <option value="vnpay">Thanh toán VNPay</option>
+              {/* Đã đổi nhãn thành VNPAY */}
+              <option value="vnpay">Thanh toán VNPAY</option>
             </select>
           </div>
           <div className="col-md-4 d-flex align-items-end justify-content-md-end">
@@ -523,11 +529,11 @@ const handleBatchUpdate = async (nextStatus) => {
           </div>
         </div>
 
-        {/* Các nút Tab trạng thái */}
         <div className="d-flex gap-2 overflow-auto py-2 mt-3 border-top pt-3">
           {[
             "all",
             "pending",
+            "processing",
             "preparing",
             "shipping",
             "completed",
@@ -547,13 +553,18 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       </div>
 
-      {/* Thanh thao tác hàng loạt (Batch Actions Bar) */}
       {selectedOrderIds.length > 0 && (
         <div className="card border-0 shadow-sm rounded-4 px-4 py-3 mb-4 bg-dark text-white d-flex flex-row align-items-center justify-content-between">
           <div className="fw-semibold small">
             Đã chọn <span className="badge bg-white text-dark px-2 py-1 ms-1">{selectedOrderIds.length}</span> đơn hàng
           </div>
           <div className="d-flex gap-2">
+            <button
+              className="btn btn-sm btn-light text-primary fw-semibold rounded-pill px-3 shadow-sm"
+              onClick={() => handleBatchUpdate("processing")}
+            >
+              Chuyển Đang xử lý
+            </button>
             <button
               className="btn btn-sm btn-light text-info fw-semibold rounded-pill px-3 shadow-sm"
               onClick={() => handleBatchUpdate("preparing")}
@@ -576,7 +587,6 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       )}
 
-      {/* Bảng danh sách đơn hàng */}
       <div className="card border-0 shadow-sm rounded-4 bg-white overflow-hidden">
         <div className="table-responsive">
           <table className="table align-middle mb-0">
@@ -604,6 +614,7 @@ const handleBatchUpdate = async (nextStatus) => {
                 filteredOrders.map((order) => {
                   const allowedOptions = getAllowedOptions(order.status || "pending");
                   const isSelected = selectedOrderIds.includes(order._id);
+                  const rawMethod = (order.paymentMethod || order.payment_method || "").toLowerCase();
 
                   return (
                     <tr key={order._id} className={isSelected ? "table-active" : ""}>
@@ -656,8 +667,9 @@ const handleBatchUpdate = async (nextStatus) => {
                         <div className="fw-bold text-dark" style={{ fontSize: "0.9rem" }}>
                           {(order.final_total || order.total || 0).toLocaleString("vi-VN")}đ
                         </div>
-                        <span className={`badge mt-1 ${order.paymentMethod === "vnpay" ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.68rem" }}>
-                          {order.paymentMethod === "cod" ? "COD" : "VNPay"}
+                        {/* Hiển thị nhãn VNPAY nếu thanh toán qua VNPAY / QR / Banking */}
+                        <span className={`badge mt-1 ${rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") ? "bg-primary bg-opacity-10 text-primary" : "bg-secondary bg-opacity-10 text-secondary"}`} style={{ fontSize: "0.68rem" }}>
+                          {rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") ? "VNPAY" : "COD"}
                         </span>
                       </td>
 
@@ -708,5 +720,5 @@ const handleBatchUpdate = async (nextStatus) => {
         </div>
       </div>
     </div>
-  )
-};
+  );
+}

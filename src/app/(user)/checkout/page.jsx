@@ -870,53 +870,13 @@ export default function Checkout() {
                     </div>
                   )}
 
-                  {/* Form chọn Địa chính: Phường/Xã -> Quận/Huyện -> Tỉnh/Thành (Chuẩn trật tự như Profile) */}
+                  {/* Form chọn Địa chính: Tỉnh/Thành -> Quận/Huyện -> Phường/Xã (Chuẩn logic) */}
                   {(selectedAddressId === "new" || savedAddresses.length === 0) && (
                     <div className="border p-3 rounded bg-light">
                       <div className="row g-2">
-                        {/* 1. Phường/Xã */}
+                        {/* 1. Tỉnh / Thành phố */}
                         <div className="col-md-4">
-                          <label className="form-label small fw-semibold text-muted mb-1">1. Phường / Xã *</label>
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedWard}
-                            onChange={(e) => setSelectedWard(e.target.value)}
-                            disabled={!selectedDistrict}
-                          >
-                            <option value="">
-                              {!selectedDistrict ? "-- Chọn Quận/Huyện trước --" : "-- Chọn Phường/Xã --"}
-                            </option>
-                            {wards.map((w) => (
-                              <option key={w.id} value={w.id}>
-                                {w.full_name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* 2. Quận/Huyện */}
-                        <div className="col-md-4">
-                          <label className="form-label small fw-semibold text-muted mb-1">2. Quận / Huyện *</label>
-                          <select
-                            className="form-select form-select-lg fs-6"
-                            value={selectedDistrict}
-                            onChange={handleDistrictChange}
-                            disabled={!selectedProvince}
-                          >
-                            <option value="">
-                              {!selectedProvince ? "-- Chọn Tỉnh/Thành trước --" : "-- Chọn Quận/Huyện --"}
-                            </option>
-                            {districts.map((d) => (
-                              <option key={d.id} value={d.id}>
-                                {d.full_name}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* 3. Tỉnh/Thành phố */}
-                        <div className="col-md-4">
-                          <label className="form-label small fw-semibold text-muted mb-1">3. Tỉnh / Thành phố *</label>
+                          <label className="form-label small fw-semibold text-muted mb-1">Tỉnh / Thành phố *</label>
                           <select
                             className="form-select form-select-lg fs-6"
                             value={selectedProvince}
@@ -926,6 +886,46 @@ export default function Checkout() {
                             {provinces.map((p) => (
                               <option key={p.id} value={p.id}>
                                 {p.full_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 2. Quận / Huyện */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">Quận / Huyện *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedDistrict}
+                            onChange={handleDistrictChange}
+                            disabled={!selectedProvince}
+                          >
+                            <option value="">
+                              {!selectedProvince ? "-- Chọn Tỉnh trước --" : "-- Chọn Quận/Huyện --"}
+                            </option>
+                            {districts.map((d) => (
+                              <option key={d.id} value={d.id}>
+                                {d.full_name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        {/* 3. Phường / Xã */}
+                        <div className="col-md-4">
+                          <label className="form-label small fw-semibold text-muted mb-1">Phường / Xã *</label>
+                          <select
+                            className="form-select form-select-lg fs-6"
+                            value={selectedWard}
+                            onChange={(e) => setSelectedWard(e.target.value)}
+                            disabled={!selectedDistrict}
+                          >
+                            <option value="">
+                              {!selectedDistrict ? "-- Chọn Quận trước --" : "-- Chọn Phường/Xã --"}
+                            </option>
+                            {wards.map((w) => (
+                              <option key={w.id} value={w.id}>
+                                {w.full_name}
                               </option>
                             ))}
                           </select>

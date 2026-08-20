@@ -81,6 +81,14 @@ export async function POST(request) {
       );
     }
 
+    // 🛑 THÊM CHỐT CHẶN NÀY: Kiểm tra nếu tài khoản bị khóa
+    if (user.status === "inactive") {
+      return NextResponse.json(
+        { message: "Tài khoản của bạn đã bị khóa bởi quản trị viên." },
+        { status: 403 } // 403 Forbidden
+      );
+    }
+
     const isPasswordMatch = await bcrypt.compare(password, user.password);
     if (!isPasswordMatch) {
       return NextResponse.json(
