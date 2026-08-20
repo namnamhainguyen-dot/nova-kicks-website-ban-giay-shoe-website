@@ -74,6 +74,17 @@ export async function POST(request) {
       paymentMethod,
     } = body;
 
+    // 🛑 THÊM LỚP 1 Ở ĐÂY: Kiểm tra tài khoản có bị khóa không trước khi cho đặt hàng
+    if (email && email !== "guest") {
+      const existingUser = await db.collection("users").findOne({ email: email.trim().toLowerCase() });
+      if (existingUser && existingUser.status === "inactive") {
+        return Response.json(
+          { message: "Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể thực hiện giao dịch." },
+          { status: 403 } // 403 Forbidden
+        );
+      }
+    }
+
     // 1. Tạo đối tượng đơn hàng mới
     const newOrder = {
       email: email || "guest",

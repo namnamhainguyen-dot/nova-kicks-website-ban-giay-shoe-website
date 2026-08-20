@@ -37,6 +37,22 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: "ID sai định dạng" }, { status: 400 });
     }
 
+    const client = await clientPromise;
+    const db = client.db("Nova-kicks");
+
+    // 🛑 KIỂM TRA TRẠNG THÁI TÀI KHOẢN TRƯỚC KHI CHO PHÉP CẬP NHẬT
+    const userInDb = await db.collection("users").findOne({ _id: new ObjectId(id) });
+    if (!userInDb) {
+      return NextResponse.json({ error: "Không tìm thấy người dùng trong CSDL" }, { status: 404 });
+    }
+
+    if (userInDb.status === "inactive") {
+      return NextResponse.json(
+        { error: "Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể thay đổi thông tin cá nhân." },
+        { status: 403 } // 403 Forbidden
+      );
+    }
+
     const body = await request.json();
 
     // Loại bỏ các trường nhạy cảm
@@ -46,9 +62,6 @@ export async function PUT(request, { params }) {
     if (Object.keys(updateData).length === 0) {
       return NextResponse.json({ error: "Không có dữ liệu hợp lệ để cập nhật" }, { status: 400 });
     }
-
-    const client = await clientPromise;
-    const db = client.db("Nova-kicks");
 
     // Cập nhật và trả về luôn document MỚI NHẤT (after update)
     const result = await db.collection("users").findOneAndUpdate(
@@ -64,10 +77,6 @@ export async function PUT(request, { params }) {
         projection: { password: 0, resetToken: 0 } // Mật khẩu vẫn được giấu
       }
     );
-
-    if (!result) {
-      return NextResponse.json({ error: "Không tìm thấy người dùng trong CSDL" }, { status: 404 });
-    }
 
     // Trả về cả message lẫn object user mới nhất
     return NextResponse.json({

@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 export default function Profile() {
   const router = useRouter();
 
-  // 1. Khởi tạo State lưu thông tin người dùng, đơn hàng và trạng thái loading
+  // 1. Khởi tạo State lưu thông tin người dùng, đơn hàng và trạng thái loading (Thêm status)
   const [user, setUser] = useState({
     _id: "",
     fullname: "",
@@ -15,6 +15,7 @@ export default function Profile() {
     phone: "",
     avatar: "",
     addresses: [],
+    status: "active", //[cite: 3]
   });
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -148,6 +149,7 @@ export default function Profile() {
                   parsedUser.phone = freshUserData.phone || parsedUser.phone;
                   parsedUser.fullname = freshUserData.fullname || parsedUser.fullname;
                   parsedUser.avatar = freshUserData.avatar || parsedUser.avatar;
+                  parsedUser.status = freshUserData.status || parsedUser.status || "active"; //[cite: 3]
                   localStorage.setItem("user", JSON.stringify(parsedUser));
                 }
               }
@@ -173,6 +175,7 @@ export default function Profile() {
           setUser({
             ...parsedUser,
             addresses: userAddresses,
+            status: parsedUser.status || "active", //[cite: 3]
           });
 
           if (parsedUser && parsedUser.email) {
@@ -194,15 +197,13 @@ export default function Profile() {
     // ==========================================
     // CƠ CHẾ ĐỒNG BỘ TỨC THÌ (REAL-TIME CROSS-TAB)
     // ==========================================
-    // 1. Lắng nghe tín hiệu từ trang Admin
     const orderChannel = new BroadcastChannel("order_status_sync");
     orderChannel.onmessage = (event) => {
       if (event.data && event.data.type === "UPDATE_ORDERS" && emailToFetch) {
-        fetchOrdersOnly(emailToFetch); // Cập nhật ngay lập tức khi Admin đổi trạng thái
+        fetchOrdersOnly(emailToFetch);
       }
     };
 
-    // 2. Polling phụ phòng hờ (giảm xuống 2 giây) & sự kiện focus tab
     const intervalId = setInterval(() => {
       if (emailToFetch) fetchOrdersOnly(emailToFetch);
     }, 2000);
@@ -367,6 +368,12 @@ export default function Profile() {
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
 
+    // 🛑 Chặn ngay nếu tài khoản đã bị khóa (inactive)[cite: 3]
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể thay đổi thông tin cá nhân!");
+      return;
+    }
+
     let rawId = user._id || user.id;
     if (typeof rawId === "object" && rawId !== null) {
       rawId = rawId.$oid || rawId.toString();
@@ -409,6 +416,10 @@ export default function Profile() {
 
         setIsEditingProfile(false);
       } else {
+        // Bắt mã lỗi 403 từ Backend nếu tài khoản bị khóa đột ngột[cite: 3]
+        if (res.status === 403) {
+          setUser((prev) => ({ ...prev, status: "inactive" }));
+        }
         alert(`Lỗi từ server: ${result.error || "Có lỗi xảy ra, vui lòng thử lại!"}`);
       }
     } catch (error) {
@@ -419,6 +430,12 @@ export default function Profile() {
 
   const handleChangePassword = async (e) => {
     e.preventDefault();
+
+    // 🛑 Chặn ngay nếu tài khoản đã bị khóa[cite: 3]
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể đổi mật khẩu!");
+      return;
+    }
 
     if (!oldPassword || !newPassword || !confirmPassword) {
       alert("Vui lòng điền đầy đủ thông tin mật khẩu!");
@@ -460,6 +477,9 @@ export default function Profile() {
         setNewPassword("");
         setConfirmPassword("");
       } else {
+        if (res.status === 403) {
+          setUser((prev) => ({ ...prev, status: "inactive" }));
+        }
         alert(`Lỗi: ${data.error || "Không thể đổi mật khẩu"}`);
       }
     } catch (err) {
@@ -471,6 +491,11 @@ export default function Profile() {
   };
 
   const syncAddressesToStorageAndServer = async (newAddresses) => {
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa. Không thể thực hiện thao tác này!");
+      return;
+    }
+
     const updatedUser = { ...user, addresses: newAddresses };
     setUser(updatedUser);
     localStorage.setItem("user", JSON.stringify(updatedUser));
@@ -480,7 +505,7 @@ export default function Profile() {
       if (typeof rawId === "object" && rawId !== null) {
         rawId = rawId.$oid || rawId.toString();
       }
-      await fetch(`/api/users/${String(rawId).trim()}`, {
+      const res = await fetch(`/api/users/${String(rawId).trim()}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -490,12 +515,19 @@ export default function Profile() {
           addresses: newAddresses,
         }),
       });
+      if (res.status === 403) {
+        setUser((prev) => ({ ...prev, status: "inactive" }));
+      }
     } catch (err) {
       console.error("Lỗi đồng bộ danh sách địa chỉ:", err);
     }
   };
 
   const handleOpenAddModal = () => {
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa. Không thể thêm địa chỉ mới!");
+      return;
+    }
     setEditingAddressId(null);
     setAddressLabel("Nhà riêng");
     setReceiverName(user.fullname || "");
@@ -511,6 +543,10 @@ export default function Profile() {
   };
 
   const handleOpenEditModal = async (addr) => {
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa. Không thể cập nhật địa chỉ!");
+      return;
+    }
     setEditingAddressId(addr._id);
     setAddressLabel(addr.label || "Nhà riêng");
     setReceiverName(addr.receiverName || "");
@@ -541,6 +577,12 @@ export default function Profile() {
 
   const handleSaveAddress = async (e) => {
     e.preventDefault();
+
+    // 🛑 Chặn ngay nếu tài khoản đã bị khóa[cite: 3]
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể lưu địa chỉ!");
+      return;
+    }
 
     if (!receiverName.trim() || !receiverPhone.trim() || !houseNumber.trim()) {
       alert("Vui lòng điền đầy đủ Tên, Số điện thoại người nhận và Số nhà!");
@@ -633,6 +675,9 @@ export default function Profile() {
         setShowAddressModal(false);
       } else {
         const errData = await res.json();
+        if (res.status === 403) {
+          setUser((prev) => ({ ...prev, status: "inactive" }));
+        }
         alert(`Lỗi lưu địa chỉ: ${errData.error || "Không thể lưu vào cơ sở dữ liệu"}`);
       }
     } catch (err) {
@@ -644,12 +689,20 @@ export default function Profile() {
   };
 
   const handleDeleteAddress = (id) => {
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa. Không thể xóa địa chỉ!");
+      return;
+    }
     if (!confirm("Bạn có chắc chắn muốn xóa địa chỉ này?")) return;
     const updatedList = user.addresses.filter((a) => a._id !== id);
     syncAddressesToStorageAndServer(updatedList);
   };
 
   const handleSetDefault = (id) => {
+    if (user.status === "inactive") {
+      alert("Tài khoản của bạn đã bị khóa. Không thể đổi địa chỉ mặc định!");
+      return;
+    }
     const updatedList = user.addresses.map((a) => ({
       ...a,
       isDefault: a._id === id,
@@ -687,6 +740,17 @@ export default function Profile() {
     <div className="min-vh-100 d-flex flex-column text-secondary bg-white">
 
       <main className="container mb-5 flex-grow-1" style={{ marginTop: "-110px" }}>
+        
+        {/* 🛑 BANNER CẢNH BÁO NẾU TÀI KHOẢN BỊ KHÓA[cite: 3] */}
+        {user.status === "inactive" && (
+          <div className="alert alert-danger d-flex align-items-center gap-2 mb-4 rounded-4 shadow-sm" role="alert">
+            <i className="bi bi-exclamation-triangle-fill fs-5 flex-shrink-0"></i>
+            <div>
+              <strong>Tài khoản đã bị khóa!</strong> Quản trị viên đã vô hiệu hóa tài khoản của bạn. Mọi tính năng chỉnh sửa thông tin cá nhân, thay đổi mật khẩu hoặc quản lý địa chỉ đã bị tạm khóa. Bạn vẫn có thể xem lịch sử đơn hàng.
+            </div>
+          </div>
+        )}
+
         <div className="mb-4">
           <h2 className="fw-bold mb-1 text-dark">Trang Tài Khoản</h2>
           <p className="text-muted small mb-0">Quản lý thông tin cá nhân và lịch sử mua sắm của bạn</p>
@@ -768,7 +832,7 @@ export default function Profile() {
                     <h4 className="fw-bold text-dark mb-1">Hồ Sơ Của Tôi</h4>
                     <p className="text-muted small mb-0">Quản lý thông tin hồ sơ để bảo mật tài khoản</p>
                   </div>
-                  {!isEditingProfile && (
+                  {!isEditingProfile && user.status !== "inactive" && (
                     <button 
                       type="button" 
                       className="btn btn-sm px-3 rounded-2 fw-semibold d-flex align-items-center gap-1"
@@ -798,7 +862,7 @@ export default function Profile() {
                         </div>
                       )}
 
-                      {isEditingProfile && (
+                      {isEditingProfile && user.status !== "inactive" && (
                         <div className="flex-grow-1">
                           <label className="form-label small text-muted mb-1">Chọn ảnh từ máy tính:</label>
                           <input 
@@ -823,7 +887,7 @@ export default function Profile() {
                   <div className="mb-3 row align-items-center">
                     <label htmlFor="fullname" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Họ và tên</label>
                     <div className="col-sm-9">
-                      {isEditingProfile ? (
+                      {isEditingProfile && user.status !== "inactive" ? (
                         <input type="text" className="form-control rounded-2 shadow-none py-2 px-3" id="fullname" value={user.fullname || ""} onChange={handleInputChange} required style={{ borderColor: "#d97706" }} />
                       ) : (
                         <p className="mb-0 text-dark fw-medium py-2">{user.fullname || ""}</p>
@@ -834,7 +898,7 @@ export default function Profile() {
                   <div className="mb-3 row align-items-center">
                     <label htmlFor="phone" className="col-sm-3 col-form-label text-muted text-sm-end fw-medium">Số điện thoại</label>
                     <div className="col-sm-9">
-                      {isEditingProfile ? (
+                      {isEditingProfile && user.status !== "inactive" ? (
                         <>
                           <input
                             type="tel"
@@ -854,7 +918,7 @@ export default function Profile() {
                     </div>
                   </div>
 
-                  {isEditingProfile && (
+                  {isEditingProfile && user.status !== "inactive" && (
                     <div className="row mt-4">
                       <div className="offset-sm-3 col-sm-9 d-flex gap-2">
                         <button type="submit" className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }}>
@@ -885,9 +949,11 @@ export default function Profile() {
                     <h4 className="fw-bold text-dark mb-1">Địa Chỉ Nhận Hàng</h4>
                     <p className="text-muted small mb-0">Quản lý các địa chỉ giao hàng đã lưu</p>
                   </div>
-                  <button className="btn text-white btn-sm rounded-2 fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }} onClick={handleOpenAddModal}>
-                    <i className="bi bi-plus-lg"></i> Thêm Địa Chỉ Mới
-                  </button>
+                  {user.status !== "inactive" && (
+                    <button className="btn text-white btn-sm rounded-2 fw-semibold px-3 py-2 shadow-sm d-flex align-items-center gap-1" style={{ backgroundColor: "#d97706" }} onClick={handleOpenAddModal}>
+                      <i className="bi bi-plus-lg"></i> Thêm Địa Chỉ Mới
+                    </button>
+                  )}
                 </div>
 
                 {(!user.addresses || user.addresses.length === 0) ? (
@@ -921,36 +987,38 @@ export default function Profile() {
                             </div>
                           </div>
 
-                          <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-md-top-0">
-                            <div className="d-flex align-items-center gap-2">
-                              <button 
-                                className="btn btn-sm btn-light border px-3 py-1 rounded-2 text-dark fw-medium bg-white"
-                                style={{ fontSize: "0.85rem" }}
-                                onClick={() => handleOpenEditModal(addr)}
-                              >
-                                Cập nhật
-                              </button>
+                          {user.status !== "inactive" && (
+                            <div className="d-flex flex-row flex-md-column align-items-md-end justify-content-between justify-content-md-end gap-2 pt-2 pt-md-0 border-top border-md-top-0">
+                              <div className="d-flex align-items-center gap-2">
+                                <button 
+                                  className="btn btn-sm btn-light border px-3 py-1 rounded-2 text-dark fw-medium bg-white"
+                                  style={{ fontSize: "0.85rem" }}
+                                  onClick={() => handleOpenEditModal(addr)}
+                                >
+                                  Cập nhật
+                                </button>
+                                {!addr.isDefault && (
+                                  <button 
+                                    className="btn btn-sm btn-outline-danger px-3 py-1 rounded-2 fw-medium"
+                                    style={{ fontSize: "0.85rem" }}
+                                    onClick={() => handleDeleteAddress(addr._id)}
+                                  >
+                                    Xóa
+                                  </button>
+                                )}
+                              </div>
+                              
                               {!addr.isDefault && (
                                 <button 
-                                  className="btn btn-sm btn-outline-danger px-3 py-1 rounded-2 fw-medium"
-                                  style={{ fontSize: "0.85rem" }}
-                                  onClick={() => handleDeleteAddress(addr._id)}
+                                  className="btn btn-link text-decoration-none p-0 text-muted small fw-medium mt-md-1"
+                                  style={{ fontSize: "0.8rem", color: "#d97706" }}
+                                  onClick={() => handleSetDefault(addr._id)}
                                 >
-                                  Xóa
+                                  Thiết lập mặc định
                                 </button>
                               )}
                             </div>
-                            
-                            {!addr.isDefault && (
-                              <button 
-                                className="btn btn-link text-decoration-none p-0 text-muted small fw-medium mt-md-1"
-                                style={{ fontSize: "0.8rem", color: "#d97706" }}
-                                onClick={() => handleSetDefault(addr._id)}
-                              >
-                                Thiết lập mặc định
-                              </button>
-                            )}
-                          </div>
+                          )}
 
                         </div>
                       </div>
@@ -1132,7 +1200,7 @@ export default function Profile() {
                                 </div>
 
                                 <div className="d-flex gap-2">
-                                  {isPending && (
+                                  {isPending && user.status !== "inactive" && (
                                     <button 
                                       onClick={() => openCancelModal(order._id || order.id)}
                                       className="btn btn-sm btn-outline-danger px-3 py-2 rounded-2 fw-semibold d-flex align-items-center gap-1"
@@ -1183,6 +1251,7 @@ export default function Profile() {
                       value={oldPassword}
                       onChange={(e) => setOldPassword(e.target.value)}
                       required
+                      disabled={user.status === "inactive"}
                       style={{ borderColor: "#d97706" }}
                     />
                   </div>
@@ -1196,6 +1265,7 @@ export default function Profile() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       required
+                      disabled={user.status === "inactive"}
                       style={{ borderColor: "#d97706" }}
                     />
                   </div>
@@ -1209,18 +1279,21 @@ export default function Profile() {
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       required
+                      disabled={user.status === "inactive"}
                       style={{ borderColor: "#d97706" }}
                     />
                   </div>
 
-                  <button
-                    type="submit"
-                    className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
-                    style={{ backgroundColor: "#d97706" }}
-                    disabled={passwordLoading}
-                  >
-                    <i className="bi bi-check-lg"></i> {passwordLoading ? "Đang xử lý..." : "Xác Nhận Đổi Mật Khẩu"}
-                  </button>
+                  {user.status !== "inactive" && (
+                    <button
+                      type="submit"
+                      className="btn text-white px-4 py-2 rounded-2 fw-semibold shadow-sm d-flex align-items-center gap-1"
+                      style={{ backgroundColor: "#d97706" }}
+                      disabled={passwordLoading}
+                    >
+                      <i className="bi bi-check-lg"></i> {passwordLoading ? "Đang xử lý..." : "Xác Nhận Đổi Mật Khẩu"}
+                    </button>
+                  )}
                 </form>
               </div>
             )}

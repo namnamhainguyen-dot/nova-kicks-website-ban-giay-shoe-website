@@ -27,6 +27,14 @@ export async function PUT(request) {
       return NextResponse.json({ error: "Không tìm thấy người dùng!" }, { status: 404 });
     }
 
+    // 🛑 KIỂM TRA TRẠNG THÁI TÀI KHOẢN: Nếu bị khóa thì chặn ngay (403 Forbidden)
+    if (user.status === "inactive") {
+      return NextResponse.json(
+        { error: "Tài khoản của bạn đã bị khóa bởi quản trị viên. Không thể đổi mật khẩu." },
+        { status: 403 }
+      );
+    }
+
     // Kiểm tra mật khẩu cũ
     const isMatch = await bcrypt.compare(oldPassword, user.password);
     if (!isMatch) {
