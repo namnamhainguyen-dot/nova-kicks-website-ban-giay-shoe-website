@@ -196,8 +196,10 @@ export default function OrderDetailPage() {
     }
   };
 
+  // Thêm cấu hình trạng thái "processing" (Đang xử lý)
   const statusConfigs = {
     pending: { text: "Chờ xác nhận", badge: "bg-warning text-dark"},
+    processing: { text: "Đang xử lý", badge: "bg-primary text-white", icon: "⚙️" },
     preparing: { text: "Đang đóng gói", badge: "bg-info text-dark"},
     completed: { text: "Đã giao hàng", badge: "bg-success text-white", icon: "✓" },
     "Đã giao": { text: "Đã giao hàng", badge: "bg-success text-white", icon: "✓" },
@@ -210,18 +212,25 @@ export default function OrderDetailPage() {
   const displayTotal = order.total || 0;
   const displayDiscount = order.discount || 0;
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
-  const currentStatus = statusConfigs[order.status] || { text: order.status || "Đang xử lý", badge: "bg-secondary text-white", icon: "•" };
 
   // Kiểm tra phương thức thanh toán
   const rawMethod = (order.paymentMethod || order.payment_method || "").toLowerCase();
   const isCod = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
+  
+  // Ép trạng thái thành "processing" nếu thanh toán bằng QR / Banking / Chuyển khoản
+  const isQRPayment = rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
+  const effectiveStatus = isQRPayment ? "processing" : (order.status || "pending");
 
-  // Format tên phương thức thanh toán viết hoa VNPAY / COD
+  const currentStatus = statusConfigs[effectiveStatus] || { text: order.status || "Đang xử lý", badge: "bg-secondary text-white", icon: "•" };
+
+  // Format tên phương thức thanh toán viết hoa
   let displayPaymentName = "VNPAY";
   if (isCod) {
     displayPaymentName = "COD";
   } else if (rawMethod.includes("momo")) {
     displayPaymentName = "MOMO";
+  } else if (isQRPayment) {
+    displayPaymentName = "THANH TOÁN QR";
   } else if (order.paymentMethod || order.payment_method) {
     displayPaymentName = (order.paymentMethod || order.payment_method).toUpperCase();
   }
