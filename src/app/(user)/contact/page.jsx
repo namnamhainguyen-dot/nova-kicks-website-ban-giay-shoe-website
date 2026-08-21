@@ -18,6 +18,20 @@ export default function StaticContactPage() {
 
     if (loading) return;
 
+    // 1. Kiểm tra số điện thoại (đúng 10 số, bắt đầu bằng số 0)
+    const phoneRegex = /^0\d{9}$/;
+    if (!phoneRegex.test(formData.phone)) {
+      alert("Số điện thoại không hợp lệ! Vui lòng nhập đúng 10 chữ số (bắt đầu bằng số 0).");
+      return;
+    }
+
+    // 2. Kiểm tra email bắt buộc phải là @gmail.com
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@gmail\.com$/;
+    if (!emailRegex.test(formData.email.trim())) {
+      alert("Email không hợp lệ! Vui lòng sử dụng địa chỉ @gmail.com.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -29,7 +43,7 @@ export default function StaticContactPage() {
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
-          phone: formData.phone, // Đã bổ sung trường phone đầy đủ
+          phone: formData.phone,
           subject: formData.subject,
           message: formData.message,
         }),
@@ -60,9 +74,16 @@ export default function StaticContactPage() {
   };
 
   const handleChange = (e) => {
+    let { name, value } = e.target;
+
+    // Nếu là ô số điện thoại, chỉ cho phép lọc lấy các ký tự số và tối đa 10 chữ số
+    if (name === "phone") {
+      value = value.replace(/\D/g, "").slice(0, 10);
+    }
+
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
   };
 
@@ -163,10 +184,14 @@ export default function StaticContactPage() {
                 <div className="col-md-6">
                   <label className="form-label">Số điện thoại *</label>
                   <input
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
                     className="form-control"
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
+                    placeholder="Nhập 10 chữ số"
                     required
                   />
                 </div>
@@ -179,8 +204,10 @@ export default function StaticContactPage() {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
+                    placeholder="vd: yourname@gmail.com"
                     required
                   />
+                  <div className="form-text text-muted">Vui lòng sử dụng địa chỉ Gmail (@gmail.com)</div>
                 </div>
 
                 <div className="col-12">
