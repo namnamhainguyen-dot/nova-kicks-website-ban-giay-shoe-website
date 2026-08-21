@@ -207,7 +207,6 @@ export default function StaticContactPage() {
                     placeholder="vd: yourname@gmail.com"
                     required
                   />
-                  <div className="form-text text-muted">Vui lòng sử dụng địa chỉ Gmail (@gmail.com)</div>
                 </div>
 
                 <div className="col-12">
