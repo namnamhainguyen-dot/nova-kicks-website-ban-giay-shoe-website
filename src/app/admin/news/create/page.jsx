@@ -133,7 +133,7 @@ export default function CreateNewsPage() {
           title: title || prev.title,
           summary: summary || prev.summary,
           category: category || "Xu hướng",
-          image: image || prev.image, // Tự điền URL ảnh do AI tạo
+          image: image || prev.image,
           content: content || prev.content,
         }));
       } else {
@@ -199,7 +199,7 @@ export default function CreateNewsPage() {
             )}
           </button>
 
-          <Link className="btn btn-outline-secondary" href="/admin/news">
+          <Link href="/admin/news" className="btn btn-outline-secondary">
             ← Quay lại quản lý
           </Link>
         </div>
@@ -311,12 +311,19 @@ export default function CreateNewsPage() {
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
-            <ReactQuill modules="{quillModules}" onChange="{handleContentChange}" placeholder="Nhập nội dung bài viết..." ref="{quillRef}" theme="snow" value="{formData.content}"/>
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              value={formData.content}
+              onChange={handleContentChange}
+              modules={quillModules}
+              placeholder="Nhập nội dung bài viết..."
+            />
           </div>
         </div>
 
         <div className="d-flex justify-content-end gap-2 mt-4">
-          <Link className="btn btn-light px-4" href="/admin/news">
+          <Link href="/admin/news" className="btn btn-light px-4">
             Hủy
           </Link>
           <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
