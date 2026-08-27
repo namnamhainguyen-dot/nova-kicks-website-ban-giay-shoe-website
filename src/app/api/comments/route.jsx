@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/libs/mongodb";
 import { ObjectId } from "mongodb";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function GET(request) {
   try {
@@ -96,6 +97,52 @@ export async function POST(request) {
       return NextResponse.json({ error: "Bạn đã đánh giá sản phẩm này trong đơn hàng rồi!" }, { status: 400 });
     }
 
+    // ==========================================
+    // 🤖 KIỂM DUYỆT TỪ KHÓA NHẠY CẢM BẰNG GEMINI AI
+    // ==========================================
+    let shouldHide = false;
+    let aiReason = "";
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+
+    if (apiKey && comment && comment.trim() !== "") {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: { responseMimeType: "application/json" },
+        });
+
+        const prompt = `
+          Bạn là hệ thống kiểm duyệt nội dung tự động cho cửa hàng giày dép Nova Kicks.
+          Hãy phân tích nội dung đánh giá sau của khách hàng: "${comment}"
+          
+          Nhiệm vụ: Kiểm tra xem đánh giá này có chứa từ khóa nhạy cảm, chửi thề, tục tĩu, xúc phạm nặng nề hoặc spam độc hại hay không. 
+          (Lưu ý: Khách chê sản phẩm không tốt, chê form giày, hoặc góp ý lịch sự thì KHÔNG ĐƯỢC tính là vi phạm).
+          
+          Chỉ trả về JSON thuần túy theo định dạng:
+          {
+            "isToxic": true hoặc false,
+            "reason": "Lý do ngắn gọn nếu vi phạm, ngược lại để trống"
+          }
+        `;
+
+        const result = await model.generateContent(prompt);
+        let textResponse = result.response.text().trim()
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/, "");
+
+        const parsedAI = JSON.parse(textResponse);
+        shouldHide = parsedAI.isToxic || false;
+        aiReason = parsedAI.reason || "";
+      } catch (aiError) {
+        console.error("Lỗi kiểm duyệt AI:", aiError);
+      }
+    }
+
+    // ==========================================
+    // LƯU ĐÁNH GIÁ VÀO MONGODB
+    // ==========================================
     const newReview = {
       userId: userQueryId || order.userId || order.user || "guest",
       productId: prodQueryId,
@@ -103,11 +150,14 @@ export async function POST(request) {
       rating: Number(rating),
       comment: comment || "",
       images: Array.isArray(images) ? images : [],
+      isHidden: shouldHide,     // Tự động ẩn nếu AI phát hiện từ ngữ nhạy cảm
+      aiReason: aiReason,       // Lưu lý do AI đánh giá lại
       createdAt: new Date()
     };
 
     const insertResult = await db.collection("reviews").insertOne(newReview);
 
+    // Tính toán lại điểm trung bình cho sản phẩm
     const allReviewsForProduct = await db.collection("reviews").find({ productId: prodQueryId }).toArray();
     const totalRating = allReviewsForProduct.reduce((sum, item) => sum + item.rating, 0);
     const averageRating = Number((totalRating / allReviewsForProduct.length).toFixed(1));
@@ -124,7 +174,7 @@ export async function POST(request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: "Đánh giá thành công!", 
+      message: shouldHide ? "Đánh giá của bạn đã được ghi nhận nhưng đang chờ kiểm duyệt." : "Đánh giá thành công!", 
       data: { ...newReview, _id: insertResult.insertedId.toString() } 
     }, { status: 201 });
 
