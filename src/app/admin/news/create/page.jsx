@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -15,10 +15,11 @@ const ReactQuill = dynamic(() => import("react-quill-new"), {
 export default function CreateNewsPage() {
   const router = useRouter();
   const fileInputRef = useRef(null);
+  const quillRef = useRef(null);
 
   const [formData, setFormData] = useState({
     title: "",
-    author: "",
+    author: "Admin",
     category: "",
     createdAt: new Date().toISOString().split("T")[0],
     summary: "",
@@ -27,17 +28,72 @@ export default function CreateNewsPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
+  const [aiTopic, setAiTopic] = useState("");
+  const [generatingAi, setGeneratingAi] = useState(false);
 
-  const quillModules = {
-    toolbar: [
-      [{ header: [1, 2, 3, false] }],
-      ["bold", "italic", "underline", "strike"],
-      [{ color: [] }, { background: [] }],
-      [{ list: "ordered" }, { list: "bullet" }],
-      ["link", "image"],
-      ["clean"],
-    ],
+  // Hàm nén ảnh tổng dùng chung cho cả Thumbnail và Editor
+  const compressImage = (file, maxWidth = 600, quality = 0.5) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const scaleRatio = maxWidth / img.width;
+
+          canvas.width = img.width > maxWidth ? maxWidth : img.width;
+          canvas.height = img.width > maxWidth ? img.height * scaleRatio : img.height;
+
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+          const compressedBase64 = canvas.toDataURL("image/jpeg", quality);
+          resolve(compressedBase64);
+        };
+      };
+      reader.readAsDataURL(file);
+    });
   };
+
+  // Tùy chỉnh toolbar và Image handler cho ReactQuill
+  const quillModules = useMemo(
+    () => ({
+      toolbar: {
+        container: [
+          [{ header: [1, 2, 3, false] }],
+          ["bold", "italic", "underline", "strike"],
+          [{ color: [] }, { background: [] }],
+          [{ list: "ordered" }, { list: "bullet" }],
+          ["link", "image"],
+          ["clean"],
+        ],
+        handlers: {
+          image: function () {
+            const input = document.createElement("input");
+            input.setAttribute("type", "file");
+            input.setAttribute("accept", "image/*");
+            input.click();
+
+            input.onchange = async () => {
+              const file = input.files[0];
+              if (file) {
+                // Tự động nén ảnh chèn vào nội dung bài viết
+                const compressedImage = await compressImage(file, 800, 0.6);
+                const quill = quillRef.current?.getEditor();
+                if (quill) {
+                  const range = quill.getSelection(true);
+                  quill.insertEmbed(range.index, "image", compressedImage);
+                  quill.setSelection(range.index + 1);
+                }
+              }
+            };
+          },
+        },
+      },
+    }),
+    []
+  );
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -47,15 +103,53 @@ export default function CreateNewsPage() {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
-  // Hàm xử lý khi chọn file ảnh từ máy tính
-  const handleFileChange = (e) => {
+  // Nén ảnh đại diện khi chọn file từ máy
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({ ...prev, image: reader.result }));
-      };
-      reader.readAsDataURL(file);
+      const compressedBase64 = await compressImage(file, 600, 0.5);
+      setFormData((prev) => ({ ...prev, image: compressedBase64 }));
+    }
+  };
+
+  // Hàm gọi AI Gemini viết bài
+  const handleGenerateAI = async () => {
+    if (!aiTopic.trim()) {
+      alert("Vui lòng nhập ý tưởng hoặc chủ đề bài viết!");
+      return;
+    }
+
+    setGeneratingAi(true);
+    try {
+      const res = await fetch("/api/ai/generate-news", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: aiTopic }),
+      });
+
+      const result = await res.json();
+
+      if (result.success && result.data) {
+        const { title, summary, category, content } = result.data;
+
+        // Tự động đổ dữ liệu AI tạo ra vào Form
+        setFormData((prev) => ({
+          ...prev,
+          title: title || prev.title,
+          summary: summary || prev.summary,
+          category: category || prev.category,
+          content: content || prev.content,
+        }));
+
+        alert("AI đã viết xong bài viết! Bạn có thể xem và chỉnh sửa lại bên dưới.");
+      } else {
+        alert(result.error || "Không thể khởi tạo bài viết từ AI.");
+      }
+    } catch (error) {
+      console.error("Lỗi AI:", error);
+      alert("Không thể kết nối đến máy chủ AI!");
+    } finally {
+      setGeneratingAi(false);
     }
   };
 
@@ -79,7 +173,7 @@ export default function CreateNewsPage() {
       }
     } catch (error) {
       console.error("Lỗi tạo bài viết:", error);
-      alert("Không thể kết nối tới máy chủ");
+      alert("Không thể kết nối tới máy chủ hoặc dữ liệu quá lớn!");
     } finally {
       setSubmitting(false);
     }
@@ -95,6 +189,41 @@ export default function CreateNewsPage() {
         <Link href="/admin/news" className="btn btn-outline-secondary">
           ← Quay lại quản lý
         </Link>
+      </div>
+
+      {/* Khung công cụ trợ lý AI Gemini */}
+      <div className="card bg-light border-primary shadow-sm mb-4 p-3">
+        <label className="form-label fw-bold text-primary mb-1">
+          ✨ Trợ lý AI sáng tạo nội dung
+        </label>
+        <p className="text-muted small mb-2">
+          Nhập ý tưởng hoặc tiêu đề sơ lược, AI sẽ tự động soạn thảo Tiêu đề, Danh mục, Tóm tắt và Nội dung chi tiết.
+        </p>
+        <div className="input-group">
+          <input
+            type="text"
+            className="form-control"
+            placeholder="Ví dụ: Đánh giá chi tiết mẫu giày Nike Air Max 2026 siêu nhẹ..."
+            value={aiTopic}
+            onChange={(e) => setAiTopic(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleGenerateAI())}
+          />
+          <button
+            type="button"
+            className="btn btn-primary px-4"
+            onClick={handleGenerateAI}
+            disabled={generatingAi}
+          >
+            {generatingAi ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                AI đang viết bài...
+              </>
+            ) : (
+              "✨ Tạo bài viết"
+            )}
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="card shadow-sm border-0 p-4">
@@ -123,7 +252,7 @@ export default function CreateNewsPage() {
             />
           </div>
           <div className="col-md-4">
-            <label className="form-label fw-semibold">Danh mục</label>
+            <label className="form-label fw-semibold">Chủ đề</label>
             <input
               type="text"
               name="category"
@@ -147,7 +276,6 @@ export default function CreateNewsPage() {
           </div>
         </div>
 
-        {/* Khối Ảnh Đại Diện: Đã bổ sung nút Chọn tệp ảnh */}
         <div className="mb-3">
           <label className="form-label fw-semibold">Ảnh đại diện</label>
           <div className="input-group">
@@ -175,7 +303,6 @@ export default function CreateNewsPage() {
             />
           </div>
 
-          {/* Hiển thị xem trước ảnh nếu có */}
           {formData.image && (
             <div className="mt-2 p-2 border rounded bg-light d-inline-block">
               <span className="d-block text-muted small mb-1">Xem trước ảnh:</span>
@@ -205,6 +332,7 @@ export default function CreateNewsPage() {
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
             <ReactQuill
+              ref={quillRef}
               theme="snow"
               value={formData.content}
               onChange={handleContentChange}

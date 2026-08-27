@@ -163,12 +163,6 @@ export default function AdminNewsPage() {
                         >
                           {item.isHidden ? "Hiện" : "Ẩn"}
                         </button>
-                        <button
-                          onClick={() => handleDelete(item._id)}
-                          className="btn btn-sm btn-outline-danger"
-                        >
-                          Xóa
-                        </button>
                       </td>
                     </tr>
                   ))
