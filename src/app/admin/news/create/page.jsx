@@ -6,7 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
-// Dynamic import ReactQuill để tránh lỗi SSR
+// Import động ReactQuill để tránh lỗi Mismatch SSR trên Next.js
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -30,7 +30,7 @@ export default function CreateNewsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
 
-  // Hàm nén ảnh trước khi lưu/upload
+  // Nén ảnh Base64 trước khi chèn vào editor hoặc lưu trữ
   const compressImage = (file, maxWidth = 600, quality = 0.5) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -109,12 +109,12 @@ export default function CreateNewsPage() {
     }
   };
 
-  // Hàm gọi AI tự sinh nội dung bài viết
+  // Hàm gọi API tự động tạo nội dung qua Gemini AI
   const handleAutoGenerateAI = async () => {
     setGeneratingAi(true);
     try {
-      const topicPrompt = formData.title.trim() 
-        ? formData.title 
+      const topicPrompt = formData.title.trim()
+        ? formData.title
         : "Hãy chọn 1 mẫu giày sneaker hot nhất hiện nay";
 
       const res = await fetch("/api/generate-news", {
