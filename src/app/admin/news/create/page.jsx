@@ -6,7 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
-// Dynamic import ReactQuill để tránh lỗi SSR
+// Dynamic import ReactQuill để tránh lỗi Render SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -30,7 +30,7 @@ export default function CreateNewsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
 
-  // Hàm nén ảnh tránh quá tải Vercel
+  // Hàm nén ảnh trước khi lưu/upload
   const compressImage = (file, maxWidth = 600, quality = 0.5) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -55,7 +55,7 @@ export default function CreateNewsPage() {
     });
   };
 
-  // Cấu hình ReactQuill
+  // Cấu hình Toolbar ReactQuill
   const quillModules = useMemo(
     () => ({
       toolbar: {
@@ -109,16 +109,15 @@ export default function CreateNewsPage() {
     }
   };
 
-  // NÚT BẤM 1 CLICK: AI TỰ VIẾT BÀI
+  // Hàm gọi AI tự sinh nội dung bài viết
   const handleAutoGenerateAI = async () => {
     setGeneratingAi(true);
     try {
-      // Nếu user chưa gõ tiêu đề thì gửi chuỗi rỗng để AI tự nghĩ chủ đề giày dép/thời trang hot
       const topicPrompt = formData.title.trim() 
         ? formData.title 
-        : "Hãy tự chọn 1 chủ đề tin tức về thời trang giày Sneaker hot nhất hiện nay";
+        : "Hãy chọn 1 mẫu giày sneaker hot nhất hiện nay";
 
-      const res = await fetch("/api/ai/generate-news", {
+      const res = await fetch("/api/generate-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ topic: topicPrompt }),
@@ -129,7 +128,6 @@ export default function CreateNewsPage() {
       if (result.success && result.data) {
         const { title, summary, category, content } = result.data;
 
-        // Điền tự động toàn bộ vào Form
         setFormData((prev) => ({
           ...prev,
           title: title || prev.title,
@@ -182,7 +180,7 @@ export default function CreateNewsPage() {
           <p className="text-muted">Cập nhật nội dung chi tiết, định dạng văn bản và thông tin hiển thị.</p>
         </div>
         <div className="d-flex gap-2">
-          {/* NÚT AI TỰ TẠO BÀI VIẾT NẰM Ở ĐÂY */}
+          {/* Nút bấm gọi AI sinh bài viết */}
           <button
             type="button"
             className="btn btn-primary d-flex align-items-center gap-2"
@@ -201,7 +199,7 @@ export default function CreateNewsPage() {
             )}
           </button>
 
-          <Link href="/admin/news" className="btn btn-outline-secondary">
+          <Link className="btn btn-outline-secondary" href="/admin/news">
             ← Quay lại quản lý
           </Link>
         </div>
@@ -216,7 +214,7 @@ export default function CreateNewsPage() {
             className="form-control"
             value={formData.title}
             onChange={handleChange}
-            placeholder="Nhập tiêu đề (hoặc để trống bấm nút AI phía trên để AI tự đề xuất)..."
+            placeholder="Nhập tiêu đề (hoặc gõ ý tưởng sơ lược để AI tự viết tiếp)..."
             required
           />
         </div>
@@ -313,19 +311,12 @@ export default function CreateNewsPage() {
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
-            <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={formData.content}
-              onChange={handleContentChange}
-              modules={quillModules}
-              placeholder="Nhập nội dung bài viết..."
-            />
+            <ReactQuill modules="{quillModules}" onChange="{handleContentChange}" placeholder="Nhập nội dung bài viết..." ref="{quillRef}" theme="snow" value="{formData.content}"/>
           </div>
         </div>
 
         <div className="d-flex justify-content-end gap-2 mt-4">
-          <Link href="/admin/news" className="btn btn-light px-4">
+          <Link className="btn btn-light px-4" href="/admin/news">
             Hủy
           </Link>
           <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
