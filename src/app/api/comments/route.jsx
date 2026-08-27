@@ -111,9 +111,7 @@ export async function POST(request) {
     const decodedList = encodedList.map(w => Buffer.from(w, 'base64').toString('utf8').toLowerCase());
     
     // Kiểm tra xem bình luận có chứa từ nhạy cảm nào không
-    const hasToxicMatch = decodedList.some(badWord => lowerComment.includes(badWord)) ||
-                          lowerComment.includes("lồn") || 
-                          lowerComment.includes("cc"); // (Khi nộp bài cho giảng viên, bạn có thể xóa 2 dòng .includes thô này đi, chỉ giữ lại phần decodedList Base64 phía trên)
+    const hasToxicMatch = decodedList.some(badWord => lowerComment.includes(badWord))
 
     if (hasToxicMatch) {
         shouldHide = true;
