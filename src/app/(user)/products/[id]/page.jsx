@@ -587,7 +587,7 @@ export default function ProductDetailPage() {
                     </h1>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '20px' }}>
-                        <img src="https://img.icons8.com/color/48/star--v1.png" alt="star" style={{ width: '18px', height: '18px', display: 'inline-block' }} />
+                        <span style={{ color: '#f59e0b', fontSize: '18px' }}>★</span>
                         <span style={{ fontWeight: '700', color: '#111827' }}>{averageRating}</span>
                         <span style={{ fontSize: '13px', color: '#6b7280' }}>({reviews.length} đánh giá)</span>
                     </div>
@@ -891,7 +891,7 @@ export default function ProductDetailPage() {
 
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
                             <span style={{ fontSize: '14px', color: '#374151', fontWeight: '500', fontFamily: 'inherit' }}>Đánh giá của bạn:</span>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                                 {[1, 2, 3, 4, 5].map((star) => (
                                     <button
                                         key={star}
@@ -899,20 +899,14 @@ export default function ProductDetailPage() {
                                         onClick={() => setNewRating(star)}
                                         style={{ 
                                             background: 'none', border: 'none', cursor: 'pointer', padding: '2px',
+                                            fontSize: '22px', color: star <= newRating ? '#f59e0b' : '#d1d5db',
                                             transition: 'transform 0.15s ease', outline: 'none'
                                         }}
                                         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
                                         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
                                         title={`${star} sao`}
                                     >
-                                        <img 
-                                            src="https://img.icons8.com/color/48/star--v1.png" 
-                                            alt={`${star} star`} 
-                                            style={{ 
-                                                width: '24px', height: '24px', display: 'block', 
-                                                filter: star <= newRating ? 'none' : 'grayscale(100%) opacity(0.3)' 
-                                            }} 
-                                        />
+                                        ★
                                     </button>
                                 ))}
                                 <span style={{ marginLeft: '8px', fontSize: '14px', fontWeight: '600', color: '#d97706' }}>
@@ -1021,15 +1015,15 @@ export default function ProductDetailPage() {
 
                                         <div style={{ display: 'flex', gap: '2px' }} title={`${ratingStars} sao`}>
                                             {[...Array(5)].map((_, i) => (
-                                                <img 
-                                                    key={i}
-                                                    src="https://img.icons8.com/color/48/star--v1.png" 
-                                                    alt="star" 
+                                                <span 
+                                                    key={i} 
                                                     style={{ 
-                                                        width: '16px', height: '16px', 
-                                                        filter: i < ratingStars ? 'none' : 'grayscale(100%) opacity(0.3)' 
-                                                    }} 
-                                                />
+                                                        fontSize: '16px', 
+                                                        color: i < ratingStars ? '#f59e0b' : '#e5e7eb' 
+                                                    }}
+                                                >
+                                                    ★
+                                                </span>
                                             ))}
                                         </div>
                                     </div>
