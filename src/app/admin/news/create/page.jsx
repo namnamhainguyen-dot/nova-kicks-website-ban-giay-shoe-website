@@ -6,7 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
-// Dynamic import ReactQuill để tránh lỗi Render SSR
+// Dynamic import ReactQuill để tránh lỗi SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -180,7 +180,6 @@ export default function CreateNewsPage() {
           <p className="text-muted">Cập nhật nội dung chi tiết, định dạng văn bản và thông tin hiển thị.</p>
         </div>
         <div className="d-flex gap-2">
-          {/* Nút bấm gọi AI sinh bài viết */}
           <button
             type="button"
             className="btn btn-primary d-flex align-items-center gap-2"
@@ -199,7 +198,7 @@ export default function CreateNewsPage() {
             )}
           </button>
 
-          <Link className="btn btn-outline-secondary" href="/admin/news">
+          <Link href="/admin/news" className="btn btn-outline-secondary">
             ← Quay lại quản lý
           </Link>
         </div>
@@ -311,12 +310,19 @@ export default function CreateNewsPage() {
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
-            <ReactQuill modules="{quillModules}" onChange="{handleContentChange}" placeholder="Nhập nội dung bài viết..." ref="{quillRef}" theme="snow" value="{formData.content}"/>
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              value={formData.content}
+              onChange={handleContentChange}
+              modules={quillModules}
+              placeholder="Nhập nội dung bài viết..."
+            />
           </div>
         </div>
 
         <div className="d-flex justify-content-end gap-2 mt-4">
-          <Link className="btn btn-light px-4" href="/admin/news">
+          <Link href="/admin/news" className="btn btn-light px-4">
             Hủy
           </Link>
           <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
