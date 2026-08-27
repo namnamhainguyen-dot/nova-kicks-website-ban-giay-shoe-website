@@ -97,21 +97,23 @@ export async function POST(request) {
       return NextResponse.json({ error: "Bạn đã đánh giá sản phẩm này trong đơn hàng rồi!" }, { status: 400 });
     }
 
-    // ==========================================
-    // 🤖 KIỂM DUYỆT NÂNG CAO (BẢO MẬT CODE & PROMPT CHI TIẾT)
+   // ==========================================
+    // 🤖 KIỂM DUYỆT AN TOÀN & BẢO MẬT MÃ NGUỒN
     // ==========================================
     let shouldHide = false;
     let aiReason = "";
     
-    const encodedAbbrs = ["Y2M=", "dmNs", "dmw=", "ZG0=", "ZGNt", "xJFt", "xJFjbQ=="];
-    const decodedAbbrs = encodedAbbrs.map(w => Buffer.from(w, 'base64').toString('utf8').toLowerCase());
+    const encodedList = ["bG9u", "Y2M=", "bmh1IGxvbg==", "dmNs", "dmw=", "ZG0="];
+    const decodedList = encodedList.map(w => Buffer.from(w, 'base64').toString('utf8').toLowerCase());
     
-    const words = comment.trim().toLowerCase().split(/\s+/);
-    const hasAbbrToxic = words.some(w => decodedAbbrs.includes(w));
+    const lowerComment = comment.trim().toLowerCase();
+    
+    // Kiểm tra xem bình luận có chứa bất kỳ từ/cụm từ nhạy cảm nào đã mã hóa hay không
+    const hasToxicMatch = decodedList.some(badWord => lowerComment.includes(badWord));
 
-    if (hasAbbrToxic) {
+    if (hasToxicMatch) {
         shouldHide = true;
-        aiReason = "Phát hiện từ viết tắt không phù hợp.";
+        aiReason = "Phát hiện từ ngữ không phù hợp với chuẩn mực.";
     } else {
         const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
@@ -127,10 +129,10 @@ export async function POST(request) {
               Bạn là hệ thống kiểm duyệt nội dung chuyên nghiệp cho nền tảng thương mại điện tử.
               Hãy phân tích thật kỹ nội dung đánh giá sau từ khách hàng: "${comment}"
               
-              Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt cực ngắn hoặc che ký tự như "như l...", v.v.), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
+              Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt hoặc che ký tự như "như l...", v.v.), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
               
               Quy tắc đánh giá:
-              - Nếu câu chứa từ ngữ thô tục, chửi thề, tiếng lóng viết tắt mang ý nghĩa chửi rủa -> Bắt buộc đặt "isToxic": true.
+              - Nếu câu chứa từ ngữ thô tục, chửi thề, lăng mạ -> Bắt buộc đặt "isToxic": true.
               - Nếu câu chỉ là lời chê bai sản phẩm bình thường, góp ý thực tế (ví dụ: chê form rộng, chất liệu cứng, giao hàng chậm) nhưng sử dụng từ ngữ lịch sự, văn minh -> Đặt "isToxic": false.
               
               Chỉ trả về định dạng JSON thuần túy duy nhất sau (không kèm markdown khác):
@@ -140,8 +142,10 @@ export async function POST(request) {
               }
             `;
 
-            const result = await model.generateContent(prompt);
-            let textResponse = result.response.text().trim()
+            const result = model.generateContent(prompt);
+            // Lưu ý: nếu generateContent của bạn là async thì nhớ thêm await ở đây nhé
+            const response = await result; 
+            let textResponse = response.response.text().trim()
               .replace(/^```json\s*/i, "")
               .replace(/^```\s*/i, "")
               .replace(/\s*```$/, "");
