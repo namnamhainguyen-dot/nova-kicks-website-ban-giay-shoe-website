@@ -1,94 +1,75 @@
 import clientPromise from "@/libs/mongodb";
 
-const DB_NAME = "Nova-kicks"; // Tên database của bạn
+const DB_NAME = "Nova-kicks";
 
 export async function GET(request) {
   try {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // --- 1. LẤY THAM SỐ LỌC NGÀY TỪ QUERY URL ---
     const { searchParams } = new URL(request.url);
     const startDateParam = searchParams.get("startDate");
     const endDateParam = searchParams.get("endDate");
 
-    // Tạo điều kiện lọc theo thời gian (createdAt) nếu người dùng có chọn ngày
     let dateFilter = {};
     let userDateFilter = {};
+    let start = new Date();
+    let end = new Date();
 
     if (startDateParam && endDateParam) {
-      // Đặt giờ bắt đầu từ 00:00:00 và giờ kết thúc đến 23:59:59 để trọn vẹn trong ngày
-      const start = new Date(startDateParam);
+      start = new Date(startDateParam);
       start.setHours(0, 0, 0, 0);
 
-      const end = new Date(endDateParam);
+      end = new Date(endDateParam);
       end.setHours(23, 59, 59, 999);
 
-      dateFilter = {
-        createdAt: {
-          $gte: start,
-          $lte: end
-        }
-      };
-
-      userDateFilter = {
-        createdAt: {
-          $gte: start,
-          $lte: end
-        }
-      };
+      dateFilter = { createdAt: { $gte: start, $lte: end } };
+      userDateFilter = { createdAt: { $gte: start, $lte: end } };
     }
 
-    // 2. Đếm tổng số thành viên đăng ký (có lọc theo ngày nếu có)
     const totalUsers = await db.collection("users").countDocuments(userDateFilter);
-
-    // 3. Đếm tổng số đơn hàng hệ thống (có lọc theo ngày)
     const totalOrders = await db.collection("orders").countDocuments(dateFilter);
+    const pendingOrders = await db.collection("orders").countDocuments({ ...dateFilter, status: "pending" });
 
-    // 4. Đếm số đơn hàng đang chờ giao ("pending") trong khoảng thời gian lọc
-    const pendingOrders = await db.collection("orders").countDocuments({ 
-      ...dateFilter,
-      status: "pending" 
-    });
-
-    // 5. Tính tổng doanh thu thực tế từ các đơn hàng "completed" hoặc "delivered" trong khoảng lọc
     const completedOrders = await db.collection("orders")
-      .find({ 
-        ...dateFilter,
-        status: { $in: ["completed", "delivered"] } 
-      })
+      .find({ ...dateFilter, status: { $in: ["completed", "delivered"] } })
       .toArray();
       
     const totalRevenue = completedOrders.reduce((sum, order) => {
-      const finalTotal = Number(order.final_total || order.total || 0);
-      return sum + finalTotal;
+      return sum + Number(order.final_total || order.total || 0);
     }, 0);
 
-    // 6. Thống kê doanh thu theo tuần (chia tỷ lệ tương đối từ tổng doanh thu lọc được)
-    const revenueByWeeks = [
-      Math.floor((totalRevenue * 0.2) / 1000000), 
-      Math.floor((totalRevenue * 0.25) / 1000000), 
-      Math.floor((totalRevenue * 0.3) / 1000000), 
-      Math.floor((totalRevenue * 0.25) / 1000000)  
-    ];
+    // ==========================================
+    // 📊 TÍNH TOÁN DOANH THU & DỰ BÁO THEO KHOẢNG THỜI GIAN
+    // ==========================================
+    // Chia khoảng thời gian lọc thành 4 mốc (Tuần/Giai đoạn) để biểu đồ trực quan
+    const diffTime = Math.abs(end - start);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+    const chunkDays = Math.max(Math.floor(diffDays / 4), 1);
+
+    let revenueByWeeks = [0, 0, 0, 0];
+    let forecastByWeeks = [];
+
+    completedOrders.forEach(order => {
+      const orderDate = new Date(order.createdAt || order._id.getTimestamp());
+      const dayIndex = Math.floor((orderDate - start) / (1000 * 60 * 60 * 24 * chunkDays));
+      const targetIndex = Math.min(Math.max(dayIndex, 0), 3);
+      
+      const amountInMillions = Number(order.final_total || order.total || 0) / 1000000;
+      revenueByWeeks[targetIndex] += amountInMillions;
+    });
+
+    // Làm tròn số liệu doanh thu biểu đồ đến 1 chữ số thập phân cho đẹp
+    revenueByWeeks = revenueByWeeks.map(val => Number(val.toFixed(1)));
+
+    // Tạo mốc dự báo hợp lý (ví dụ: dự báo cao hơn thực tế khoảng 15% - 20% hoặc dựa trên xu hướng)
+    forecastByWeeks = revenueByWeeks.map(rev => Number((rev > 0 ? rev * 1.2 : 5).toFixed(1)));
 
     // ==========================================
-    // 7. XỬ LÝ HOẠT ĐỘNG LIVE (ĐƠN HÀNG + USER MỚI)
+    // XỬ LÝ HOẠT ĐỘNG LIVE & THỐNG KÊ KHÁC
     // ==========================================
-
-    // Lấy 3 đơn hàng mới nhất trong khoảng lọc
-    const latestOrders = await db.collection("orders")
-      .find(dateFilter)
-      .sort({ createdAt: -1, _id: -1 }) 
-      .limit(3)
-      .toArray();
-
-    // Lấy 3 người dùng đăng ký mới nhất trong khoảng lọc
-    const latestUsers = await db.collection("users")
-      .find(userDateFilter)
-      .sort({ createdAt: -1, _id: -1 }) 
-      .limit(3)
-      .toArray();
+    const latestOrders = await db.collection("orders").find(dateFilter).sort({ createdAt: -1, _id: -1 }).limit(3).toArray();
+    const latestUsers = await db.collection("users").find(userDateFilter).sort({ createdAt: -1, _id: -1 }).limit(3).toArray();
 
     const orderActivities = latestOrders.map(order => ({
       id: order._id.toString(),
@@ -100,26 +81,17 @@ export async function GET(request) {
 
     const userActivities = latestUsers.map(user => {
       const isGoogle = user.email && !user.password; 
-      const loginMethod = isGoogle ? "bằng Google" : "bằng Tài khoản";
-
       return {
         id: user._id.toString(),
         type: "user",
         time: user.createdAt ? new Date(user.createdAt) : new Date(user._id.getTimestamp()),
         title: `Thành viên mới gia nhập 🎉`,
-        desc: `${user.name || user.email || "Thành viên mới"} - Đăng ký ${loginMethod}`
+        desc: `${user.name || user.email || "Thành viên mới"} - Đăng ký ${isGoogle ? "bằng Google" : "bằng Tài khoản"}`
       };
     });
 
-    const recentActivities = [...orderActivities, ...userActivities]
-      .sort((a, b) => b.time - a.time) 
-      .slice(0, 3); 
+    const recentActivities = [...orderActivities, ...userActivities].sort((a, b) => b.time - a.time).slice(0, 3); 
 
-    // ==========================================
-    // 📊 NÂNG CẤP: DỮ LIỆU PHÂN TÍCH CHUYÊN SÂU
-    // ==========================================
-
-    // Thống kê 1: Tỷ lệ trạng thái đơn hàng (Có áp dụng điều kiện ngày)
     const statusStats = await db.collection("orders").aggregate([
       ...(Object.keys(dateFilter).length > 0 ? [{ $match: dateFilter }] : []),
       { $group: { _id: "$status", count: { $sum: 1 } } }
@@ -131,7 +103,6 @@ export async function GET(request) {
       cancelled: statusStats.find(s => s._id === "cancelled")?.count || 0,
     };
 
-    // Thống kê 2: Top 5 sản phẩm bán chạy nhất trong khoảng thời gian lọc
     const topProducts = await db.collection("orders").aggregate([
       ...(Object.keys(dateFilter).length > 0 ? [{ $match: dateFilter }] : []),
       { $unwind: "$order_items" }, 
@@ -150,7 +121,6 @@ export async function GET(request) {
       values: topProducts.map(p => p.totalQty)
     };
 
-    // Trả về dữ liệu chuẩn JSON cho Dashboard
     return Response.json({
       stats: {
         totalRevenue: totalRevenue, 
@@ -161,9 +131,9 @@ export async function GET(request) {
         pendingOrders: pendingOrders
       },
       chartDatasets: {
-        labels: ['Tuần 01', 'Tuần 02', 'Tuần 03', 'Tuần 04'],
+        labels: ['Giai đoạn 1', 'Giai đoạn 2', 'Giai đoạn 3', 'Giai đoạn 4'],
         revenue: revenueByWeeks, 
-        forecast: [200, 300, 320, 380] 
+        forecast: forecastByWeeks 
       },
       recentActivities: recentActivities.length > 0 ? recentActivities : [
         { id: "init", title: "Hệ thống sẵn sàng", desc: "Không có hoạt động trong khoảng thời gian này." }
