@@ -37,6 +37,17 @@ export default function AdminDashboard() {
   
   const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // --- STATE BỘ LỌC NGÀY (DATE RANGE FILTER) ---
+  // Mặc định lấy từ đầu tháng hiện tại đến ngày hôm nay
+  const getTodayFormatted = () => new Date().toISOString().split('T')[0];
+  const getFirstDayOfMonth = () => {
+    const date = new Date();
+    return new Date(date.getFullYear(), date.getMonth(), 1).toISOString().split('T')[0];
+  };
+
+  const [startDate, setStartDate] = useState(getFirstDayOfMonth());
+  const [endDate, setEndDate] = useState(getTodayFormatted());
   
   // Ref kiểm tra xem có phải lần đầu tiên tải trang hay không
   const isFirstLoad = useRef(true);
@@ -69,7 +80,7 @@ export default function AdminDashboard() {
     }
   };
 
-  // Hàm lấy dữ liệu THỰC TẾ từ API hệ thống
+  // Hàm lấy dữ liệu THỰC TẾ từ API hệ thống (có kèm bộ lọc ngày)
   const fetchDashboardData = async () => {
     try {
       // Chỉ hiện spinner loading toàn màn hình ở lần tải đầu tiên
@@ -77,21 +88,25 @@ export default function AdminDashboard() {
         setLoading(true);
       }
 
-      // 1. Gọi API lấy số liệu tổng hợp trực tiếp
-      const response = await fetch('/api/admin/dashboard', {
-        cache: 'no-store' // Bỏ qua bộ nhớ đệm (cache) để nhận dữ liệu thực tế thời gian thực
+      // Đính kèm query params startDate và endDate vào API
+      const queryParams = new URLSearchParams({
+        startDate: startDate,
+        endDate: endDate
+      });
+
+      const response = await fetch(`/api/admin/dashboard?${queryParams.toString()}`, {
+        cache: 'no-store' // Bỏ qua bộ nhớ đệm để nhận dữ liệu thời gian thực
       });
       
       if (!response.ok) throw new Error("Không thể tải dữ liệu dashboard");
       
       const data = await response.json();
 
-      // Phòng hờ API trả về rỗng hoặc sai cấu trúc bằng toán tử optional chaining (?.) và giá trị mặc định (||)
       const rawRevenue = data?.stats?.totalRevenue || 0;
 
-      // 2. Cập nhật dữ liệu thực tế vào State hiển thị
+      // Cập nhật dữ liệu vào State hiển thị
       setStats({
-        totalRevenue: rawRevenue.toLocaleString('vi-VN'), // Định dạng số tiền có dấu chấm phân cách
+        totalRevenue: rawRevenue.toLocaleString('vi-VN'),
         revenueTrend: data?.stats?.revenueTrend || '+0%', 
         newMembers: data?.stats?.newMembers || 0,
         memberTrend: data?.stats?.memberTrend || '+0%',
@@ -99,9 +114,9 @@ export default function AdminDashboard() {
         pendingOrders: data?.stats?.pendingOrders || 0,
       });
 
-      // 3. Cập nhật dữ liệu cho biểu đồ cột doanh thu
+      // Cập nhật dữ liệu cho biểu đồ cột doanh thu
       setChartData({
-        labels: ['Tuần 01', 'Tuần 02', 'Tuần 03', 'Tuần 04'],
+        labels: data?.chartDatasets?.labels || ['Tuần 01', 'Tuần 02', 'Tuần 03', 'Tuần 04'],
         datasets: [
           {
             label: 'Doanh thu',
@@ -121,10 +136,8 @@ export default function AdminDashboard() {
           }
         ]
       });
-
-      // --- CẬP NHẬT DỮ LIỆU BIỂU ĐỒ PHÂN TÍCH CHUYÊN SÂU MỚI THÊM ---
       
-      // A. Nạp dữ liệu cho biểu đồ tròn (Trạng thái đơn hàng)
+      // Biểu đồ tròn: Trạng thái đơn hàng
       const orderStatus = data?.advancedCharts?.orderStatus;
       setStatusChartData({
         labels: ['Chờ xử lý (Pending)', 'Thành công (Completed)', 'Đã hủy (Cancelled)'],
@@ -134,63 +147,82 @@ export default function AdminDashboard() {
             orderStatus?.completed || 0, 
             orderStatus?.cancelled || 0
           ],
-          backgroundColor: ['#f59e0b', '#10b981', '#ef4444'], // Vàng - Xanh - Đỏ
+          backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
           borderWidth: 1
         }]
       });
 
-      // B. Nạp dữ liệu cho biểu đồ thanh ngang (Top 5 sản phẩm bán chạy)
+      // Biểu đồ thanh ngang: Top 5 sản phẩm bán chạy
       const topProducts = data?.advancedCharts?.topProducts;
       setTopProductsChartData({
         labels: topProducts?.labels || [],
         datasets: [{
           label: 'Số lượng bán ra',
           data: topProducts?.values || [],
-          backgroundColor: '#3b82f6', // Màu xanh dương thương hiệu nổi bật
+          backgroundColor: '#3b82f6',
           borderRadius: 4,
           barPercentage: 0.6
         }]
       });
 
-      // 4. Cập nhật danh sách hoạt động vừa diễn ra trên web
       setRecentActivities(data?.recentActivities || []);
       
     } catch (error) {
       console.error("Lỗi đồng bộ dữ liệu Live:", error);
     } finally {
       setLoading(false);
-      isFirstLoad.current = false; // Đánh dấu đã hoàn thành lượt tải đầu tiên
+      isFirstLoad.current = false;
     }
   };
 
-  // Tự động đồng bộ và lấy dữ liệu mới sau mỗi 5 giây (Live Polling)
+  // Tự động tải lại dữ liệu khi thay đổi khoảng ngày bộ lọc hoặc chạy interval
   useEffect(() => {
     fetchDashboardData();
 
     const interval = setInterval(() => {
       fetchDashboardData();
-    }, 5000);
+    }, 15000); // Tăng thời gian polling lên 15s khi dùng filter ngày để tránh gián đoạn trải nghiệm chọn ngày của user
 
-    // Thu dọn tiến trình ngầm khi thoát khỏi trang Admin
     return () => clearInterval(interval);
-  }, []);
+  }, [startDate, endDate]);
 
   return (
     <div className="bg-light" style={{ minHeight: '100vh' }}>
       
       {/* --- TOP NAVBAR CHỨA TIÊU ĐỀ VÀ TRẠNG THÁI REALTIME --- */}
-      <div className="bg-white border-bottom sticky-top px-4 py-2.5 d-flex justify-content-between align-items-center">
+      <div className="bg-white border-bottom sticky-top px-4 py-2.5 d-flex flex-wrap justify-content-between align-items-center gap-2">
         <div className="fw-semibold text-secondary small text-uppercase">
           Hệ thống quản trị / Bảng điều khiển tổng quan
         </div>
-        <div className="d-flex align-items-center gap-2">
-          {/* Huy hiệu nhỏ hiển thị tín hiệu kết nối Realtime cập nhật sau mỗi 5s */}
+
+        {/* --- KHU VỰC BỘ LỌC NGÀY VÀ NÚT TÁC VỤ --- */}
+        <div className="d-flex align-items-center flex-wrap gap-2">
+          <div className="d-flex align-items-center bg-light border rounded px-2 py-1 gap-1">
+            <span className="text-muted" style={{ fontSize: '0.75rem' }}>Từ:</span>
+            <input 
+              type="date" 
+              className="form-control form-control-sm border-0 bg-transparent p-0 text-dark shadow-none" 
+              style={{ fontSize: '0.8rem', width: '110px' }}
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span className="text-muted ms-1" style={{ fontSize: '0.75rem' }}>Đến:</span>
+            <input 
+              type="date" 
+              className="form-control form-control-sm border-0 bg-transparent p-0 text-dark shadow-none" 
+              style={{ fontSize: '0.8rem', width: '110px' }}
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
           <span className="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2.5 py-1.5 small d-flex align-items-center gap-1">
             <span className="spinner-grow spinner-grow-sm text-success" role="status" style={{ width: '0.5rem', height: '0.5rem' }}></span>
-            Trực tiếp (5s)
+            Trực tiếp
           </span>
+
           <button className="btn btn-dark btn-sm px-3 text-xs" onClick={fetchDashboardData}>
-            Làm mới ngay 🔄
+            Làm mới 🔄
           </button>
         </div>
       </div>
@@ -200,7 +232,7 @@ export default function AdminDashboard() {
         {loading ? (
           <div className="text-center py-5">
             <div className="spinner-border text-dark" role="status"></div>
-            <div className="text-muted small mt-2">Đang kết nối hệ thống dữ liệu...</div>
+            <div className="text-muted small mt-2">Đang đồng bộ dữ liệu theo khoảng thời gian...</div>
           </div>
         ) : (
           <>
@@ -211,7 +243,7 @@ export default function AdminDashboard() {
                   <div className="card-body p-3">
                     <div className="text-uppercase text-secondary fw-semibold" style={{ fontSize: "0.7rem", letterSpacing: "0.5px" }}>Tổng doanh thu</div>
                     <h5 className="fw-bold mt-1 mb-0 text-dark">{stats.totalRevenue} đ</h5>
-                    <div className="text-success small" style={{ fontSize: "0.75rem" }}>{stats.revenueTrend}</div>
+                    <div className="text-success small" style={{ fontSize: "0.75rem" }}>{stats.revenueTrend} so với kỳ trước</div>
                   </div>
                 </div>
               </div>
@@ -220,7 +252,7 @@ export default function AdminDashboard() {
                   <div className="card-body p-3">
                     <div className="text-uppercase text-secondary fw-semibold" style={{ fontSize: "0.7rem", letterSpacing: "0.5px" }}>Thành viên mới</div>
                     <h5 className="fw-bold mt-1 mb-0 text-dark">{stats.newMembers}</h5>
-                    <div className="text-success small" style={{ fontSize: "0.75rem" }}>{stats.memberTrend}</div>
+                    <div className="text-success small" style={{ fontSize: "0.75rem" }}>{stats.memberTrend} so với kỳ trước</div>
                   </div>
                 </div>
               </div>
@@ -229,7 +261,7 @@ export default function AdminDashboard() {
                   <div className="card-body p-3">
                     <div className="text-uppercase text-secondary fw-semibold" style={{ fontSize: "0.7rem", letterSpacing: "0.5px" }}>Tổng đơn hàng</div>
                     <h5 className="fw-bold mt-1 mb-0 text-dark">{stats.totalOrders}</h5>
-                    <div className="text-muted small" style={{ fontSize: "0.75rem" }}>Đã đồng bộ</div>
+                    <div className="text-muted small" style={{ fontSize: "0.75rem" }}>Trong khoảng lọc</div>
                   </div>
                 </div>
               </div>
@@ -249,7 +281,7 @@ export default function AdminDashboard() {
               <div className="col-xl-8">
                 <div className="card shadow-sm border-0 h-100">
                   <div className="card-body">
-                    <h6 className="mb-3 fw-bold">Tổng quan doanh số tuần</h6>
+                    <h6 className="mb-3 fw-bold">Tổng quan doanh số theo thời gian</h6>
                     <div style={{ height: '280px', position: 'relative' }}>
                       <Bar data={chartData} options={chartOptions} />
                     </div>
@@ -270,7 +302,7 @@ export default function AdminDashboard() {
                         ))
                       ) : (
                         <li className="text-center py-4 text-muted small">
-                          Chưa ghi nhận hoạt động tương tác nào mới.
+                          Không có hoạt động nào trong khoảng thời gian này.
                         </li>
                       )}
                     </ul>
@@ -279,7 +311,7 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* --- HÀNG BIỂU ĐỒ PHÂN TÍCH CHUYÊN SÂU MỚI THÊM --- */}
+            {/* Hàng biểu đồ phân tích chuyên sâu */}
             <div className="row g-4 mb-4">
               {/* Biểu đồ tròn: Tỷ lệ trạng thái đơn hàng */}
               <div className="col-xl-5">
@@ -309,7 +341,7 @@ export default function AdminDashboard() {
                       <Bar 
                         data={topProductsChartData} 
                         options={{ 
-                          indexAxis: 'y', // Xoay ngang thanh đồ thị cột
+                          indexAxis: 'y',
                           responsive: true, 
                           maintainAspectRatio: false,
                           plugins: { 
