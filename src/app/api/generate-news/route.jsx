@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Hàm xử lý dự phòng nếu AI gặp sự cố hoặc thiếu Key
 function buildFallbackNewsResponse(topic) {
   const defaultTopic = topic || "Giày Sneaker Hot Nhất Năm";
   return {
@@ -21,9 +20,7 @@ export async function POST(req) {
 
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-    // Nếu không tìm thấy API Key -> Trả về dữ liệu fallback mẫu ngay
     if (!apiKey) {
-      console.warn("⚠️ Thiếu GEMINI_API_KEY hoặc GOOGLE_API_KEY");
       return NextResponse.json({ success: true, data: buildFallbackNewsResponse(topic) }, { status: 200 });
     }
 
@@ -42,12 +39,12 @@ export async function POST(req) {
 
     QUY TẮC BẮT BUỘC:
     1. Trả về đúng định dạng JSON thuần túy gồm 4 trường: "title", "summary", "category", "content".
-    2. Trường "content" phải chứa nội dung chi tiết dạng các thẻ HTML chuẩn (<p>, <h3>, <ul>, <li>, <strong>) để chèn thẳng vào WYSIWYG editor.
+    2. Trường "content" phải chứa nội dung chi tiết dạng các thẻ HTML chuẩn (<p>, <h3>, <ul>, <li>, <strong>).
     3. Cấu trúc JSON trả về:
     {
       "title": "Tiêu đề hấp dẫn, chuẩn SEO",
       "summary": "Đoạn tóm tắt ngắn gọn 2-3 câu giới thiệu bài viết",
-      "category": "Danh mục phù hợp (VD: Xu hướng, Đánh giá, Thể thao...)",
+      "category": "Danh mục phù hợp",
       "content": "<p>Đoạn mở đầu...</p><h3>1. Ý thứ nhất</h3><p>Chi tiết...</p>"
     }
     `;
@@ -55,7 +52,6 @@ export async function POST(req) {
     const result = await model.generateContent(prompt);
     let textResponse = result.response.text().trim();
 
-    // Làm sạch markdown nếu AI có trả về ```json
     textResponse = textResponse
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -85,7 +81,6 @@ export async function POST(req) {
 
   } catch (error) {
     console.error("❌ Lỗi API AI News:", error);
-    // Khi gặp lỗi server/mạng, tự động trả về bài viết fallback thay vì báo crash lỗi 500
     return NextResponse.json({
       success: true,
       data: buildFallbackNewsResponse(topic)
