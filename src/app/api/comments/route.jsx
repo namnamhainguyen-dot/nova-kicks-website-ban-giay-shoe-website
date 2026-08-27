@@ -98,49 +98,59 @@ export async function POST(request) {
     }
 
     // ==========================================
-    // 🤖 KIỂM DUYỆT BẰNG PROMPT TIẾNG VIỆT CHUYÊN NGHIỆP
+    // 🤖 KIỂM DUYỆT NÂNG CAO (SẠCH CODE, BẮT ĐƯỢC VIẾT TẮT)
     // ==========================================
     let shouldHide = false;
     let aiReason = "";
-    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    
+    // Lọc phụ trợ: Kiểm tra các từ viết tắt nhạy cảm cực kỳ ngắn (ví dụ: "cc", "vl", "dm") mà không cần chứa từ thô tục trong code
+    const words = comment.trim().toLowerCase().split(/\s+/);
+    const hasAbbrToxic = words.some(w => ["cc", "vcl", "vl", "dm", "dcm", "đm", "đcm"].includes(w));
 
-    if (apiKey && comment && comment.trim() !== "") {
-      try {
-        const genAI = new GoogleGenerativeAI(apiKey);
-        const model = genAI.getGenerativeModel({
-          model: "gemini-1.5-flash",
-          generationConfig: { responseMimeType: "application/json" },
-        });
+    if (hasAbbrToxic) {
+        shouldHide = true;
+        aiReason = "Phát hiện từ viết tắt không phù hợp.";
+    } else {
+        const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-        const prompt = `
-          Bạn là hệ thống kiểm duyệt nội dung chuyên nghiệp cho nền tảng thương mại điện tử.
-          Hãy phân tích thật kỹ nội dung đánh giá sau từ khách hàng: "${comment}"
-          
-          Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt hoặc cố tình che ký tự như "như l...", v.v.), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
-          
-          Quy tắc đánh giá:
-          - Nếu câu chứa từ ngữ thô tục, chửi thề, lăng mạ dù viết tắt hay che dấu -> Bắt buộc đặt "isToxic": true.
-          - Nếu câu chỉ là lời chê bai sản phẩm bình thường, góp ý thực tế (ví dụ: chê form rộng, chất liệu cứng, giao hàng chậm) nhưng sử dụng từ ngữ lịch sự, văn minh -> Đặt "isToxic": false.
-          
-          Chỉ trả về định dạng JSON thuần túy duy nhất sau (không kèm markdown khác):
-          {
-            "isToxic": true hoặc false,
-            "reason": "Lý do ngắn gọn bằng tiếng Việt nếu vi phạm, ngược lại để trống"
+        if (apiKey && comment && comment.trim() !== "") {
+          try {
+            const genAI = new GoogleGenerativeAI(apiKey);
+            const model = genAI.getGenerativeModel({
+              model: "gemini-1.5-flash",
+              generationConfig: { responseMimeType: "application/json" },
+            });
+
+            const prompt = `
+              Bạn là hệ thống kiểm duyệt nội dung chuyên nghiệp cho nền tảng thương mại điện tử.
+              Hãy phân tích thật kỹ nội dung đánh giá sau từ khách hàng: "${comment}"
+              
+              Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt cực ngắn như "cc", "vl", "vcl" hoặc che ký tự như "như l..."), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
+              
+              Quy tắc đánh giá:
+              - Nếu câu chứa từ ngữ thô tục, chửi thề, tiếng lóng viết tắt mang ý nghĩa chửi rủa -> Bắt buộc đặt "isToxic": true.
+              - Nếu câu chỉ là lời chê bai sản phẩm bình thường, góp ý thực tế (ví dụ: chê form rộng, chất liệu cứng, giao hàng chậm) nhưng sử dụng từ ngữ lịch sự, văn minh -> Đặt "isToxic": false.
+              
+              Chỉ trả về định dạng JSON thuần túy duy nhất sau (không kèm markdown khác):
+              {
+                "isToxic": true hoặc false,
+                "reason": "Lý do ngắn gọn bằng tiếng Việt nếu vi phạm, ngược lại để trống"
+              }
+            `;
+
+            const result = await model.generateContent(prompt);
+            let textResponse = result.response.text().trim()
+              .replace(/^```json\s*/i, "")
+              .replace(/^```\s*/i, "")
+              .replace(/\s*```$/, "");
+
+            const parsedAI = JSON.parse(textResponse);
+            shouldHide = parsedAI.isToxic || false;
+            aiReason = parsedAI.reason || "";
+          } catch (aiError) {
+            console.error("Lỗi kiểm duyệt AI:", aiError);
           }
-        `;
-
-        const result = await model.generateContent(prompt);
-        let textResponse = result.response.text().trim()
-          .replace(/^```json\s*/i, "")
-          .replace(/^```\s*/i, "")
-          .replace(/\s*```$/, "");
-
-        const parsedAI = JSON.parse(textResponse);
-        shouldHide = parsedAI.isToxic || false;
-        aiReason = parsedAI.reason || "";
-      } catch (aiError) {
-        console.error("Lỗi kiểm duyệt AI:", aiError);
-      }
+        }
     }
 
     // ==========================================
