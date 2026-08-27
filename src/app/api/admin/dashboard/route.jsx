@@ -7,20 +7,56 @@ export async function GET(request) {
     const client = await clientPromise;
     const db = client.db(DB_NAME);
 
-    // 1. Đếm tổng số thành viên đăng ký
-    const totalUsers = await db.collection("users").countDocuments();
+    // --- 1. LẤY THAM SỐ LỌC NGÀY TỪ QUERY URL ---
+    const { searchParams } = new URL(request.url);
+    const startDateParam = searchParams.get("startDate");
+    const endDateParam = searchParams.get("endDate");
 
-    // 2. Đếm tổng số đơn hàng hệ thống
-    const totalOrders = await db.collection("orders").countDocuments();
+    // Tạo điều kiện lọc theo thời gian (createdAt) nếu người dùng có chọn ngày
+    let dateFilter = {};
+    let userDateFilter = {};
 
-    // 3. Đếm số đơn hàng đang chờ giao ("pending")
+    if (startDateParam && endDateParam) {
+      // Đặt giờ bắt đầu từ 00:00:00 và giờ kết thúc đến 23:59:59 để trọn vẹn trong ngày
+      const start = new Date(startDateParam);
+      start.setHours(0, 0, 0, 0);
+
+      const end = new Date(endDateParam);
+      end.setHours(23, 59, 59, 999);
+
+      dateFilter = {
+        createdAt: {
+          $gte: start,
+          $lte: end
+        }
+      };
+
+      userDateFilter = {
+        createdAt: {
+          $gte: start,
+          $lte: end
+        }
+      };
+    }
+
+    // 2. Đếm tổng số thành viên đăng ký (có lọc theo ngày nếu có)
+    const totalUsers = await db.collection("users").countDocuments(userDateFilter);
+
+    // 3. Đếm tổng số đơn hàng hệ thống (có lọc theo ngày)
+    const totalOrders = await db.collection("orders").countDocuments(dateFilter);
+
+    // 4. Đếm số đơn hàng đang chờ giao ("pending") trong khoảng thời gian lọc
     const pendingOrders = await db.collection("orders").countDocuments({ 
+      ...dateFilter,
       status: "pending" 
     });
 
-    // 4. Tính tổng doanh thu thực tế từ các đơn hàng "completed" hoặc "delivered"
+    // 5. Tính tổng doanh thu thực tế từ các đơn hàng "completed" hoặc "delivered" trong khoảng lọc
     const completedOrders = await db.collection("orders")
-      .find({ status: { $in: ["completed", "delivered"] } })
+      .find({ 
+        ...dateFilter,
+        status: { $in: ["completed", "delivered"] } 
+      })
       .toArray();
       
     const totalRevenue = completedOrders.reduce((sum, order) => {
@@ -28,7 +64,7 @@ export async function GET(request) {
       return sum + finalTotal;
     }, 0);
 
-    // 5. Thống kê doanh thu theo tuần (Đơn vị: Triệu VNĐ)
+    // 6. Thống kê doanh thu theo tuần (chia tỷ lệ tương đối từ tổng doanh thu lọc được)
     const revenueByWeeks = [
       Math.floor((totalRevenue * 0.2) / 1000000), 
       Math.floor((totalRevenue * 0.25) / 1000000), 
@@ -37,24 +73,23 @@ export async function GET(request) {
     ];
 
     // ==========================================
-    // 6. XỬ LÝ HOẠT ĐỘNG LIVE (ĐƠN HÀNG + USER MỚI)
+    // 7. XỬ LÝ HOẠT ĐỘNG LIVE (ĐƠN HÀNG + USER MỚI)
     // ==========================================
 
-    // Lấy 3 đơn hàng mới nhất
+    // Lấy 3 đơn hàng mới nhất trong khoảng lọc
     const latestOrders = await db.collection("orders")
-      .find({})
+      .find(dateFilter)
       .sort({ createdAt: -1, _id: -1 }) 
       .limit(3)
       .toArray();
 
-    // Lấy 3 người dùng đăng ký mới nhất
+    // Lấy 3 người dùng đăng ký mới nhất trong khoảng lọc
     const latestUsers = await db.collection("users")
-      .find({})
+      .find(userDateFilter)
       .sort({ createdAt: -1, _id: -1 }) 
       .limit(3)
       .toArray();
 
-    // Map dữ liệu đơn hàng sang chuẩn hiển thị hoạt động
     const orderActivities = latestOrders.map(order => ({
       id: order._id.toString(),
       type: "order",
@@ -63,7 +98,6 @@ export async function GET(request) {
       desc: `${order.name || "Khách ẩn danh"} - Trạng thái: ${order.status}`
     }));
 
-    // Map dữ liệu thành viên mới sang chuẩn hiển thị hoạt động
     const userActivities = latestUsers.map(user => {
       const isGoogle = user.email && !user.password; 
       const loginMethod = isGoogle ? "bằng Google" : "bằng Tài khoản";
@@ -85,8 +119,9 @@ export async function GET(request) {
     // 📊 NÂNG CẤP: DỮ LIỆU PHÂN TÍCH CHUYÊN SÂU
     // ==========================================
 
-    // Thống kê 1: Tỷ lệ trạng thái đơn hàng (Gom nhóm theo status)
+    // Thống kê 1: Tỷ lệ trạng thái đơn hàng (Có áp dụng điều kiện ngày)
     const statusStats = await db.collection("orders").aggregate([
+      ...(Object.keys(dateFilter).length > 0 ? [{ $match: dateFilter }] : []),
       { $group: { _id: "$status", count: { $sum: 1 } } }
     ]).toArray();
 
@@ -96,17 +131,18 @@ export async function GET(request) {
       cancelled: statusStats.find(s => s._id === "cancelled")?.count || 0,
     };
 
-    // Thống kê 2: Top 5 sản phẩm bán chạy nhất tách từ mảng order_items
+    // Thống kê 2: Top 5 sản phẩm bán chạy nhất trong khoảng thời gian lọc
     const topProducts = await db.collection("orders").aggregate([
-      { $unwind: "$order_items" }, // Trải phẳng mảng sản phẩm trong các đơn hàng
+      ...(Object.keys(dateFilter).length > 0 ? [{ $match: dateFilter }] : []),
+      { $unwind: "$order_items" }, 
       { 
         $group: { 
-          _id: "$order_items.name", // Gom nhóm theo tên sản phẩm
-          totalQty: { $sum: { $convert: { input: "$order_items.quantity", to: "int", onError: 0, onNull: 0 } } } // Tính tổng số lượng
+          _id: "$order_items.name", 
+          totalQty: { $sum: { $convert: { input: "$order_items.quantity", to: "int", onError: 0, onNull: 0 } } } 
         } 
       },
-      { $sort: { totalQty: -1 } }, // Sắp xếp giảm dần theo số lượng bán ra
-      { $limit: 5 } // Chỉ lấy 5 sản phẩm dẫn đầu
+      { $sort: { totalQty: -1 } }, 
+      { $limit: 5 } 
     ]).toArray();
 
     const topProductsData = {
@@ -114,7 +150,7 @@ export async function GET(request) {
       values: topProducts.map(p => p.totalQty)
     };
 
-    // Trả về cấu trúc JSON chuẩn bao gồm cả phần biểu đồ nâng cao mới
+    // Trả về dữ liệu chuẩn JSON cho Dashboard
     return Response.json({
       stats: {
         totalRevenue: totalRevenue, 
@@ -125,11 +161,12 @@ export async function GET(request) {
         pendingOrders: pendingOrders
       },
       chartDatasets: {
+        labels: ['Tuần 01', 'Tuần 02', 'Tuần 03', 'Tuần 04'],
         revenue: revenueByWeeks, 
         forecast: [200, 300, 320, 380] 
       },
       recentActivities: recentActivities.length > 0 ? recentActivities : [
-        { id: "init", title: "Hệ thống sẵn sàng", desc: "Chưa ghi nhận hoạt động nào phát sinh." }
+        { id: "init", title: "Hệ thống sẵn sàng", desc: "Không có hoạt động trong khoảng thời gian này." }
       ],
       advancedCharts: {
         orderStatus: orderStatusData,
