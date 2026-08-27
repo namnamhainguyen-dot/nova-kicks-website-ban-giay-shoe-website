@@ -28,10 +28,9 @@ export default function CreateNewsPage() {
   });
 
   const [submitting, setSubmitting] = useState(false);
-  const [aiTopic, setAiTopic] = useState("");
   const [generatingAi, setGeneratingAi] = useState(false);
 
-  // Hàm nén ảnh tổng dùng chung cho cả Thumbnail và Editor
+  // Hàm nén ảnh tránh quá tải Vercel
   const compressImage = (file, maxWidth = 600, quality = 0.5) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -56,7 +55,7 @@ export default function CreateNewsPage() {
     });
   };
 
-  // Tùy chỉnh toolbar và Image handler cho ReactQuill
+  // Cấu hình ReactQuill
   const quillModules = useMemo(
     () => ({
       toolbar: {
@@ -78,7 +77,6 @@ export default function CreateNewsPage() {
             input.onchange = async () => {
               const file = input.files[0];
               if (file) {
-                // Tự động nén ảnh chèn vào nội dung bài viết
                 const compressedImage = await compressImage(file, 800, 0.6);
                 const quill = quillRef.current?.getEditor();
                 if (quill) {
@@ -103,7 +101,6 @@ export default function CreateNewsPage() {
     setFormData((prev) => ({ ...prev, content: contentValue }));
   };
 
-  // Nén ảnh đại diện khi chọn file từ máy
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -112,19 +109,19 @@ export default function CreateNewsPage() {
     }
   };
 
-  // Hàm gọi AI Gemini viết bài
-  const handleGenerateAI = async () => {
-    if (!aiTopic.trim()) {
-      alert("Vui lòng nhập ý tưởng hoặc chủ đề bài viết!");
-      return;
-    }
-
+  // NÚT BẤM 1 CLICK: AI TỰ VIẾT BÀI
+  const handleAutoGenerateAI = async () => {
     setGeneratingAi(true);
     try {
+      // Nếu user chưa gõ tiêu đề thì gửi chuỗi rỗng để AI tự nghĩ chủ đề giày dép/thời trang hot
+      const topicPrompt = formData.title.trim() 
+        ? formData.title 
+        : "Hãy tự chọn 1 chủ đề tin tức về thời trang giày Sneaker hot nhất hiện nay";
+
       const res = await fetch("/api/ai/generate-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: aiTopic }),
+        body: JSON.stringify({ topic: topicPrompt }),
       });
 
       const result = await res.json();
@@ -132,22 +129,20 @@ export default function CreateNewsPage() {
       if (result.success && result.data) {
         const { title, summary, category, content } = result.data;
 
-        // Tự động đổ dữ liệu AI tạo ra vào Form
+        // Điền tự động toàn bộ vào Form
         setFormData((prev) => ({
           ...prev,
           title: title || prev.title,
           summary: summary || prev.summary,
-          category: category || prev.category,
+          category: category || "Xu hướng",
           content: content || prev.content,
         }));
-
-        alert("AI đã viết xong bài viết! Bạn có thể xem và chỉnh sửa lại bên dưới.");
       } else {
-        alert(result.error || "Không thể khởi tạo bài viết từ AI.");
+        alert(result.error || "Không thể tạo bài viết tự động.");
       }
     } catch (error) {
       console.error("Lỗi AI:", error);
-      alert("Không thể kết nối đến máy chủ AI!");
+      alert("Lỗi kết nối máy chủ AI!");
     } finally {
       setGeneratingAi(false);
     }
@@ -173,7 +168,7 @@ export default function CreateNewsPage() {
       }
     } catch (error) {
       console.error("Lỗi tạo bài viết:", error);
-      alert("Không thể kết nối tới máy chủ hoặc dữ liệu quá lớn!");
+      alert("Không thể kết nối tới máy chủ");
     } finally {
       setSubmitting(false);
     }
@@ -186,43 +181,29 @@ export default function CreateNewsPage() {
           <h2 className="fw-bold">Thêm bài viết mới</h2>
           <p className="text-muted">Cập nhật nội dung chi tiết, định dạng văn bản và thông tin hiển thị.</p>
         </div>
-        <Link href="/admin/news" className="btn btn-outline-secondary">
-          ← Quay lại quản lý
-        </Link>
-      </div>
-
-      {/* Khung công cụ trợ lý AI Gemini */}
-      <div className="card bg-light border-primary shadow-sm mb-4 p-3">
-        <label className="form-label fw-bold text-primary mb-1">
-          ✨ Trợ lý AI sáng tạo nội dung
-        </label>
-        <p className="text-muted small mb-2">
-          Nhập ý tưởng hoặc tiêu đề sơ lược, AI sẽ tự động soạn thảo Tiêu đề, Danh mục, Tóm tắt và Nội dung chi tiết.
-        </p>
-        <div className="input-group">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Ví dụ: Đánh giá chi tiết mẫu giày Nike Air Max 2026 siêu nhẹ..."
-            value={aiTopic}
-            onChange={(e) => setAiTopic(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), handleGenerateAI())}
-          />
+        <div className="d-flex gap-2">
+          {/* NÚT AI TỰ TẠO BÀI VIẾT NẰM Ở ĐÂY */}
           <button
             type="button"
-            className="btn btn-primary px-4"
-            onClick={handleGenerateAI}
+            className="btn btn-primary d-flex align-items-center gap-2"
+            onClick={handleAutoGenerateAI}
             disabled={generatingAi}
           >
             {generatingAi ? (
               <>
-                <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                AI đang viết bài...
+                <span className="spinner-border spinner-border-sm" role="status"></span>
+                Đang tạo bài viết...
               </>
             ) : (
-              "✨ Tạo bài viết"
+              <>
+                <span>✨</span> AI Tự Tạo Bài Viết
+              </>
             )}
           </button>
+
+          <Link href="/admin/news" className="btn btn-outline-secondary">
+            ← Quay lại quản lý
+          </Link>
         </div>
       </div>
 
@@ -235,6 +216,7 @@ export default function CreateNewsPage() {
             className="form-control"
             value={formData.title}
             onChange={handleChange}
+            placeholder="Nhập tiêu đề (hoặc để trống bấm nút AI phía trên để AI tự đề xuất)..."
             required
           />
         </div>
@@ -252,7 +234,7 @@ export default function CreateNewsPage() {
             />
           </div>
           <div className="col-md-4">
-            <label className="form-label fw-semibold">Chủ đề</label>
+            <label className="form-label fw-semibold">Danh mục</label>
             <input
               type="text"
               name="category"
