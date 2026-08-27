@@ -107,7 +107,7 @@ export default function CreateNewsPage() {
     }
   };
 
-  // Hàm gọi AI tạo bài viết (Hỗ trợ cả Tiêu đề chữ HOẶC Hình ảnh đã tải)
+  // Gọi AI tạo bài viết (từ tiêu đề hoặc ảnh)
   const handleAutoGenerateAI = async (fromImage = false) => {
     if (fromImage && !formData.image) {
       alert("Vui lòng chọn/tải ảnh lên trước khi dùng tính năng tạo bài viết từ ảnh!");
@@ -206,7 +206,7 @@ export default function CreateNewsPage() {
             )}
           </button>
 
-          <Link className="btn btn-outline-secondary" href="/admin/news">
+          <Link href="/admin/news" className="btn btn-outline-secondary">
             ← Quay lại quản lý
           </Link>
         </div>
@@ -328,12 +328,19 @@ export default function CreateNewsPage() {
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
-            <ReactQuill modules="{quillModules}" onChange="{handleContentChange}" placeholder="Nhập nội dung bài viết..." ref="{quillRef}" theme="snow" value="{formData.content}"/>
+            <ReactQuill
+              ref={quillRef}
+              theme="snow"
+              value={formData.content}
+              onChange={handleContentChange}
+              modules={quillModules}
+              placeholder="Nhập nội dung bài viết..."
+            />
           </div>
         </div>
 
         <div className="d-flex justify-content-end gap-2 mt-4">
-          <Link className="btn btn-light px-4" href="/admin/news">
+          <Link href="/admin/news" className="btn btn-light px-4">
             Hủy
           </Link>
           <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
