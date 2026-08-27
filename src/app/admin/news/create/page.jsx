@@ -6,7 +6,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
-// Dynamic import ReactQuill để tránh lỗi SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -31,7 +30,7 @@ export default function CreateNewsPage() {
   const [generatingAi, setGeneratingAi] = useState(false);
 
   // Nén ảnh Base64
-  const compressImage = (file, maxWidth = 600, quality = 0.5) => {
+  const compressImage = (file, maxWidth = 800, quality = 0.6) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onload = (event) => {
@@ -55,7 +54,6 @@ export default function CreateNewsPage() {
     });
   };
 
-  // Cấu hình Toolbar ReactQuill
   const quillModules = useMemo(
     () => ({
       toolbar: {
@@ -104,23 +102,32 @@ export default function CreateNewsPage() {
   const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const compressedBase64 = await compressImage(file, 600, 0.5);
+      const compressedBase64 = await compressImage(file, 800, 0.6);
       setFormData((prev) => ({ ...prev, image: compressedBase64 }));
     }
   };
 
-  // Hàm gọi AI tự sinh nội dung + ảnh đại diện
-  const handleAutoGenerateAI = async () => {
+  // Hàm gọi AI tạo bài viết (Hỗ trợ cả Tiêu đề chữ HOẶC Hình ảnh đã tải)
+  const handleAutoGenerateAI = async (fromImage = false) => {
+    if (fromImage && !formData.image) {
+      alert("Vui lòng chọn/tải ảnh lên trước khi dùng tính năng tạo bài viết từ ảnh!");
+      return;
+    }
+
     setGeneratingAi(true);
     try {
-      const topicPrompt = formData.title.trim() 
-        ? formData.title 
+      const topicPrompt = formData.title.trim()
+        ? formData.title
         : "Hãy chọn 1 mẫu giày sneaker hot nhất hiện nay";
+
+      const payload = fromImage
+        ? { imageBase64: formData.image }
+        : { topic: topicPrompt };
 
       const res = await fetch("/api/generate-news", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: topicPrompt }),
+        body: JSON.stringify(payload),
       });
 
       const result = await res.json();
@@ -132,7 +139,7 @@ export default function CreateNewsPage() {
           ...prev,
           title: title || prev.title,
           summary: summary || prev.summary,
-          category: category || "Xu hướng",
+          category: category || "Đánh giá",
           image: image || prev.image,
           content: content || prev.content,
         }));
@@ -184,22 +191,22 @@ export default function CreateNewsPage() {
           <button
             type="button"
             className="btn btn-primary d-flex align-items-center gap-2"
-            onClick={handleAutoGenerateAI}
+            onClick={() => handleAutoGenerateAI(false)}
             disabled={generatingAi}
           >
             {generatingAi ? (
               <>
                 <span className="spinner-border spinner-border-sm" role="status"></span>
-                Đang tạo bài viết & ảnh...
+                Đang suy nghĩ...
               </>
             ) : (
               <>
-                <span>✨</span> AI Tự Tạo Bài Viết + Ảnh
+                <span>✨</span> AI Tạo Bài Theo Ý Tưởng
               </>
             )}
           </button>
 
-          <Link href="/admin/news" className="btn btn-outline-secondary">
+          <Link className="btn btn-outline-secondary" href="/admin/news">
             ← Quay lại quản lý
           </Link>
         </div>
@@ -214,7 +221,7 @@ export default function CreateNewsPage() {
             className="form-control"
             value={formData.title}
             onChange={handleChange}
-            placeholder="Nhập tiêu đề (hoặc gõ ý tưởng sơ lược để AI tự viết tiếp)..."
+            placeholder="Nhập tiêu đề (hoặc gõ ý tưởng sơ lược)..."
             required
           />
         </div>
@@ -239,7 +246,7 @@ export default function CreateNewsPage() {
               className="form-control"
               value={formData.category}
               onChange={handleChange}
-              placeholder="Ví dụ: Xu hướng, Thể thao..."
+              placeholder="Ví dụ: Xu hướng, Đánh giá..."
               required
             />
           </div>
@@ -265,7 +272,7 @@ export default function CreateNewsPage() {
               className="form-control"
               value={formData.image}
               onChange={handleChange}
-              placeholder="Dán URL ảnh hoặc AI sẽ tự sinh đường dẫn ảnh..."
+              placeholder="Dán URL ảnh hoặc chọn tệp từ máy..."
             />
             <button
               type="button"
@@ -284,12 +291,22 @@ export default function CreateNewsPage() {
           </div>
 
           {formData.image && (
-            <div className="mt-2 p-2 border rounded bg-light d-inline-block">
-              <span className="d-block text-muted small mb-1">Xem trước ảnh đại diện (AI / Upload):</span>
+            <div className="mt-3 p-3 border rounded bg-light">
+              <div className="d-flex align-items-center justify-content-between mb-2">
+                <span className="text-muted small fw-bold">Xem trước ảnh đại diện:</span>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-success d-flex align-items-center gap-1"
+                  onClick={() => handleAutoGenerateAI(true)}
+                  disabled={generatingAi}
+                >
+                  {generatingAi ? "Đang phân tích..." : "🔍 AI Phân Tích Ảnh & Viết Bài"}
+                </button>
+              </div>
               <img
                 src={formData.image}
                 alt="Xem trước ảnh đại diện"
-                style={{ maxHeight: "160px", maxWidth: "100%", objectFit: "cover" }}
+                style={{ maxHeight: "180px", maxWidth: "100%", objectFit: "cover" }}
                 className="rounded border"
               />
             </div>
@@ -304,26 +321,19 @@ export default function CreateNewsPage() {
             rows="3"
             value={formData.summary}
             onChange={handleChange}
-            placeholder="Viết đoạn mở đầu ngắn gọn cho bài viết..."
+            placeholder="Mở đầu bài viết..."
           ></textarea>
         </div>
 
         <div className="mb-4">
           <label className="form-label fw-semibold d-block mb-2">Nội dung chi tiết</label>
           <div className="bg-white">
-            <ReactQuill
-              ref={quillRef}
-              theme="snow"
-              value={formData.content}
-              onChange={handleContentChange}
-              modules={quillModules}
-              placeholder="Nhập nội dung bài viết..."
-            />
+            <ReactQuill modules="{quillModules}" onChange="{handleContentChange}" placeholder="Nhập nội dung bài viết..." ref="{quillRef}" theme="snow" value="{formData.content}"/>
           </div>
         </div>
 
         <div className="d-flex justify-content-end gap-2 mt-4">
-          <Link href="/admin/news" className="btn btn-light px-4">
+          <Link className="btn btn-light px-4" href="/admin/news">
             Hủy
           </Link>
           <button type="submit" className="btn btn-dark px-4" disabled={submitting}>
