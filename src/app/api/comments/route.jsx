@@ -98,7 +98,7 @@ export async function POST(request) {
     }
 
     // ==========================================
-    // 🤖 KIỂM DUYỆT HOÀN TOÀN BẰNG GEMINI AI
+    // 🤖 KIỂM DUYỆT BẰNG PROMPT TIẾNG VIỆT CHUYÊN NGHIỆP
     // ==========================================
     let shouldHide = false;
     let aiReason = "";
@@ -113,17 +113,19 @@ export async function POST(request) {
         });
 
         const prompt = `
-          Bạn là hệ thống kiểm duyệt nội dung cực kỳ khắt khe cho cửa hàng giày dép.
-          Hãy phân tích nội dung đánh giá sau của khách hàng: "${comment}"
+          Bạn là hệ thống kiểm duyệt nội dung chuyên nghiệp cho nền tảng thương mại điện tử.
+          Hãy phân tích thật kỹ nội dung đánh giá sau từ khách hàng: "${comment}"
           
-          Nhiệm vụ: Phát hiện xem đánh giá này có chứa bất kỳ từ ngữ tục tĩu, chửi thề, lăng mạ, từ lóng bậy bạ (kể cả các từ viết tắt, từ lóng lắt léo che dấu ký tự như "như l...", v.v.), xúc phạm hoặc spam độc hại hay không.
-          - Chỉ cần có ý chửi thề, thô tục, bậy bạ dù che giấu dưới bất kỳ hình thức nào -> Phải trả về "isToxic": true.
-          - Lưu ý phân biệt: Khách chê sản phẩm không tốt, chê form giày rộng/chật, chê xấu nhưng dùng từ ngữ lịch sự, văn minh thì "isToxic": false.
+          Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt hoặc cố tình che ký tự như "như l...", v.v.), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
           
-          Chỉ trả về JSON thuần túy theo định dạng chính xác sau:
+          Quy tắc đánh giá:
+          - Nếu câu chứa từ ngữ thô tục, chửi thề, lăng mạ dù viết tắt hay che dấu -> Bắt buộc đặt "isToxic": true.
+          - Nếu câu chỉ là lời chê bai sản phẩm bình thường, góp ý thực tế (ví dụ: chê form rộng, chất liệu cứng, giao hàng chậm) nhưng sử dụng từ ngữ lịch sự, văn minh -> Đặt "isToxic": false.
+          
+          Chỉ trả về định dạng JSON thuần túy duy nhất sau (không kèm markdown khác):
           {
             "isToxic": true hoặc false,
-            "reason": "Lý do ngắn gọn nếu vi phạm, ngược lại để trống"
+            "reason": "Lý do ngắn gọn bằng tiếng Việt nếu vi phạm, ngược lại để trống"
           }
         `;
 
