@@ -98,60 +98,47 @@ export async function POST(request) {
     }
 
     // ==========================================
-    // 🤖 KIỂM DUYỆT TỪ KHÓA BẰNG AI & BLACKLIST
+    // 🤖 KIỂM DUYỆT HOÀN TOÀN BẰNG GEMINI AI
     // ==========================================
     let shouldHide = false;
     let aiReason = "";
-    
-    // 1. Danh sách từ khóa cấm cứng (Bắt luôn các từ lóng, viết tắt, chửi thề phổ biến)
-    const exactBadWords = ["như lờ", "như lồn", "đụ", "đĩ", "cặc", "dái", "vl", "vcl", "đm", "đcm"];
-    const lowerComment = comment.toLowerCase();
-    
-    const hasBadWord = exactBadWords.some(word => lowerComment.includes(word));
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
-    if (hasBadWord) {
-        shouldHide = true;
-        aiReason = "Phát hiện từ ngữ thô tục trong danh sách cấm.";
-    } else {
-        // 2. Nếu không dính từ cấm cứng, tiếp tục để AI phân tích sâu
-        const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+    if (apiKey && comment && comment.trim() !== "") {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({
+          model: "gemini-1.5-flash",
+          generationConfig: { responseMimeType: "application/json" },
+        });
 
-        if (apiKey && comment && comment.trim() !== "") {
-          try {
-            const genAI = new GoogleGenerativeAI(apiKey);
-            const model = genAI.getGenerativeModel({
-              model: "gemini-1.5-flash",
-              generationConfig: { responseMimeType: "application/json" },
-            });
-
-            const prompt = `
-              Bạn là hệ thống kiểm duyệt nội dung khắt khe cho cửa hàng giày dép.
-              Hãy phân tích câu đánh giá sau của khách hàng: "${comment}"
-              
-              Nhiệm vụ: Phát hiện bất kỳ từ ngữ tục tĩu, chửi thề, từ lóng bậy bạ (kể cả tiếng lóng chê bai thô tục bằng tiếng Việt như "như l...", v.v.), xúc phạm hoặc thô tục nào.
-              Chỉ cần có từ ngữ bậy bạ/tục tĩu dù là viết tắt hay tiếng lóng -> Phải trả về isToxic: true.
-              (Lưu ý lịch sự: Khách chê form giày rộng, chê giày cứng, chê không đẹp nhưng dùng từ ngữ lịch sự thì isToxic: false).
-              
-              Chỉ trả về JSON thuần túy theo định dạng:
-              {
-                "isToxic": true hoặc false,
-                "reason": "Lý do ngắn gọn nếu vi phạm, ngược lại để trống"
-              }
-            `;
-
-            const result = await model.generateContent(prompt);
-            let textResponse = result.response.text().trim()
-              .replace(/^```json\s*/i, "")
-              .replace(/^```\s*/i, "")
-              .replace(/\s*```$/, "");
-
-            const parsedAI = JSON.parse(textResponse);
-            shouldHide = parsedAI.isToxic || false;
-            aiReason = parsedAI.reason || "";
-          } catch (aiError) {
-            console.error("Lỗi kiểm duyệt AI:", aiError);
+        const prompt = `
+          Bạn là hệ thống kiểm duyệt nội dung cực kỳ khắt khe cho cửa hàng giày dép.
+          Hãy phân tích nội dung đánh giá sau của khách hàng: "${comment}"
+          
+          Nhiệm vụ: Phát hiện xem đánh giá này có chứa bất kỳ từ ngữ tục tĩu, chửi thề, lăng mạ, từ lóng bậy bạ (kể cả các từ viết tắt, từ lóng lắt léo che dấu ký tự như "như l...", v.v.), xúc phạm hoặc spam độc hại hay không.
+          - Chỉ cần có ý chửi thề, thô tục, bậy bạ dù che giấu dưới bất kỳ hình thức nào -> Phải trả về "isToxic": true.
+          - Lưu ý phân biệt: Khách chê sản phẩm không tốt, chê form giày rộng/chật, chê xấu nhưng dùng từ ngữ lịch sự, văn minh thì "isToxic": false.
+          
+          Chỉ trả về JSON thuần túy theo định dạng chính xác sau:
+          {
+            "isToxic": true hoặc false,
+            "reason": "Lý do ngắn gọn nếu vi phạm, ngược lại để trống"
           }
-        }
+        `;
+
+        const result = await model.generateContent(prompt);
+        let textResponse = result.response.text().trim()
+          .replace(/^```json\s*/i, "")
+          .replace(/^```\s*/i, "")
+          .replace(/\s*```$/, "");
+
+        const parsedAI = JSON.parse(textResponse);
+        shouldHide = parsedAI.isToxic || false;
+        aiReason = parsedAI.reason || "";
+      } catch (aiError) {
+        console.error("Lỗi kiểm duyệt AI:", aiError);
+      }
     }
 
     // ==========================================
