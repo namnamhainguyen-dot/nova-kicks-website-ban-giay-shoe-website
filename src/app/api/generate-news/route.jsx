@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// Dữ liệu bài viết dự phòng (fallback) nếu AI gặp sự cố hoặc chưa cấu hình API Key
 function buildFallbackNewsResponse(topic) {
   const defaultTopic = topic || "Giày Sneaker Hot Nhất Năm";
   return {
@@ -21,6 +22,7 @@ export async function POST(req) {
     const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
     if (!apiKey) {
+      console.warn("⚠️ Không tìm thấy GEMINI_API_KEY/GOOGLE_API_KEY. Đang dùng dữ liệu dự phòng.");
       return NextResponse.json({ success: true, data: buildFallbackNewsResponse(topic) }, { status: 200 });
     }
 
@@ -44,7 +46,7 @@ export async function POST(req) {
     {
       "title": "Tiêu đề hấp dẫn, chuẩn SEO",
       "summary": "Đoạn tóm tắt ngắn gọn 2-3 câu giới thiệu bài viết",
-      "category": "Danh mục phù hợp",
+      "category": "Danh mục phù hợp (VD: Xu hướng, Đánh giá, Thể thao...)",
       "content": "<p>Đoạn mở đầu...</p><h3>1. Ý thứ nhất</h3><p>Chi tiết...</p>"
     }
     `;
