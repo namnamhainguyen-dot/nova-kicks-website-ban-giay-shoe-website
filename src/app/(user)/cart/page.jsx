@@ -1,7 +1,7 @@
 "use client";
 import { CartContext } from "@/components/CartContext";
 import { useRouter } from "next/navigation";
-import { useContext, useEffect, useState, useCallback } from "react";
+import { useContext, useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 
 export default function Cart() {
@@ -9,7 +9,7 @@ export default function Cart() {
   const [locationList, setLocationList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
-  const [stockMap, setStockMap] = useState({}); // Lưu trữ số lượng tồn kho theo key
+  const [stockMap, setStockMap] = useState({}); // Key -> Tồn kho thực tế trong DB
   const router = useRouter();
 
   // Helper chuẩn hóa size
@@ -20,7 +20,7 @@ export default function Cart() {
     return s;
   };
 
-  // Lấy tồn kho của từng item trong giỏ hàng từ API
+  // Lấy tồn kho thực tế của từng sản phẩm từ API Database
   const fetchCartStock = useCallback(async () => {
     if (!cart || cart.length === 0) return;
 
@@ -71,7 +71,7 @@ export default function Cart() {
     fetchCartStock();
   }, [fetchCartStock]);
 
-  // Lấy danh sách cửa hàng
+  // Lấy danh sách cửa hàng / địa điểm
   useEffect(() => {
     async function fetchLocations() {
       try {
@@ -94,7 +94,7 @@ export default function Cart() {
     fetchLocations();
   }, []);
 
-  // Mặc định tick chọn tất cả
+  // Mặc định tick chọn tất cả sản phẩm
   useEffect(() => {
     setSelectedItems(cart.map((_, index) => index));
   }, [cart.length]);
@@ -115,11 +115,12 @@ export default function Cart() {
 
   const isAllSelected = cart.length > 0 && selectedItems.length === cart.length;
 
-  // Cập nhật số lượng có chặn vượt giới hạn tồn kho
+  // Tăng / Giảm / Nhập số lượng có giới hạn theo Tồn kho
   const handleQuantity = (index, value, maxStock) => {
     let newQuantity = parseInt(value, 10);
     if (isNaN(newQuantity) || newQuantity < 1) newQuantity = 1;
 
+    // Ép số lượng không được vượt quá tồn kho thực tế
     if (maxStock !== undefined && newQuantity > maxStock) {
       newQuantity = maxStock;
     }
@@ -157,17 +158,41 @@ export default function Cart() {
     }
   };
 
+  // Tính tổng tiền cho các item được tick chọn
   const total = cart.reduce(
     (sum, product, index) =>
       selectedItems.includes(index) ? sum + product.price * product.quantity : sum,
     0
   );
 
+  // 🛑 ĐIỀU KIỆN CHẶN THANH TOÁN:
+  // Kiểm tra xem trong số các sản phẩm ĐƯỢC CHỌN, có sản phẩm nào số lượng > tồn kho hoặc hết hàng không
+  const hasInvalidStockItem = useMemo(() => {
+    return selectedItems.some((index) => {
+      const item = cart[index];
+      if (!item) return false;
+      const key = `${item._id}-${item.selectedColor || "none"}-${item.selectedSize || "none"}`;
+      const maxStock = stockMap[key];
+
+      // Nếu đã load xong stockMap mà stock <= 0 hoặc quantity > maxStock
+      if (maxStock !== undefined) {
+        return maxStock <= 0 || item.quantity > maxStock;
+      }
+      return false;
+    });
+  }, [selectedItems, cart, stockMap]);
+
   const handleGoToCheckout = () => {
     if (selectedItems.length === 0) {
       alert("Vui lòng chọn ít nhất 1 sản phẩm để thanh toán!");
       return;
     }
+
+    if (hasInvalidStockItem) {
+      alert("Vui lòng điều chỉnh lại số lượng các sản phẩm vượt quá tồn kho hoặc đã hết hàng trước khi thanh toán!");
+      return;
+    }
+
     const itemsToCheckout = cart.filter((_, index) => selectedItems.includes(index));
     sessionStorage.setItem("checkout_items", JSON.stringify(itemsToCheckout));
     router.push("/checkout");
@@ -208,7 +233,7 @@ export default function Cart() {
                 />
               </th>
               <th>Sản phẩm</th>
-              <th style={{ width: "160px" }}>Số lượng</th>
+              <th style={{ width: "170px" }}>Số lượng</th>
               <th>Giá</th>
               <th>Tổng</th>
               <th style={{ width: "100px" }}>Hành động</th>
@@ -219,9 +244,11 @@ export default function Cart() {
               const uniqueKey = `${product._id}-${product.selectedColor || "none"}-${product.selectedSize || "none"}`;
               const checked = selectedItems.includes(index);
               const maxStock = stockMap[uniqueKey];
+              const isExceeded = maxStock !== undefined && product.quantity > maxStock;
+              const isOutOfStock = maxStock !== undefined && maxStock <= 0;
 
               return (
-                <tr key={uniqueKey} className={!checked ? "table-secondary" : ""}>
+                <tr key={uniqueKey} className={!checked ? "table-secondary" : isExceeded || isOutOfStock ? "table-danger" : ""}>
                   <td>
                     <input
                       type="checkbox"
@@ -256,20 +283,55 @@ export default function Cart() {
                     )}
                   </td>
                   <td>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={product.quantity}
-                      min="1"
-                      max={maxStock !== undefined ? maxStock : undefined}
-                      onChange={(e) => handleQuantity(index, e.target.value, maxStock)}
-                    />
-                    
-                    {/* 🛑 Cảnh báo khi đạt tối đa số lượng trong kho */}
-                    {maxStock !== undefined && product.quantity >= maxStock && maxStock > 0 && (
-                      <span className="text-danger small fw-semibold mt-1 d-block" style={{ fontSize: '11px' }}>
-                        Đã đạt số lượng tối đa trong kho
-                      </span>
+                    <div className="d-flex align-items-center gap-1">
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => handleQuantity(index, product.quantity - 1, maxStock)}
+                        disabled={product.quantity <= 1}
+                      >
+                        -
+                      </button>
+
+                      <input
+                        type="number"
+                        className="form-control text-center"
+                        style={{ width: "60px" }}
+                        value={product.quantity}
+                        min="1"
+                        max={maxStock !== undefined ? maxStock : undefined}
+                        onChange={(e) => handleQuantity(index, e.target.value, maxStock)}
+                      />
+
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-secondary"
+                        onClick={() => handleQuantity(index, product.quantity + 1, maxStock)}
+                        disabled={maxStock !== undefined && product.quantity >= maxStock}
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    {/* 🛑 Hiển thị trạng thái/Cảnh báo tồn kho */}
+                    {maxStock !== undefined && (
+                      <div className="mt-1">
+                        {isOutOfStock ? (
+                          <span className="badge bg-danger">Hết hàng</span>
+                        ) : isExceeded ? (
+                          <span className="text-danger fw-bold" style={{ fontSize: "11px", display: "block" }}>
+                            Vượt quá tồn kho (Còn {maxStock})
+                          </span>
+                        ) : product.quantity >= maxStock ? (
+                          <span className="text-warning fw-bold" style={{ fontSize: "11px", display: "block" }}>
+                            Đã đạt số lượng tối đa ({maxStock})
+                          </span>
+                        ) : (
+                          <span className="text-muted" style={{ fontSize: "11px", display: "block" }}>
+                            Còn {maxStock} sản phẩm
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td>{product.price.toLocaleString("vi-VN")}đ</td>
@@ -313,14 +375,21 @@ export default function Cart() {
         </table>
       </div>
 
-      <div className="d-flex justify-content-between mt-4">
+      {/* Cảnh báo khi nút thanh toán bị khóa do tồn kho */}
+      {hasInvalidStockItem && (
+        <div className="alert alert-warning text-center mt-3">
+          ⚠️ Có sản phẩm đã chọn vượt quá số lượng trong kho hoặc hết hàng. Vui lòng điều chỉnh lại số lượng trước khi thanh toán.
+        </div>
+      )}
+
+      <div className="d-flex justify-content-between mt-4 align-items-center">
         <Link href="/products" className="btn btn-outline-secondary">
           ← Tiếp tục mua sắm
         </Link>
         <button
           onClick={handleGoToCheckout}
           className="btn btn-success btn-lg px-5 fw-bold shadow-sm"
-          disabled={selectedItems.length === 0}
+          disabled={selectedItems.length === 0 || hasInvalidStockItem}
         >
           Tiến hành thanh toán →
         </button>

@@ -136,6 +136,8 @@ export default function UserActions() {
             <span>CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
           </Link>
 
+          // ... (các đoạn code cũ giữ nguyên)
+
           {/* ✨ DROPDOWN MENU */}
           <ul
             className="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 mt-2"
@@ -177,6 +179,18 @@ export default function UserActions() {
               </Link>
             </li>
 
+            {/* 🌟 THÊM MỤC TRA CỨU ĐƠN HÀNG VÀO ĐÂY CHO THÀNH VIÊN HOẶC KHÁCH */}
+            <li>
+              <Link
+                className="dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 text-dark"
+                href="/orders/guest"
+                style={{ fontSize: "0.85rem", transition: "all 0.2s" }}
+              >
+                <i className="fas fa-box-open text-warning" style={{ width: "16px" }}></i>
+                Tra cứu đơn hàng vãng lai
+              </Link>
+            </li>
+
             <li>
               <hr className="dropdown-divider my-1 bg-light" />
             </li>
@@ -194,15 +208,28 @@ export default function UserActions() {
           </ul>
         </li>
       ) : (
-        <li>
-          <Link
-            href="/login"
-            className="text-decoration-none fw-bold text-dark"
-            style={{ fontSize: "0.85rem" }}
-          >
-            Đăng nhập
-          </Link>
-        </li>
+        /* TRƯỜNG HỢP CHƯA ĐĂNG NHẬP */
+        <div className="d-flex align-items-center gap-3">
+          <li>
+            <Link
+              href="/orders/guest"
+              className="text-decoration-none text-muted fw-semibold small"
+              style={{ fontSize: "0.8rem" }}
+              title="Tra cứu đơn hàng"
+            >
+              <i className="fas fa-search me-1"></i> Tra cứu đơn
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/login"
+              className="text-decoration-none fw-bold text-dark"
+              style={{ fontSize: "0.85rem" }}
+            >
+              Đăng nhập
+            </Link>
+          </li>
+        </div>
       )}
     </ul>
   );
