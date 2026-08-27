@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-// Dữ liệu bài viết dự phòng (fallback) nếu AI gặp sự cố hoặc chưa cấu hình API Key
+// Dữ liệu dự phòng khi chưa cấu hình API Key hoặc AI phản hồi lỗi
 function buildFallbackNewsResponse(topic) {
   const defaultTopic = topic || "Giày Sneaker Hot Nhất Năm";
   return {
@@ -54,6 +54,7 @@ export async function POST(req) {
     const result = await model.generateContent(prompt);
     let textResponse = result.response.text().trim();
 
+    // Làm sạch Markdown JSON
     textResponse = textResponse
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
