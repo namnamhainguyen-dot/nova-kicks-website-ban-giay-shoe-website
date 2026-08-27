@@ -470,15 +470,31 @@ export default function Checkout() {
       paymentMethod: paymentMethod,
     };
 
+    // Hàm hỗ trợ lưu trữ đơn hàng của khách vãng lai vào localStorage
+    const saveGuestOrderLocal = (tempOrderId, savedOrderData) => {
+      if (typeof window === "undefined" || !currentUser) {
+        try {
+          const existing = JSON.parse(localStorage.getItem("guest_orders") || "[]");
+          const newEntry = { ...savedOrderData, _id: tempOrderId, id: tempOrderId, status: "Đang xử lý" };
+          const filtered = existing.filter(o => o._id !== tempOrderId && o.id !== tempOrderId);
+          filtered.unshift(newEntry);
+          if (filtered.length > 10) filtered.pop(); // Giữ tối đa 10 đơn gần nhất
+          localStorage.setItem("guest_orders", JSON.stringify(filtered));
+        } catch (err) {
+          console.error("Lỗi lưu guest_orders:", err);
+        }
+      }
+    };
+
     // 🌟 PHÂN LUỒNG THANH TOÁN (COD vs CHUYỂN KHOẢN QR)
     if (paymentMethod === "vnpay" || paymentMethod === "qr") {
-      // 1. Nếu là chuyển khoản QR: TUYỆT ĐỐI KHÔNG GỌI API TẠO ĐƠN
-      // Lưu payload vào sessionStorage để trang quét mã lấy dùng sau khi thanh toán thành công
-      sessionStorage.setItem("pending_order", JSON.stringify(orderData));
+      const tempId = "guest_" + Date.now();
+      const payloadWithId = { ...orderData, _id: tempId, id: tempId };
+      
+      saveGuestOrderLocal(tempId, payloadWithId);
+      sessionStorage.setItem("pending_order", JSON.stringify(payloadWithId));
       
       setIsOrdering(false);
-      
-      // Chuyển hướng sang trang hiển thị mã QR thanh toán kèm số tiền
       router.push(`/checkout/payment-simulation?amount=${finalTotal}`);
       return;
     }
@@ -499,7 +515,13 @@ export default function Checkout() {
 
       if (result.code === "success" || result.success || result._id || result.id) {
         const orderId = result._id || result.id || (result.data && result.data._id);
-        if (orderId) setCreatedOrderId(orderId);
+        if (orderId) {
+          setCreatedOrderId(orderId);
+          // Lưu vào localStorage cho khách vãng lai nếu chưa đăng nhập
+          if (!currentUser) {
+            saveGuestOrderLocal(orderId, { ...orderData, _id: orderId, id: orderId });
+          }
+        }
 
         const remainingCart = cart.filter(
           (cartItem) =>
@@ -523,7 +545,7 @@ export default function Checkout() {
       }
     } catch (err) {
       console.error("Order error:", err);
-      alert("Không thể kết nối tới server! Vuint lòng thử lại sau.\n" + err.message);
+      alert("Không thể kết nối tới server! Vui lòng thử lại sau.\n" + err.message);
     } finally {
       setIsOrdering(false);
     }

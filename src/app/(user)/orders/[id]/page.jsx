@@ -145,7 +145,20 @@ export default function OrderDetailPage() {
           setOrder(null);
         }
       })
-      .catch(() => setOrder(null));
+      .catch(() => {
+        // [TÍNH NĂNG MỚI]: Tìm kiếm đơn hàng trong localStorage nếu khách chưa đăng nhập/vãng lai
+        try {
+          const guestOrders = JSON.parse(localStorage.getItem("guest_orders") || "[]");
+          const foundOrder = guestOrders.find(o => o._id === id || o.id === id);
+          if (foundOrder) {
+            setOrder(foundOrder);
+            return;
+          }
+        } catch (e) {
+          console.error("Lỗi đọc guest_orders từ localStorage:", e);
+        }
+        setOrder(null);
+      });
   };
 
   useEffect(() => {
@@ -206,13 +219,12 @@ export default function OrderDetailPage() {
   };
 
   if (loading) return <div className="container my-5 text-center py-5"><div className="spinner-border" style={{ color: "#f59e0b" }} role="status"></div><p className="mt-2 text-muted">Đang tải chi tiết đơn hàng...</p></div>;
-  if (!order) return <div className="container my-5 text-center py-5 text-danger">⚠️ Không tìm thấy thông tin đơn hàng!<br/><Link href="/profile?tab=orders" className="btn text-white mt-3" style={{ backgroundColor: "#f59e0b" }}>Quay lại danh sách</Link></div>;
+  if (!order) return <div className="container my-5 text-center py-5 text-danger">⚠️ Không tìm thấy thông tin đơn hàng!<br/><Link href="/" className="btn text-white mt-3" style={{ backgroundColor: "#f59e0b" }}>Quay lại trang chủ</Link></div>;
 
   const displayTotal = order.total || 0;
   const displayDiscount = order.discount || 0;
   const displayFinalTotal = order.final_total !== undefined ? order.final_total : (displayTotal - displayDiscount);
 
-  // Kiểm tra phương thức thanh toán
   const rawMethod = (order.paymentMethod || order.payment_method || "cod").toLowerCase().trim();
   const isCod = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
   
@@ -221,7 +233,6 @@ export default function OrderDetailPage() {
 
   const currentStatus = statusConfigs[effectiveStatus] || { text: order.status || "Đang xử lý", badge: "bg-secondary text-white", icon: "•" };
 
-  // Chuẩn hóa hiển thị tên VNPAY / Thanh toán trực tuyến đồng bộ profile và admin
   let displayPaymentName = "VNPAY";
   let displayPaymentStatusText = "Thanh toán VNPAY thành công";
   
@@ -246,8 +257,8 @@ export default function OrderDetailPage() {
     <div className="container my-4" style={{ maxWidth: "800px" }}>
       {/* Nút quay lại */}
       <div className="mb-4">
-        <Link href="/profile?tab=orders" className="text-decoration-none text-muted fw-medium d-inline-flex align-items-center gap-1">
-          ← Trở về danh sách đơn mua
+        <Link href="/" className="text-decoration-none text-muted fw-medium d-inline-flex align-items-center gap-1">
+          ← Trở về trang chủ / Mua sắm tiếp
         </Link>
       </div>
 
@@ -265,7 +276,7 @@ export default function OrderDetailPage() {
           </div>
         </div>
 
-        {/* Thanh trạng thái thanh toán linh hoạt có màu sắc nổi bật */}
+        {/* Thanh trạng thái thanh toán linh hoạt */}
         <div className="px-4 py-3 d-flex align-items-center justify-content-between border-bottom bg-light">
           <div className="d-flex align-items-center gap-2 fw-semibold small text-success">
             <span className="badge bg-success text-white rounded-circle p-1" style={{ fontSize: "11px" }}>
@@ -395,23 +406,12 @@ export default function OrderDetailPage() {
                     ))}
                   </div>
 
-                  {/* Đã cập nhật lại ký tự sao trong badge cho đồng bộ */}
                   <span className="badge px-3 py-1 rounded-pill fw-bold" style={{ backgroundColor: "#ffedd5", color: "#c2410c" }}>
-                    {rating === 5 && (
-                      <>Tuyệt vời <span style={{ color: "#f59e0b" }}>★★★★★</span></>
-                    )}
-                    {rating === 4 && (
-                      <>Hài lòng <span style={{ color: "#f59e0b" }}>★★★★</span><span style={{ color: "#d1d5db" }}>★</span></>
-                    )}
-                    {rating === 3 && (
-                      <>Bình thường <span style={{ color: "#f59e0b" }}>★★★</span><span style={{ color: "#d1d5db" }}>★★</span></>
-                    )}
-                    {rating === 2 && (
-                      <>Tạm được <span style={{ color: "#f59e0b" }}>★★</span><span style={{ color: "#d1d5db" }}>★★★</span></>
-                    )}
-                    {rating === 1 && (
-                      <>Không hài lòng <span style={{ color: "#f59e0b" }}>★</span><span style={{ color: "#d1d5db" }}>★★★★</span></>
-                    )}
+                    {rating === 5 && (<>Tuyệt vời <span style={{ color: "#f59e0b" }}>★★★★★</span></>)}
+                    {rating === 4 && (<>Hài lòng <span style={{ color: "#f59e0b" }}>★★★★</span><span style={{ color: "#d1d5db" }}>★</span></>)}
+                    {rating === 3 && (<>Bình thường <span style={{ color: "#f59e0b" }}>★★★</span><span style={{ color: "#d1d5db" }}>★★</span></>)}
+                    {rating === 2 && (<>Tạm được <span style={{ color: "#f59e0b" }}>★★</span><span style={{ color: "#d1d5db" }}>★★★</span></>)}
+                    {rating === 1 && (<>Không hài lòng <span style={{ color: "#f59e0b" }}>★</span><span style={{ color: "#d1d5db" }}>★★★★</span></>)}
                   </span>
                 </div>
 
