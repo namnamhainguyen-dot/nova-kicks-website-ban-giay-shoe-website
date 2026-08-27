@@ -98,23 +98,31 @@ export async function POST(request) {
     }
 
    // ==========================================
-    // 🛡️ BỘ LỌC KIỂM DUYỆT BẢO MẬT & AI CHI TIẾT
+    // 🛡️ BỘ LỌC KIỂM DUYỆT BẢO MẬT NÂNG CAO
     // ==========================================
     let shouldHide = false;
     let aiReason = "";
     
     const lowerComment = comment ? comment.trim().toLowerCase() : "";
     
-    const hexList = ["6ce1bb936e", "6363", "76636c", "646d", "6e6875206c6f6e"]; 
+    const hexList = [
+      "6ce1bb936e",         
+      "6363",               
+      "76636c",             
+      "646d",               
+      "6e6875206c"          
+    ]; 
+    
     const decodedHexList = hexList.map(h => Buffer.from(h, 'hex').toString('utf8'));
     
-    // Kiểm tra nhanh qua mã Hex
+    // Kiểm tra xem bình luận có chứa bất kỳ mẫu nào không
     const hasToxicMatch = decodedHexList.some(badWord => lowerComment.includes(badWord));
 
     if (hasToxicMatch) {
         shouldHide = true;
-        aiReason = "Phát hiện từ ngữ không phù hợp với chuẩn mực đánh giá.";
+        aiReason = "Phát hiện từ ngữ hoặc từ viết tắt không phù hợp với chuẩn mực đánh giá.";
     } else {
+        // Phần gọi Gemini AI xử lý các trường hợp còn lại giữ nguyên ở đây...
         const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
         if (apiKey && lowerComment !== "") {
@@ -129,10 +137,10 @@ export async function POST(request) {
               Bạn là hệ thống kiểm duyệt nội dung chuyên nghiệp cho nền tảng thương mại điện tử.
               Hãy phân tích thật kỹ nội dung đánh giá sau từ khách hàng: "${comment}"
               
-              Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt cực ngắn hoặc che ký tự như "như l...", v.v.), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
+              Nhiệm vụ: Phát hiện xem bình luận này có chứa từ ngữ thô tục, chửi thề, tiếng lóng xúc phạm, từ lóng lắt léo (kể cả viết tắt hoặc che ký tự như "như l...", "như cc", v.v.), lăng mạ hoặc mang tính chất độc hại, kém văn minh hay không.
               
               Quy tắc đánh giá:
-              - Nếu câu chứa từ ngữ thô tục, chửi thề, tiếng lóng viết tắt mang ý nghĩa chửi rủa -> Bắt buộc đặt "isToxic": true.
+              - Nếu câu chứa từ ngữ thô tục, chửi thề, tiếng lóng viết tắt, viết lửng mang ý nghĩa chửi rủa -> Bắt buộc đặt "isToxic": true.
               - Nếu câu chỉ là lời chê bai sản phẩm bình thường, góp ý thực tế (ví dụ: chê form rộng, chất liệu cứng, giao hàng chậm) nhưng sử dụng từ ngữ lịch sự, văn minh -> Đặt "isToxic": false.
               
               Chỉ trả về định dạng JSON thuần túy duy nhất sau (không kèm markdown khác):
