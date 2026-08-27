@@ -6,7 +6,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import "react-quill-new/dist/quill.snow.css";
 
-// Import động ReactQuill để tránh lỗi Mismatch SSR trên Next.js
+// Dynamic import ReactQuill để tránh lỗi SSR
 const ReactQuill = dynamic(() => import("react-quill-new"), {
   ssr: false,
   loading: () => <p className="p-3 border rounded text-muted">Đang tải trình soạn thảo...</p>,
@@ -30,7 +30,7 @@ export default function CreateNewsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [generatingAi, setGeneratingAi] = useState(false);
 
-  // Nén ảnh Base64 trước khi chèn vào editor hoặc lưu trữ
+  // Nén ảnh Base64
   const compressImage = (file, maxWidth = 600, quality = 0.5) => {
     return new Promise((resolve) => {
       const reader = new FileReader();
@@ -109,12 +109,12 @@ export default function CreateNewsPage() {
     }
   };
 
-  // Hàm gọi API tự động tạo nội dung qua Gemini AI
+  // Hàm gọi AI tự sinh nội dung + ảnh đại diện
   const handleAutoGenerateAI = async () => {
     setGeneratingAi(true);
     try {
-      const topicPrompt = formData.title.trim()
-        ? formData.title
+      const topicPrompt = formData.title.trim() 
+        ? formData.title 
         : "Hãy chọn 1 mẫu giày sneaker hot nhất hiện nay";
 
       const res = await fetch("/api/generate-news", {
@@ -126,13 +126,14 @@ export default function CreateNewsPage() {
       const result = await res.json();
 
       if (result.success && result.data) {
-        const { title, summary, category, content } = result.data;
+        const { title, summary, category, image, content } = result.data;
 
         setFormData((prev) => ({
           ...prev,
           title: title || prev.title,
           summary: summary || prev.summary,
           category: category || "Xu hướng",
+          image: image || prev.image,
           content: content || prev.content,
         }));
       } else {
@@ -189,11 +190,11 @@ export default function CreateNewsPage() {
             {generatingAi ? (
               <>
                 <span className="spinner-border spinner-border-sm" role="status"></span>
-                Đang tạo bài viết...
+                Đang tạo bài viết & ảnh...
               </>
             ) : (
               <>
-                <span>✨</span> AI Tự Tạo Bài Viết
+                <span>✨</span> AI Tự Tạo Bài Viết + Ảnh
               </>
             )}
           </button>
@@ -264,7 +265,7 @@ export default function CreateNewsPage() {
               className="form-control"
               value={formData.image}
               onChange={handleChange}
-              placeholder="Dán URL ảnh hoặc nhấn nút bên cạnh để tải file..."
+              placeholder="Dán URL ảnh hoặc AI sẽ tự sinh đường dẫn ảnh..."
             />
             <button
               type="button"
@@ -284,11 +285,11 @@ export default function CreateNewsPage() {
 
           {formData.image && (
             <div className="mt-2 p-2 border rounded bg-light d-inline-block">
-              <span className="d-block text-muted small mb-1">Xem trước ảnh:</span>
+              <span className="d-block text-muted small mb-1">Xem trước ảnh đại diện (AI / Upload):</span>
               <img
                 src={formData.image}
                 alt="Xem trước ảnh đại diện"
-                style={{ maxHeight: "140px", objectFit: "cover" }}
+                style={{ maxHeight: "160px", maxWidth: "100%", objectFit: "cover" }}
                 className="rounded border"
               />
             </div>
