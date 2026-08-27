@@ -381,19 +381,37 @@ export default function OrderDetailPage() {
 
                 <div className="text-center mb-4">
                   <label className="form-label small fw-bold text-muted mb-2">Chất lượng sản phẩm</label>
-                  <div className="d-flex justify-content-center gap-2 mb-2">
+                  <div className="d-flex justify-content-center gap-1 mb-2">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <button key={star} type="button" className="btn p-0 border-0 shadow-none fs-3" onClick={() => setRating(star)}>
-                        {star <= rating ? "⭐" : "☆"}
+                      <button 
+                        key={star} 
+                        type="button" 
+                        className="btn p-1 border-0 shadow-none fs-4" 
+                        onClick={() => setRating(star)}
+                        style={{ color: star <= rating ? "#f59e0b" : "#d1d5db" }}
+                      >
+                        ★
                       </button>
                     ))}
                   </div>
+
+                  {/* Đã cập nhật lại ký tự sao trong badge cho đồng bộ */}
                   <span className="badge px-3 py-1 rounded-pill fw-bold" style={{ backgroundColor: "#ffedd5", color: "#c2410c" }}>
-                    {rating === 5 && "Tuyệt vời ⭐⭐⭐⭐⭐"}
-                    {rating === 4 && "Hài lòng ⭐⭐⭐⭐"}
-                    {rating === 3 && "Bình thường ⭐⭐⭐"}
-                    {rating === 2 && "Tạm được ⭐⭐"}
-                    {rating === 1 && "Không hài lòng ⭐"}
+                    {rating === 5 && (
+                      <>Tuyệt vời <span style={{ color: "#f59e0b" }}>★★★★★</span></>
+                    )}
+                    {rating === 4 && (
+                      <>Hài lòng <span style={{ color: "#f59e0b" }}>★★★★</span><span style={{ color: "#d1d5db" }}>★</span></>
+                    )}
+                    {rating === 3 && (
+                      <>Bình thường <span style={{ color: "#f59e0b" }}>★★★</span><span style={{ color: "#d1d5db" }}>★★</span></>
+                    )}
+                    {rating === 2 && (
+                      <>Tạm được <span style={{ color: "#f59e0b" }}>★★</span><span style={{ color: "#d1d5db" }}>★★★</span></>
+                    )}
+                    {rating === 1 && (
+                      <>Không hài lòng <span style={{ color: "#f59e0b" }}>★</span><span style={{ color: "#d1d5db" }}>★★★★</span></>
+                    )}
                   </span>
                 </div>
 
