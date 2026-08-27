@@ -910,7 +910,7 @@ export default function ProductDetailPage() {
                                             alt={`${star} star`} 
                                             style={{ 
                                                 width: '24px', height: '24px', display: 'block', 
-                                                filter: star <= newRating ? 'none' : 'grayscale(100%) opacity(0.55)' 
+                                                filter: star <= newRating ? 'none' : 'grayscale(100%) opacity(0.3)' 
                                             }} 
                                         />
                                     </button>
@@ -1027,7 +1027,7 @@ export default function ProductDetailPage() {
                                                     alt="star" 
                                                     style={{ 
                                                         width: '16px', height: '16px', 
-                                                        filter: i < ratingStars ? 'none' : 'grayscale(100%) opacity(0.55)' 
+                                                        filter: i < ratingStars ? 'none' : 'grayscale(100%) opacity(0.3)' 
                                                     }} 
                                                 />
                                             ))}
@@ -1040,18 +1040,22 @@ export default function ProductDetailPage() {
 
                                     {rev.images && rev.images.length > 0 && (
                                         <div style={{ display: 'flex', gap: '8px', marginTop: '10px', marginLeft: '48px', flexWrap: 'wrap' }}>
-                                            {rev.images.map((imgUrl, imgIdx) => (
-                                                <div 
-                                                    key={imgIdx} 
-                                                    onClick={() => setZoomReviewImage(imgUrl)}
-                                                    style={{ 
-                                                        width: '65px', height: '65px', borderRadius: '8px', overflow: 'hidden', 
-                                                        border: '1px solid #e5e7eb', cursor: 'zoom-in', position: 'relative' 
-                                                    }}
-                                                >
-                                                    <img src={imgUrl} alt="review-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                </div>
-                                            ))}
+                                            {rev.images.map((imgUrl, imgIdx) => {
+                                                const url = typeof imgUrl === 'string' ? imgUrl : imgUrl?.link || imgUrl?.url || '';
+                                                if (!url) return null;
+                                                return (
+                                                    <div 
+                                                        key={imgIdx} 
+                                                        onClick={() => setZoomReviewImage(url)}
+                                                        style={{ 
+                                                            width: '65px', height: '65px', borderRadius: '8px', overflow: 'hidden', 
+                                                            border: '1px solid #e5e7eb', cursor: 'zoom-in', position: 'relative' 
+                                                        }}
+                                                    >
+                                                        <img src={url} alt="review-img" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
