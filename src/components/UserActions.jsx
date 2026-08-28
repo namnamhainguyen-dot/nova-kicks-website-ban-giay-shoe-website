@@ -83,10 +83,11 @@ export default function UserActions() {
 
             {totalItems > 0 && (
               <span
-                className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                style={{ fontSize: "0.55rem" }}
+                className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle animate-pulse"
+                style={{ width: "8px", height: "8px" }}
+                title={`Có ${totalItems} sản phẩm trong giỏ`}
               >
-                {totalItems}
+                <span className="visually-hidden">New alerts</span>
               </span>
             )}
           </Link>
@@ -136,7 +137,6 @@ export default function UserActions() {
             <span>CHÀO, {user.fullname || user.name || "KHÁCH"}</span>
           </Link>
 
-          {/* ✨ DROPDOWN MENU (ĐÃ ĐĂNG NHẬP - KHÔNG CÒN MỤC TRA CỨU VÃNG LAI) */}
           <ul
             className="dropdown-menu dropdown-menu-end border-0 shadow-lg p-2 mt-2"
             aria-labelledby="userDropdown"
