@@ -123,21 +123,25 @@ export default function MobileMenu({ categories = [] }) {
                       className="d-flex align-items-center gap-2 text-decoration-none text-dark fw-bold text-uppercase fs-6"
                     >
                       <i className="far fa-user-circle fs-5"></i>
-                      <span>CHÀO, {user.fullname || 'KHÁCH'}</span>
+                      <span>CHÀO, {user.fullname || user.name || 'KHÁCH'}</span>
                     </Link>
 
-                    {/* Biểu tượng Giỏ hàng có Badge số lượng */}
-                    {(!user || user.role !== 'admin') && (
+                    {/* Biểu tượng Giỏ hàng dạng chấm đỏ nhấp nháy đồng bộ PC */}
+                    {(!user || user.role?.toLowerCase() !== 'admin') && (
                       <Link 
                         href="/cart" 
                         onClick={toggleMenu} 
-                        className="text-dark position-relative"
+                        className="text-dark position-relative text-decoration-none"
                         title="Giỏ hàng"
                       >
                         <i className="fas fa-shopping-bag fs-5"></i>
                         {totalItems > 0 && (
-                          <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.55rem' }}>
-                            {totalItems}
+                          <span
+                            className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle animate-pulse"
+                            style={{ width: "8px", height: "8px" }}
+                            title={`Có ${totalItems} sản phẩm trong giỏ`}
+                          >
+                            <span className="visually-hidden">New alerts</span>
                           </span>
                         )}
                       </Link>
@@ -146,7 +150,7 @@ export default function MobileMenu({ categories = [] }) {
 
                   {/* Menu phụ nếu là Admin / Đăng xuất */}
                   <div className="d-flex bg-light border-bottom px-3 py-2 gap-3 fs-7">
-                    {user.role === 'admin' && (
+                    {user.role?.toLowerCase() === 'admin' && (
                       <Link href="/admin" onClick={toggleMenu} className="text-primary fw-bold text-decoration-none">
                         <i className="fas fa-cog me-1"></i> Quản trị
                       </Link>
@@ -178,13 +182,17 @@ export default function MobileMenu({ categories = [] }) {
                   <Link 
                     href="/cart" 
                     onClick={toggleMenu} 
-                    className="text-dark position-relative me-2"
+                    className="text-dark position-relative me-2 text-decoration-none"
                     title="Giỏ hàng"
                   >
                     <i className="fas fa-shopping-bag fs-5"></i>
                     {totalItems > 0 && (
-                      <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" style={{ fontSize: '0.55rem' }}>
-                        {totalItems}
+                      <span
+                        className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle animate-pulse"
+                        style={{ width: "8px", height: "8px" }}
+                        title={`Có ${totalItems} sản phẩm trong giỏ`}
+                      >
+                        <span className="visually-hidden">New alerts</span>
                       </span>
                     )}
                   </Link>
@@ -256,7 +264,7 @@ export default function MobileMenu({ categories = [] }) {
         </div>
       </div>
 
-      {/* Style tùy chỉnh nhanh */}
+      {/* Style tùy chỉnh hiệu ứng nhấp nháy pulse */}
       <style jsx>{`
         .style-heading {
           font-size: 0.72rem;
@@ -264,6 +272,23 @@ export default function MobileMenu({ categories = [] }) {
         }
         .nk-drawer-header {
           background-color: #d96c34 !important;
+        }
+        @keyframes pulseAnimation {
+          0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+          }
+          70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 6px rgba(220, 53, 69, 0);
+          }
+          100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+          }
+        }
+        .animate-pulse {
+          animation: pulseAnimation 1.5s infinite;
         }
       `}</style>
     </>
