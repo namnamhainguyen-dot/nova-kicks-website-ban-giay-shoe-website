@@ -6,15 +6,71 @@ export default function GuestOrdersPage() {
   const [orders, setOrders] = useState([]);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem("guest_orders");
-      if (stored) {
-        setOrders(JSON.parse(stored));
+    const fetchLatestOrderStatuses = async () => {
+      try {
+        const stored = localStorage.getItem("guest_orders");
+        if (!stored) return;
+        
+        let parsedOrders = JSON.parse(stored);
+        if (!Array.isArray(parsedOrders) || parsedOrders.length === 0) return;
+
+        const updatedOrders = await Promise.all(
+          parsedOrders.map(async (ord) => {
+            const orderId = ord._id || ord.id;
+            if (!orderId) return ord;
+            try {
+              const res = await fetch(`/api/orders/${orderId}`, { cache: "no-store" });
+              if (res.ok) {
+                const latestData = await res.json();
+                return {
+                  ...ord,
+                  status: latestData.status || ord.status,
+                };
+              }
+            } catch (err) {
+              console.error(`Không thể cập nhật trạng thái đơn ${orderId}:`, err);
+            }
+            return ord;
+          })
+        );
+
+        setOrders(updatedOrders);
+        localStorage.setItem("guest_orders", JSON.stringify(updatedOrders));
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
-    }
+    };
+
+    fetchLatestOrderStatuses();
   }, []);
+
+  const getStatusBadge = (status) => {
+    const normalizedStatus = (status || "").toLowerCase().trim();
+    switch (normalizedStatus) {
+      case "pending":
+      case "chờ xác nhận":
+        return <span className="badge bg-warning text-dark px-3 py-2 rounded-pill fw-semibold">Chờ xác nhận</span>;
+      case "processing":
+      case "đang xử lý":
+        return <span className="badge bg-primary text-white px-3 py-2 rounded-pill fw-semibold">Đang xử lý</span>;
+      case "preparing":
+      case "đang đóng gói":
+        return <span className="badge bg-info text-dark px-3 py-2 rounded-pill fw-semibold">Đang đóng gói</span>;
+      case "shipping":
+      case "đang giao hàng":
+      case "đang giao":
+        return <span className="badge bg-primary px-3 py-2 rounded-pill fw-semibold">Đang giao hàng</span>;
+      case "completed":
+      case "đã giao hàng":
+      case "hoàn thành":
+        return <span className="badge bg-success px-3 py-2 rounded-pill fw-semibold">✓ Đã giao hàng</span>;
+      case "cancelled":
+      case "đã hủy":
+        return <span className="badge bg-danger px-3 py-2 rounded-pill fw-semibold">✕ Đã hủy</span>;
+      default:
+        return <span className="badge bg-secondary px-3 py-2 rounded-pill fw-semibold">{status || "Chờ xác nhận"}</span>;
+    }
+  };
 
   return (
     <main className="container mt-5 pt-5 py-5" style={{ maxWidth: "750px" }}>
@@ -37,8 +93,8 @@ export default function GuestOrdersPage() {
           {orders.map((ord) => (
             <div key={ord._id || ord.id} className="card border-0 shadow-sm rounded-4 p-4">
               <div className="d-flex justify-content-between align-items-center mb-2">
-                <span className="font-monospace fw-bold text-primary">#{ord._id?.toUpperCase()}</span>
-                <span className="badge bg-secondary">{ord.status || "Đang xử lý"}</span>
+                <span className="font-monospace fw-bold text-primary">#{ord._id?.toUpperCase() || ord.id}</span>
+                {getStatusBadge(ord.status)}
               </div>
               <div className="small text-muted mb-3">
                 Người nhận: <strong>{ord.name}</strong> ({ord.phone}) <br />

@@ -146,7 +146,6 @@ export default function OrderDetailPage() {
         }
       })
       .catch(() => {
-        // [TÍNH NĂNG MỚI]: Tìm kiếm đơn hàng trong localStorage nếu khách chưa đăng nhập/vãng lai
         try {
           const guestOrders = JSON.parse(localStorage.getItem("guest_orders") || "[]");
           const foundOrder = guestOrders.find(o => o._id === id || o.id === id);
@@ -213,6 +212,8 @@ export default function OrderDetailPage() {
     pending: { text: "Chờ xác nhận", badge: "bg-warning text-dark"},
     processing: { text: "Đang xử lý", badge: "bg-primary text-white"},
     preparing: { text: "Đang đóng gói", badge: "bg-info text-dark"},
+    shipping: { text: "Đang giao hàng", badge: "bg-primary text-white" },
+    "đang giao hàng": { text: "Đang giao hàng", badge: "bg-primary text-white"},
     completed: { text: "Đã giao hàng", badge: "bg-success text-white", icon: "✓" },
     "Đã giao": { text: "Đã giao hàng", badge: "bg-success text-white", icon: "✓" },
     cancelled: { text: "Đã hủy", badge: "bg-danger text-white", icon: "✕" }
@@ -229,7 +230,8 @@ export default function OrderDetailPage() {
   const isCod = rawMethod.includes("cod") || rawMethod.includes("khi nhận hàng");
   
   const isQRPayment = rawMethod.includes("vnpay") || rawMethod.includes("qr") || rawMethod.includes("banking") || rawMethod.includes("chuyển khoản");
-  const effectiveStatus = isQRPayment ? "processing" : (order.status || "pending");
+  const dbStatus = (order.status || "pending").toLowerCase().trim();
+  const effectiveStatus = (dbStatus === "shipping" || dbStatus === "đang giao hàng") ? "shipping" : (isQRPayment && dbStatus === "pending" ? "processing" : dbStatus);
 
   const currentStatus = statusConfigs[effectiveStatus] || { text: order.status || "Đang xử lý", badge: "bg-secondary text-white", icon: "•" };
 
