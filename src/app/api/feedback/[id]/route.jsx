@@ -1,9 +1,11 @@
-import clientPromise from "@/libs/mongodb";
+import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
+import clientPromise from "@/libs/mongodb";
 import nodemailer from "nodemailer";
+import { checkModeration } from "@/libs/moderation";
 
 // =======================================================
-// Mail Transport
+// NODEMAILER
 // =======================================================
 
 const transporter = nodemailer.createTransport({
@@ -15,17 +17,18 @@ const transporter = nodemailer.createTransport({
 });
 
 // =======================================================
-// GET - Lấy chi tiết feedback theo ID
+// GET - CHI TIẾT FEEDBACK
 // =======================================================
-export async function GET(request, { params }) {
+
+export async function GET(req, { params }) {
   try {
     const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
-          message: "ID không hợp lệ",
+          message: "ID feedback không hợp lệ.",
         },
         {
           status: 400,
@@ -36,15 +39,17 @@ export async function GET(request, { params }) {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    const feedback = await db.collection("feedback").findOne({
-      _id: new ObjectId(id),
-    });
+    const feedback = await db
+      .collection("feedback")
+      .findOne({
+        _id: new ObjectId(id),
+      });
 
     if (!feedback) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
-          message: "Không tìm thấy feedback",
+          message: "Không tìm thấy feedback.",
         },
         {
           status: 404,
@@ -52,17 +57,17 @@ export async function GET(request, { params }) {
       );
     }
 
-    return Response.json({
+    return NextResponse.json({
       ...feedback,
       _id: feedback._id.toString(),
     });
   } catch (error) {
-    console.error("GET FEEDBACK ERROR:", error);
+    console.error("❌ GET feedback detail error:", error);
 
-    return Response.json(
+    return NextResponse.json(
       {
         success: false,
-        message: "Lỗi máy chủ",
+        message: "Không thể tải feedback.",
       },
       {
         status: 500,
@@ -72,17 +77,18 @@ export async function GET(request, { params }) {
 }
 
 // =======================================================
-// PATCH - Cập nhật trạng thái / Trả lời feedback
+// PATCH - CẬP NHẬT STATUS / GỬI PHẢN HỒI
 // =======================================================
-export async function PATCH(request, { params }) {
+
+export async function PATCH(req, { params }) {
   try {
     const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
-          message: "ID không hợp lệ",
+          message: "ID feedback không hợp lệ.",
         },
         {
           status: 400,
@@ -90,21 +96,28 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const body = await request.json();
-    const { status, reply } = body;
+    const body = await req.json();
+
+    const status = body.status;
+    const reply =
+      body.reply !== undefined
+        ? String(body.reply).trim()
+        : "";
 
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    const feedback = await db.collection("feedback").findOne({
-      _id: new ObjectId(id),
-    });
+    const feedback = await db
+      .collection("feedback")
+      .findOne({
+        _id: new ObjectId(id),
+      });
 
     if (!feedback) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
-          message: "Không tìm thấy feedback",
+          message: "Không tìm thấy feedback.",
         },
         {
           status: 404,
@@ -112,97 +125,182 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    const updateFields = {};
+    // ===================================================
+    // TRƯỜNG HỢP GỬI REPLY
+    // ===================================================
 
-    // 1. Nếu có gửi reply -> Gửi email cho khách hàng và cập nhật trạng thái done
     if (reply) {
-      const html = `
-        <div style="font-family:Arial,sans-serif;line-height:1.7">
-          <h2>Nova Kicks phản hồi liên hệ</h2>
+      // -----------------------------------------------
+      // AI KIỂM TRA NỘI DUNG ADMIN PHẢN HỒI
+      // -----------------------------------------------
 
-          <p>Xin chào <b>${feedback.name}</b>,</p>
+      const moderation = await checkModeration(reply);
 
-          <p>
-            Cảm ơn bạn đã liên hệ với Nova Kicks.
-            Chúng tôi đã nhận được phản hồi của bạn.
-          </p>
-
-          <hr>
-
-          <p><b>Nội dung phản hồi:</b></p>
-
-          <div
-            style="
-              background:#f5f5f5;
-              padding:16px;
-              border-left:4px solid #000;
-              white-space:pre-line;
-            "
-          >
-            ${reply}
-          </div>
-
-          <br>
-
-          <p>Trân trọng,</p>
-          <b>Nova Kicks Team</b>
-        </div>
-      `;
-
-      try {
-        await transporter.sendMail({
-          from: `"Nova Kicks" <${process.env.EMAIL_USER}>`,
-          to: feedback.email,
-          subject: `Phản hồi: ${feedback.subject || 'Liên hệ từ khách hàng'}`,
-          html,
-        });
-      } catch (mailError) {
-        console.error("SEND MAIL ERROR:", mailError);
+      if (moderation.blocked) {
+        return NextResponse.json(
+          {
+            success: false,
+            blocked: true,
+            message:
+              "Nội dung phản hồi chứa từ ngữ không phù hợp. Vui lòng viết lại.",
+          },
+          {
+            status: 400,
+          }
+        );
       }
 
-      updateFields.reply = reply;
-      updateFields.status = "done";
-      updateFields.repliedAt = new Date();
-    } 
-    // 2. Nếu chỉ cập nhật status thông thường (ví dụ: read, pending...)
-    else if (status) {
-      updateFields.status = status;
-    }
+      // -----------------------------------------------
+      // GỬI EMAIL CHO KHÁCH HÀNG
+      // -----------------------------------------------
 
-    if (Object.keys(updateFields).length === 0) {
-      return Response.json(
+      if (
+        process.env.EMAIL_USER &&
+        process.env.EMAIL_PASS
+      ) {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: feedback.email,
+          subject: `Nova Kicks - Phản hồi: ${feedback.subject}`,
+
+          html: `
+            <div
+              style="
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                max-width: 700px;
+                margin: auto;
+              "
+            >
+              <h2>📩 Nova Kicks phản hồi bạn</h2>
+
+              <p>
+                Xin chào <strong>${feedback.name}</strong>,
+              </p>
+
+              <p>
+                Cảm ơn bạn đã gửi feedback đến Nova Kicks.
+              </p>
+
+              <div
+                style="
+                  margin: 20px 0;
+                  padding: 15px;
+                  background: #f8f9fa;
+                  border-radius: 8px;
+                "
+              >
+                <strong>Feedback của bạn:</strong>
+
+                <p style="white-space: pre-line;">
+                  ${feedback.message}
+                </p>
+              </div>
+
+              <div
+                style="
+                  margin: 20px 0;
+                  padding: 15px;
+                  background: #fff3cd;
+                  border-radius: 8px;
+                "
+              >
+                <strong>Phản hồi từ Nova Kicks:</strong>
+
+                <p style="white-space: pre-line;">
+                  ${reply}
+                </p>
+              </div>
+
+              <p>
+                Trân trọng,<br />
+                <strong>Nova Kicks</strong>
+              </p>
+            </div>
+          `,
+        });
+      }
+
+      // -----------------------------------------------
+      // LƯU REPLY
+      // -----------------------------------------------
+
+      await db.collection("feedback").updateOne(
         {
-          success: false,
-          message: "Không có dữ liệu cập nhật",
+          _id: new ObjectId(id),
         },
         {
-          status: 400,
+          $set: {
+            reply,
+            status: "done",
+            repliedAt: new Date(),
+          },
         }
       );
+
+      return NextResponse.json({
+        success: true,
+        message: "Đã gửi phản hồi cho khách hàng.",
+      });
     }
 
-    await db.collection("feedback").updateOne(
-      {
-        _id: new ObjectId(id),
-      },
-      {
-        $set: updateFields,
+    // ===================================================
+    // CHỈ CẬP NHẬT STATUS
+    // ===================================================
+
+    if (status) {
+      const allowedStatuses = [
+        "pending",
+        "unread",
+        "read",
+        "done",
+      ];
+
+      if (!allowedStatuses.includes(status)) {
+        return NextResponse.json(
+          {
+            success: false,
+            message: "Trạng thái không hợp lệ.",
+          },
+          {
+            status: 400,
+          }
+        );
       }
-    );
 
-    return Response.json({
-      success: true,
-      message: reply
-        ? "Đã gửi phản hồi thành công"
-        : "Đã cập nhật trạng thái",
-    });
-  } catch (error) {
-    console.error("PATCH FEEDBACK ERROR:", error);
+      await db.collection("feedback").updateOne(
+        {
+          _id: new ObjectId(id),
+        },
+        {
+          $set: {
+            status,
+          },
+        }
+      );
 
-    return Response.json(
+      return NextResponse.json({
+        success: true,
+        message: "Cập nhật trạng thái thành công.",
+      });
+    }
+
+    return NextResponse.json(
       {
         success: false,
-        message: error.message || "Lỗi máy chủ",
+        message: "Không có dữ liệu cần cập nhật.",
+      },
+      {
+        status: 400,
+      }
+    );
+  } catch (error) {
+    console.error("❌ PATCH feedback error:", error);
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "Có lỗi xảy ra khi cập nhật feedback.",
       },
       {
         status: 500,
@@ -212,17 +310,18 @@ export async function PATCH(request, { params }) {
 }
 
 // =======================================================
-// DELETE - Xóa feedback theo ID
+// DELETE - XÓA FEEDBACK
 // =======================================================
-export async function DELETE(request, { params }) {
+
+export async function DELETE(req, { params }) {
   try {
     const { id } = await params;
 
     if (!ObjectId.isValid(id)) {
-      return Response.json(
+      return NextResponse.json(
         {
           success: false,
-          message: "ID không hợp lệ",
+          message: "ID feedback không hợp lệ.",
         },
         {
           status: 400,
@@ -233,15 +332,17 @@ export async function DELETE(request, { params }) {
     const client = await clientPromise;
     const db = client.db("Nova-kicks");
 
-    const result = await db.collection("feedback").deleteOne({
-      _id: new ObjectId(id),
-    });
+    const result = await db
+      .collection("feedback")
+      .deleteOne({
+        _id: new ObjectId(id),
+      });
 
-    if (!result.deletedCount) {
-      return Response.json(
+    if (result.deletedCount === 0) {
+      return NextResponse.json(
         {
           success: false,
-          message: "Không tìm thấy feedback",
+          message: "Không tìm thấy feedback để xóa.",
         },
         {
           status: 404,
@@ -249,17 +350,17 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    return Response.json({
+    return NextResponse.json({
       success: true,
-      message: "Đã xóa feedback",
+      message: "Đã xóa feedback.",
     });
   } catch (error) {
-    console.error("DELETE FEEDBACK ERROR:", error);
+    console.error("❌ DELETE feedback error:", error);
 
-    return Response.json(
+    return NextResponse.json(
       {
         success: false,
-        message: "Lỗi máy chủ",
+        message: "Không thể xóa feedback.",
       },
       {
         status: 500,
@@ -267,3 +368,4 @@ export async function DELETE(request, { params }) {
     );
   }
 }
+

@@ -28,18 +28,18 @@ export default function FeedbackDetailPage() {
 
   useEffect(() => {
 
-    if(id){
+    if (id) {
       fetchFeedback();
     }
 
-  },[id]);
+  }, [id]);
 
 
 
 
-  const fetchFeedback = async()=>{
+  const fetchFeedback = async () => {
 
-    try{
+    try {
 
       setLoading(true);
 
@@ -47,7 +47,7 @@ export default function FeedbackDetailPage() {
       const res = await fetch(
         `/api/feedback/${id}`,
         {
-          cache:"no-store"
+          cache: "no-store"
         }
       );
 
@@ -56,7 +56,7 @@ export default function FeedbackDetailPage() {
 
 
 
-      if(res.ok){
+      if (res.ok) {
 
         setFeedback(data);
 
@@ -65,7 +65,7 @@ export default function FeedbackDetailPage() {
         );
 
       }
-      else{
+      else {
 
         alert(
           data.message
@@ -75,7 +75,7 @@ export default function FeedbackDetailPage() {
 
 
     }
-    catch(error){
+    catch (error) {
 
       console.error(error);
 
@@ -84,7 +84,7 @@ export default function FeedbackDetailPage() {
       );
 
     }
-    finally{
+    finally {
 
       setLoading(false);
 
@@ -101,10 +101,10 @@ export default function FeedbackDetailPage() {
   // ==============================
 
 
-  const handleReply = async()=>{
+  const handleReply = async () => {
 
 
-    if(!reply.trim()){
+    if (!reply.trim()) {
 
       return alert(
         "Vui lòng nhập nội dung phản hồi."
@@ -114,7 +114,7 @@ export default function FeedbackDetailPage() {
 
 
 
-    try{
+    try {
 
       setSending(true);
 
@@ -124,18 +124,18 @@ export default function FeedbackDetailPage() {
         `/api/feedback/${id}`,
         {
 
-          method:"PATCH",
+          method: "PATCH",
 
-          headers:{
-            "Content-Type":"application/json"
+          headers: {
+            "Content-Type": "application/json"
           },
 
 
-          body:JSON.stringify({
+          body: JSON.stringify({
 
             reply,
 
-            status:"done"
+            status: "done"
 
           })
 
@@ -148,7 +148,7 @@ export default function FeedbackDetailPage() {
 
 
 
-      if(res.ok){
+      if (res.ok) {
 
         alert(
           "Đã gửi phản hồi cho khách hàng."
@@ -158,7 +158,7 @@ export default function FeedbackDetailPage() {
         fetchFeedback();
 
       }
-      else{
+      else {
 
         alert(
           data.message
@@ -169,7 +169,7 @@ export default function FeedbackDetailPage() {
 
 
     }
-    catch(error){
+    catch (error) {
 
       console.error(error);
 
@@ -178,7 +178,7 @@ export default function FeedbackDetailPage() {
       );
 
     }
-    finally{
+    finally {
 
       setSending(false);
 
@@ -196,26 +196,26 @@ export default function FeedbackDetailPage() {
   // ==============================
 
 
-  const handleDone = async()=>{
+  const handleDone = async () => {
 
 
-    try{
+    try {
 
 
       const res = await fetch(
         `/api/feedback/${id}`,
         {
 
-          method:"PATCH",
+          method: "PATCH",
 
-          headers:{
-            "Content-Type":"application/json"
+          headers: {
+            "Content-Type": "application/json"
           },
 
 
-          body:JSON.stringify({
+          body: JSON.stringify({
 
-            status:"done"
+            status: "done"
 
           })
 
@@ -225,16 +225,16 @@ export default function FeedbackDetailPage() {
 
 
       const data =
-      await res.json();
+        await res.json();
 
 
 
-      if(res.ok){
+      if (res.ok) {
 
         fetchFeedback();
 
       }
-      else{
+      else {
 
         alert(data.message);
 
@@ -242,7 +242,7 @@ export default function FeedbackDetailPage() {
 
 
     }
-    catch(error){
+    catch (error) {
 
       console.error(error);
 
@@ -264,26 +264,26 @@ export default function FeedbackDetailPage() {
   // ==============================
 
 
-  const handleDelete = async()=>{
+  const handleDelete = async () => {
 
 
-    if(
+    if (
       !confirm(
         "Bạn có chắc muốn xóa feedback này?"
       )
     )
-    return;
+      return;
 
 
 
-    try{
+    try {
 
 
       const res = await fetch(
         `/api/feedback/${id}`,
         {
 
-          method:"DELETE"
+          method: "DELETE"
 
         }
       );
@@ -291,11 +291,11 @@ export default function FeedbackDetailPage() {
 
 
       const data =
-      await res.json();
+        await res.json();
 
 
 
-      if(res.ok){
+      if (res.ok) {
 
         alert(
           "Đã xóa feedback."
@@ -307,7 +307,7 @@ export default function FeedbackDetailPage() {
         );
 
       }
-      else{
+      else {
 
         alert(
           data.message
@@ -317,7 +317,7 @@ export default function FeedbackDetailPage() {
 
 
     }
-    catch(error){
+    catch (error) {
 
       console.error(error);
 
@@ -334,7 +334,7 @@ export default function FeedbackDetailPage() {
 
 
 
-  if(loading){
+  if (loading) {
 
     return (
 
@@ -352,7 +352,7 @@ export default function FeedbackDetailPage() {
 
 
 
-  if(!feedback){
+  if (!feedback) {
 
     return (
 
@@ -375,7 +375,7 @@ export default function FeedbackDetailPage() {
     <div
       className="container py-4"
       style={{
-        maxWidth:"900px"
+        maxWidth: "900px"
       }}
     >
 
@@ -572,206 +572,81 @@ export default function FeedbackDetailPage() {
                 new Date(
                   feedback.createdAt
                 )
-                .toLocaleString(
-                  "vi-VN"
-                )
+                  .toLocaleString(
+                    "vi-VN"
+                  )
               }
 
             />
 
 
           </div>
-
-
-
-
-
-
-
           <div className="mb-4">
-
-
             <label className="form-label fw-semibold">
-
               Trạng thái
-
             </label>
-
-
-
             <div>
-
-
-            {
-              feedback.status==="done"
-
-              ?
-
-              <span className="badge bg-success">
-
-                Đã xử lý
-
-              </span>
-
-
-              :
-
-              <span className="badge bg-warning text-dark">
-
-                Chưa xử lý
-
-              </span>
-
-            }
-
-
-            </div>
-
-
-          </div>
-
-
-
-
-
-
-
-          <hr />
-
-
-
-
-
-
-
-          <div className="mb-4">
-
-
-            <label className="form-label fw-semibold">
-
-              Phản hồi khách hàng
-
-            </label>
-
-
-
-            <textarea
-
-              className="form-control"
-
-              rows={7}
-
-              placeholder="Nhập nội dung trả lời..."
-
-              value={reply}
-
-              onChange={
-                e=>setReply(e.target.value)
+              {
+                feedback.status === "done"
+                  ?
+                  <span className="badge bg-success">
+                    Đã xử lý
+                  </span>
+                  :
+                  <span className="badge bg-warning text-dark">
+                    Chưa xử lý
+                  </span>
               }
-
-            />
-
-
+            </div>
           </div>
-
-
-
-
-
-
-
-
+          <hr />
+          <div className="mb-4">
+            <label className="form-label fw-semibold">
+              Phản hồi khách hàng
+            </label>
+            <textarea
+              className="form-control"
+              rows={7}
+              placeholder="Nhập nội dung trả lời..."
+              value={reply}
+              onChange={
+                e => setReply(e.target.value)
+              }
+            />
+          </div>
           <div className="d-flex justify-content-end gap-2">
-
-
-
             {
               feedback.status !== "done"
-
               &&
-
               <button
-
                 className="btn btn-success"
-
                 onClick={handleDone}
-
               >
-
                 ✓ Đánh dấu đã xử lý
-
               </button>
-
             }
-
-
-
-
-
-
             <button
-
               className="btn btn-primary"
-
               disabled={sending}
-
               onClick={handleReply}
-
             >
-
               {
                 sending
-
-                ?
-
-                "Đang gửi..."
-
-                :
-
-                "✉ Gửi phản hồi"
-
+                  ?
+                  "Đang gửi..."
+                  :
+                  "✉ Gửi phản hồi"
               }
-
-
             </button>
-
-
-
-
-
-
-
             <button
-
               className="btn btn-danger"
-
               onClick={handleDelete}
-
             >
-
               🗑 Xóa
-
             </button>
-
-
-
-
-
           </div>
-
-
-
-
-
         </div>
-
-
       </div>
-
-
-
     </div>
-
   );
-
 }
